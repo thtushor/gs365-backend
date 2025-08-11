@@ -44,8 +44,8 @@ export const PaymentGatewayProviderModel = {
         priority: paymentGatewayProvider.priority,
         status: paymentGatewayProvider.status,
         isRecommended: paymentGatewayProvider?.isRecommended,
-        licenseKey: paymentGatewayProvider?.licenseKey,
-        commission: paymentGatewayProvider?.commission,
+        licenseKey:paymentGatewayProvider?.licenseKey,
+        commission:paymentGatewayProvider?.commission,
         provider: {
           id: paymentProvider.id,
           name: paymentProvider.name,
@@ -144,35 +144,13 @@ export const PaymentGatewayProviderModel = {
       );
   },
 
-  async getByProviderId(providerId: number, filter: any = {}) {
-    const whereCondition = [eq(paymentGatewayProvider.providerId, providerId)];
-
-    if (filter.status) {
-      whereCondition.push(eq(paymentGatewayProvider.status, filter.status));
-    }
-
-    // Pagination parameters
-    const page = parseInt(filter.page as string) || 1;
-    const pageSize = parseInt(filter.pageSize as string) || 10;
-    const offset = (page - 1) * pageSize;
-
-    // Get total count for pagination
-    const totalCount = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(paymentGatewayProvider)
-      .where(and(...whereCondition));
-
-    // Get paginated data
-    const data = await db
+  async getByProviderId(providerId: number) {
+    return db
       .select({
         id: paymentGatewayProvider.id,
         gatewayId: paymentGatewayProvider.gatewayId,
         providerId: paymentGatewayProvider.providerId,
         priority: paymentGatewayProvider.priority,
-        status: paymentGatewayProvider.status,
-        isRecommended: paymentGatewayProvider?.isRecommended,
-        licenseKey: paymentGatewayProvider?.licenseKey,
-        commission: paymentGatewayProvider?.commission,
         provider: {
           id: paymentProvider.id,
           name: paymentProvider.name,
@@ -204,25 +182,11 @@ export const PaymentGatewayProviderModel = {
         paymentGateway,
         eq(paymentGatewayProvider.gatewayId, paymentGateway.id)
       )
-      .where(and(...whereCondition))
-      .limit(pageSize)
-      .offset(offset)
+      .where(eq(paymentGatewayProvider.providerId, providerId))
       .orderBy(
         asc(paymentGatewayProvider.priority),
         desc(paymentGatewayProvider.id)
       );
-
-    return {
-      data,
-      pagination: {
-        page,
-        pageSize: pageSize,
-        total: totalCount[0]?.count || 0,
-        totalPages: Math.ceil((totalCount[0]?.count || 0) / pageSize),
-        hasNext: page < Math.ceil((totalCount[0]?.count || 0) / pageSize),
-        hasPrev: page > 1,
-      },
-    };
   },
 
   async create(data: typeof NewPaymentGatewayProvider) {
@@ -249,18 +213,6 @@ export const PaymentGatewayProviderModel = {
         and(
           eq(paymentGatewayProvider.gatewayId, gatewayId),
           eq(paymentGatewayProvider.providerId, providerId)
-        )
-      );
-  },
-
-  async updateOtherRecommendations(gatewayId: number, excludeId: number) {
-    return db
-      .update(paymentGatewayProvider)
-      .set({ isRecommended: false })
-      .where(
-        and(
-          eq(paymentGatewayProvider.gatewayId, gatewayId),
-          sql`${paymentGatewayProvider.id} != ${excludeId}`
         )
       );
   },

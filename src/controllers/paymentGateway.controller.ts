@@ -53,20 +53,12 @@ export const getPaymentGatewayById = async (req: Request, res: Response) => {
     const id = Number(req.params.id);
     const row = await PaymentGatewayModel.getById(id);
     if (!row.length)
-      return res
-        .status(404)
-        .json({ status: false, message: "Payment gateway not found" });
-    res.json({
-      data: row[0],
-      status: true,
-      message: "Payment gateway fetched!",
-    });
+      return res.status(404).json({ error: "Payment gateway not found" });
+    res.json(row[0]);
   } catch (err) {
-    res.status(500).json({
-      status: false,
-      message: "Failed to fetch payment gateway",
-      errors: err,
-    });
+    res
+      .status(500)
+      .json({ error: "Failed to fetch payment gateway", errors: err });
   }
 };
 
@@ -87,7 +79,7 @@ export const updatePaymentGateway = async (req: Request, res: Response) => {
     const result = await PaymentGatewayModel.update(id, req.body);
     if (!result)
       return res.status(404).json({ error: "Payment gateway not found" });
-    res.json({ message: "Payment gateway updated", status: true });
+    res.json({ message: "Payment gateway updated" });
   } catch (err) {
     res
       .status(500)

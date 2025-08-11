@@ -14,7 +14,7 @@ export async function seedPaymentMethods() {
   try {
     await db
       .insert(paymentMethods)
-      .values(types as PaymentMethods[])
+      .values(types as (typeof PaymentMethods)[])
       .onDuplicateKeyUpdate({
         set: {
           id: sql`values(${paymentMethods.id})`,

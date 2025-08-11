@@ -48,9 +48,11 @@ import {
   dropdownOptions,
   dropdowns,
   game_providers,
+  games,
   gamingLicenses,
   responsibleGaming,
   sponsors,
+  sports,
   sports_providers,
   users,
   video_advertisement,
@@ -2203,6 +2205,7 @@ export const getGameProvidersList = async (req: Request, res: Response) => {
     });
   }
 };
+
 export const addOrUpdateGame = async (req: Request, res: Response) => {
   try {
     const userData = (req as unknown as { user: DecodedUser | null })?.user;
@@ -2317,7 +2320,7 @@ export const addOrUpdateGame = async (req: Request, res: Response) => {
 };
 export const getGameList = async (req: Request, res: Response) => {
   try {
-    const { id, page = 1, pageSize = 10 } = req.query;
+    const { id, page = 1, pageSize = 10, providerId } = req.query;
 
     const gameId = id ? Number(id) : undefined;
     if (gameId) {
@@ -2336,7 +2339,13 @@ export const getGameList = async (req: Request, res: Response) => {
       });
     }
 
-    const result = await getPaginatedGameList(Number(page), Number(pageSize));
+    const providerIdValid = providerId ? Number(providerId) : undefined;
+
+    const result = await getPaginatedGameList(
+      Number(page),
+      Number(pageSize),
+      Number(providerIdValid)
+    );
 
     return res.status(200).json({
       status: true,
@@ -2629,7 +2638,7 @@ export const addOrUpdateSport = async (req: Request, res: Response) => {
 };
 export const getSportList = async (req: Request, res: Response) => {
   try {
-    const { id, page = 1, pageSize = 10 } = req.query;
+    const { id, page = 1, pageSize = 10, providerId } = req.query;
 
     const sportId = id ? Number(id) : undefined;
     if (sportId) {
@@ -2646,6 +2655,35 @@ export const getSportList = async (req: Request, res: Response) => {
         message: "Sport fetched successfully.",
         data: sportDetails,
       });
+    }
+
+    const providerIdValid = providerId ? Number(providerId) : undefined;
+    if (providerIdValid) {
+      const offset = (Number(page) - 1) * Number(pageSize);
+      const rows = await db
+        .select()
+        .from(sports)
+        .where(
+          sql`JSON_EXTRACT(${sports.providerInfo}, '$.id') = ${providerIdValid}`
+        )
+        .limit(Number(pageSize))
+        .offset(offset);
+
+      const countResult = await db
+        .select({ count: sql`COUNT(*)`.as("count") })
+        .from(sports);
+
+      const total = Number(countResult[0].count);
+
+      return {
+        data: rows,
+        pagination: {
+          page,
+          pageSize,
+          total,
+          totalPages: Math.ceil(total / Number(pageSize)),
+        },
+      };
     }
 
     const result = await getPaginatedSportList(Number(page), Number(pageSize));

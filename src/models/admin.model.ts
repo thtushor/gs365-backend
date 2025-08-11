@@ -619,8 +619,9 @@ export async function getPaginatedGameProviders(
   parentId: any
 ) {
   const offset = (page - 1) * pageSize;
-  const whereClause =
-    parentId !== undefined ? eq(game_providers.parentId, parentId) : undefined;
+  const whereClause = parentId
+    ? eq(game_providers.parentId, parentId)
+    : undefined;
   const rows = await db
     .select()
     .from(game_providers)
@@ -682,15 +683,33 @@ export async function updateGame(id: number, data: any) {
 
   await db.update(games).set(data).where(eq(games.id, id));
 }
-export async function getPaginatedGameList(page: number, pageSize: number) {
+export async function getPaginatedGameList(
+  page: number,
+  pageSize: number,
+  providerId?: number
+) {
   const offset = (page - 1) * pageSize;
-  const rows = await db.select().from(games).limit(pageSize).offset(offset);
 
+  // SQL condition for providerId in JSON
+  const providerCondition = providerId
+    ? sql`JSON_EXTRACT(${games.providerInfo}, '$.id') = ${providerId}`
+    : undefined;
+
+  // Fetch paginated rows
+  const rows = await db
+    .select()
+    .from(games)
+    .where(providerCondition)
+    .limit(pageSize)
+    .offset(offset);
+
+  // Fetch total count
   const countResult = await db
     .select({ count: sql`COUNT(*)`.as("count") })
-    .from(games);
+    .from(games)
+    .where(providerCondition);
 
-  const total = Number(countResult[0].count);
+  const total = Number(countResult[0]?.count ?? 0);
 
   return {
     data: rows,
