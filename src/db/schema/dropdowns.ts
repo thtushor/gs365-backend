@@ -16,7 +16,7 @@ export const dropdowns = mysqlTable("dropdowns", {
 
 export const dropdownOptions = mysqlTable("dropdown_options", {
   id: int("id").primaryKey().autoincrement(),
-  title: varchar("title", { length: 200 }).notNull().unique(),
+  title: varchar("title", { length: 200 }).notNull(),
   dropdown_id: int("dropdown_id").notNull(),
   status: mysqlEnum("status", ["active", "inactive"]).default("inactive"),
   created_by: varchar("created_by", { length: 200 }).notNull(),

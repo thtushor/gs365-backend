@@ -2177,7 +2177,10 @@ export const getGameProvidersList = async (req: Request, res: Response) => {
     }
 
     if (publicList === "true") {
-      const allProviders = await getAllGameProviders(isParentBool);
+      const allProviders = await getAllGameProviders(
+        isParentBool,
+        Number(parentId)
+      );
       return res.status(200).json({
         status: true,
         message: "All game providers fetched successfully.",
@@ -2257,38 +2260,10 @@ export const addOrUpdateGame = async (req: Request, res: Response) => {
       gameUrl,
       ggrPercent,
       createdBy: Number(createdByData) || undefined,
-      categoryInfo: null,
-      providerInfo: null,
+      categoryId: Number(categoryId),
+      providerId: Number(providerId),
       isFavorite,
     };
-
-    // Fetch category info
-    const [categoryInfo] = await db
-      .select()
-      .from(dropdownOptions)
-      .where(eq(dropdownOptions.id, Number(categoryId)));
-
-    if (!categoryInfo) {
-      return res
-        .status(400)
-        .json({ status: false, message: "Invalid category ID" });
-    }
-
-    payload.categoryInfo = categoryInfo;
-
-    // Fetch provider info
-    const [providerInfo] = await db
-      .select()
-      .from(game_providers)
-      .where(eq(game_providers.id, Number(providerId)));
-
-    if (!providerInfo) {
-      return res
-        .status(400)
-        .json({ status: false, message: "Invalid provider ID" });
-    }
-
-    payload.providerInfo = providerInfo;
 
     if (id) {
       await updateGame(Number(id), payload);
@@ -2496,7 +2471,10 @@ export const getSportsProvidersList = async (req: Request, res: Response) => {
     }
 
     if (publicList === "true") {
-      const allProviders = await getAllSportsProviders(isParentBool);
+      const allProviders = await getAllSportsProviders(
+        isParentBool,
+        Number(parentId)
+      );
       return res.status(200).json({
         status: true,
         message: "All sports providers fetched successfully.",
@@ -2524,6 +2502,7 @@ export const getSportsProvidersList = async (req: Request, res: Response) => {
     });
   }
 };
+
 export const addOrUpdateSport = async (req: Request, res: Response) => {
   try {
     const userData = (req as unknown as { user: DecodedUser | null })?.user;
@@ -2575,38 +2554,10 @@ export const addOrUpdateSport = async (req: Request, res: Response) => {
       sportUrl,
       ggrPercent,
       createdBy: Number(createdByData) || undefined,
-      categoryInfo: null,
-      providerInfo: null,
+      categoryId: Number(categoryId),
+      providerId: Number(providerId),
       isFavorite,
     };
-
-    // Fetch category info
-    const [categoryInfo] = await db
-      .select()
-      .from(dropdownOptions)
-      .where(eq(dropdownOptions.id, Number(categoryId)));
-
-    if (!categoryInfo) {
-      return res
-        .status(400)
-        .json({ status: false, message: "Invalid category ID" });
-    }
-
-    payload.categoryInfo = categoryInfo;
-
-    // Fetch provider info
-    const [providerInfo] = await db
-      .select()
-      .from(sports_providers)
-      .where(eq(sports_providers.id, Number(providerId)));
-
-    if (!providerInfo) {
-      return res
-        .status(400)
-        .json({ status: false, message: "Invalid provider ID" });
-    }
-
-    payload.providerInfo = providerInfo;
 
     if (id) {
       await updateSport(Number(id), payload);
@@ -2658,35 +2609,12 @@ export const getSportList = async (req: Request, res: Response) => {
     }
 
     const providerIdValid = providerId ? Number(providerId) : undefined;
-    if (providerIdValid) {
-      const offset = (Number(page) - 1) * Number(pageSize);
-      const rows = await db
-        .select()
-        .from(sports)
-        .where(
-          sql`JSON_EXTRACT(${sports.providerInfo}, '$.id') = ${providerIdValid}`
-        )
-        .limit(Number(pageSize))
-        .offset(offset);
 
-      const countResult = await db
-        .select({ count: sql`COUNT(*)`.as("count") })
-        .from(sports);
-
-      const total = Number(countResult[0].count);
-
-      return {
-        data: rows,
-        pagination: {
-          page,
-          pageSize,
-          total,
-          totalPages: Math.ceil(total / Number(pageSize)),
-        },
-      };
-    }
-
-    const result = await getPaginatedSportList(Number(page), Number(pageSize));
+    const result = await getPaginatedSportList(
+      Number(page),
+      Number(pageSize),
+      Number(providerIdValid)
+    );
 
     return res.status(200).json({
       status: true,
