@@ -48,11 +48,9 @@ import {
   dropdownOptions,
   dropdowns,
   game_providers,
-  games,
   gamingLicenses,
   responsibleGaming,
   sponsors,
-  sports,
   sports_providers,
   users,
   video_advertisement,
@@ -942,7 +940,6 @@ export const updateDropdownOptionStatus = async (
     });
   }
 };
-
 export const getDropdownOptionsList = async (req: Request, res: Response) => {
   try {
     const { id, page = 1, pageSize = 10 } = req.query;
@@ -984,35 +981,7 @@ export const getDropdownOptionsList = async (req: Request, res: Response) => {
     });
   }
 };
-export const deleteDropdownOption = async (req: Request, res: Response) => {
-  const id = Number(req.params.id);
 
-  if (isNaN(id)) {
-    return res.status(400).json({
-      success: false,
-      message: "Invalid dropdown option id",
-    });
-  }
-
-  try {
-    const result = await db
-      .delete(dropdownOptions)
-      .where(eq(dropdownOptions.id, id));
-
-    return res.status(200).json({
-      success: true,
-      message: "Dropdown option deleted successfully",
-      result,
-    });
-  } catch (error) {
-    console.error("Error deleting dropdown option:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to delete dropdown option",
-      error,
-    });
-  }
-};
 // ----------------------------
 // Promotions-------------------
 // ---------------------
@@ -2206,10 +2175,7 @@ export const getGameProvidersList = async (req: Request, res: Response) => {
     }
 
     if (publicList === "true") {
-      const allProviders = await getAllGameProviders(
-        isParentBool,
-        Number(parentId)
-      );
+      const allProviders = await getAllGameProviders(isParentBool);
       return res.status(200).json({
         status: true,
         message: "All game providers fetched successfully.",
@@ -2237,7 +2203,6 @@ export const getGameProvidersList = async (req: Request, res: Response) => {
     });
   }
 };
-
 export const addOrUpdateGame = async (req: Request, res: Response) => {
   try {
     const userData = (req as unknown as { user: DecodedUser | null })?.user;
@@ -2289,10 +2254,38 @@ export const addOrUpdateGame = async (req: Request, res: Response) => {
       gameUrl,
       ggrPercent,
       createdBy: Number(createdByData) || undefined,
-      categoryId: Number(categoryId),
-      providerId: Number(providerId),
+      categoryInfo: null,
+      providerInfo: null,
       isFavorite,
     };
+
+    // Fetch category info
+    const [categoryInfo] = await db
+      .select()
+      .from(dropdownOptions)
+      .where(eq(dropdownOptions.id, Number(categoryId)));
+
+    if (!categoryInfo) {
+      return res
+        .status(400)
+        .json({ status: false, message: "Invalid category ID" });
+    }
+
+    payload.categoryInfo = categoryInfo;
+
+    // Fetch provider info
+    const [providerInfo] = await db
+      .select()
+      .from(game_providers)
+      .where(eq(game_providers.id, Number(providerId)));
+
+    if (!providerInfo) {
+      return res
+        .status(400)
+        .json({ status: false, message: "Invalid provider ID" });
+    }
+
+    payload.providerInfo = providerInfo;
 
     if (id) {
       await updateGame(Number(id), payload);
@@ -2324,7 +2317,7 @@ export const addOrUpdateGame = async (req: Request, res: Response) => {
 };
 export const getGameList = async (req: Request, res: Response) => {
   try {
-    const { id, page = 1, pageSize = 10, providerId } = req.query;
+    const { id, page = 1, pageSize = 10 } = req.query;
 
     const gameId = id ? Number(id) : undefined;
     if (gameId) {
@@ -2343,13 +2336,7 @@ export const getGameList = async (req: Request, res: Response) => {
       });
     }
 
-    const providerIdValid = providerId ? Number(providerId) : undefined;
-
-    const result = await getPaginatedGameList(
-      Number(page),
-      Number(pageSize),
-      Number(providerIdValid)
-    );
+    const result = await getPaginatedGameList(Number(page), Number(pageSize));
 
     return res.status(200).json({
       status: true,
@@ -2500,10 +2487,7 @@ export const getSportsProvidersList = async (req: Request, res: Response) => {
     }
 
     if (publicList === "true") {
-      const allProviders = await getAllSportsProviders(
-        isParentBool,
-        Number(parentId)
-      );
+      const allProviders = await getAllSportsProviders(isParentBool);
       return res.status(200).json({
         status: true,
         message: "All sports providers fetched successfully.",
@@ -2531,7 +2515,6 @@ export const getSportsProvidersList = async (req: Request, res: Response) => {
     });
   }
 };
-
 export const addOrUpdateSport = async (req: Request, res: Response) => {
   try {
     const userData = (req as unknown as { user: DecodedUser | null })?.user;
@@ -2583,10 +2566,38 @@ export const addOrUpdateSport = async (req: Request, res: Response) => {
       sportUrl,
       ggrPercent,
       createdBy: Number(createdByData) || undefined,
-      categoryId: Number(categoryId),
-      providerId: Number(providerId),
+      categoryInfo: null,
+      providerInfo: null,
       isFavorite,
     };
+
+    // Fetch category info
+    const [categoryInfo] = await db
+      .select()
+      .from(dropdownOptions)
+      .where(eq(dropdownOptions.id, Number(categoryId)));
+
+    if (!categoryInfo) {
+      return res
+        .status(400)
+        .json({ status: false, message: "Invalid category ID" });
+    }
+
+    payload.categoryInfo = categoryInfo;
+
+    // Fetch provider info
+    const [providerInfo] = await db
+      .select()
+      .from(sports_providers)
+      .where(eq(sports_providers.id, Number(providerId)));
+
+    if (!providerInfo) {
+      return res
+        .status(400)
+        .json({ status: false, message: "Invalid provider ID" });
+    }
+
+    payload.providerInfo = providerInfo;
 
     if (id) {
       await updateSport(Number(id), payload);
@@ -2618,7 +2629,7 @@ export const addOrUpdateSport = async (req: Request, res: Response) => {
 };
 export const getSportList = async (req: Request, res: Response) => {
   try {
-    const { id, page = 1, pageSize = 10, providerId } = req.query;
+    const { id, page = 1, pageSize = 10 } = req.query;
 
     const sportId = id ? Number(id) : undefined;
     if (sportId) {
@@ -2637,13 +2648,7 @@ export const getSportList = async (req: Request, res: Response) => {
       });
     }
 
-    const providerIdValid = providerId ? Number(providerId) : undefined;
-
-    const result = await getPaginatedSportList(
-      Number(page),
-      Number(pageSize),
-      Number(providerIdValid)
-    );
+    const result = await getPaginatedSportList(Number(page), Number(pageSize));
 
     return res.status(200).json({
       status: true,

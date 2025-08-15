@@ -9,7 +9,7 @@ export const PaymentProviderController = {
     const result = await PaymentProviderModel.getAll(filters);
 
     res.status(200).json({
-      success: true,
+      status: true,
       data: result.data,
       pagination: result.pagination,
     });
@@ -22,13 +22,13 @@ export const PaymentProviderController = {
 
     if (!provider || provider.length === 0) {
       return res.status(404).json({
-        success: false,
+        status: false,
         message: "Payment provider not found",
       });
     }
 
     res.status(200).json({
-      success: true,
+      status: true,
       data: provider[0],
     });
   }),
@@ -39,7 +39,7 @@ export const PaymentProviderController = {
 
     if (!name) {
       return res.status(400).json({
-        success: false,
+        status: false,
         message: "Provider name is required",
       });
     }
@@ -50,7 +50,7 @@ export const PaymentProviderController = {
       (commissionPercentage < 0 || commissionPercentage > 100)
     ) {
       return res.status(400).json({
-        success: false,
+        status: false,
         message: "Commission percentage must be between 0 and 100",
       });
     }
@@ -63,7 +63,7 @@ export const PaymentProviderController = {
     });
 
     res.status(201).json({
-      success: true,
+      status: true,
       data: newProvider,
       message: "Payment provider created successfully",
     });
@@ -77,7 +77,7 @@ export const PaymentProviderController = {
     const existingProvider = await PaymentProviderModel.getById(Number(id));
     if (!existingProvider || existingProvider.length === 0) {
       return res.status(404).json({
-        success: false,
+        status: false,
         message: "Payment provider not found",
       });
     }
@@ -88,7 +88,7 @@ export const PaymentProviderController = {
     );
 
     res.status(200).json({
-      success: true,
+      status: true,
       data: updatedProvider,
       message: "Payment provider updated successfully",
     });
@@ -101,7 +101,7 @@ export const PaymentProviderController = {
     const existingProvider = await PaymentProviderModel.getById(Number(id));
     if (!existingProvider || existingProvider.length === 0) {
       return res.status(404).json({
-        success: false,
+        status: false,
         message: "Payment provider not found",
       });
     }
@@ -109,7 +109,7 @@ export const PaymentProviderController = {
     await PaymentProviderModel.delete(Number(id));
 
     res.status(200).json({
-      success: true,
+      status: true,
       message: "Payment provider deleted successfully",
     });
   }),

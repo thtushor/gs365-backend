@@ -7,7 +7,13 @@ import {
 import { eq, sql, and, like } from "drizzle-orm";
 import { PaymentMethodModel } from "./paymentMethods.model";
 import { PaymentMethodTypesModel } from "./paymentMethodsTypes.model";
-import { countries } from "../db/schema/country";
+import { countries, NewCountry } from "../db/schema/country";
+import { paymentMethods } from "../db/schema";
+import {
+  getPaymentMethodTypeById,
+  getPaymentMethodTypeByIdWithoutResponsse,
+} from "../controllers/paymentMethodsTypes.controller";
+import { Country } from "../db/seed-fn/currency";
 
 export const PaymentGatewayModel = {
   async getAll(filter: any = {}) {
@@ -33,10 +39,64 @@ export const PaymentGatewayModel = {
       .where(whereCondition.length ? and(...whereCondition) : undefined);
   },
   async getById(id: number) {
-    return db
-      .select()
+    const result = await db
+      .select({
+        id: paymentGateway.id,
+        name: paymentGateway.name,
+        network: paymentGateway.network,
+        status: paymentGateway.status,
+        countryId: paymentGateway.countryId,
+        methodId: paymentGateway.methodId,
+        paymentMethodTypeIds: paymentGateway.paymentMethodTypeIds,
+        minDeposit: paymentGateway.minDeposit,
+        maxDeposit: paymentGateway.maxDeposit,
+        minWithdraw: paymentGateway.minWithdraw,
+        maxWithdraw: paymentGateway.maxWithdraw,
+        paymentMethods: {
+          id: paymentMethods.id,
+          name: paymentMethods.name,
+          status: paymentMethods.status,
+        },
+        country: {
+          id: countries.id,
+          name: countries.name,
+          flagUrl: countries.flagUrl,
+          code: countries.code,
+          currencyId: countries.currencyId,
+          status: countries.status,
+        },
+      })
       .from(paymentGateway)
-      .where(sql`${paymentGateway.id} = ${id}`);
+      .leftJoin(paymentMethods, eq(paymentGateway.methodId, paymentMethods.id))
+      .leftJoin(countries, eq(countries.id, paymentGateway.countryId))
+      .where(eq(paymentGateway.id, id));
+
+    let paymentTypes = typeof result[0].paymentMethodTypeIds === "string"
+      ? (JSON.parse(result[0].paymentMethodTypeIds) as number[])
+      : (result[0].paymentMethodTypeIds as number[]) || [];
+
+    paymentTypes = Array.isArray(paymentTypes) ? paymentTypes : [];
+
+    const paymentTypesPopulate: Country[] = [];
+
+    await Promise.all(
+      paymentTypes.map(async (value) => {
+        if (value) {
+          const paymentMethodType =
+            await getPaymentMethodTypeByIdWithoutResponsse(value);
+
+          if (paymentMethodType)
+            paymentTypesPopulate.push(paymentMethodType as unknown as Country);
+        }
+      })
+    );
+
+    return [
+      {
+        ...result[0],
+        paymentTypes: paymentTypesPopulate as Country[],
+      },
+    ];
   },
   async create(data: typeof NewPaymentGateway) {
     // Validate methodId

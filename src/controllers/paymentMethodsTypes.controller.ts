@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { PaymentMethodTypesModel } from "../models/paymentMethodsTypes.model";
+import { Country, PaymentMethods } from "../db/schema";
 
 export const getAllPaymentMethodTypes = async (req: Request, res: Response) => {
   let status: "active" | "inactive" | undefined;
@@ -23,6 +24,12 @@ export const getPaymentMethodTypeById = async (req: Request, res: Response) => {
   if (!type.length) return res.status(404).json({ message: "Not found" });
   res.json(type[0]);
   return;
+};
+
+export const getPaymentMethodTypeByIdWithoutResponsse = async (id: number) => {
+  const type = await PaymentMethodTypesModel.getById(id);
+  if (!type.length) return null;
+  return type[0];
 };
 
 export const createPaymentMethodType = async (req: Request, res: Response) => {

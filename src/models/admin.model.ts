@@ -619,9 +619,8 @@ export async function getPaginatedGameProviders(
   parentId: any
 ) {
   const offset = (page - 1) * pageSize;
-  const whereClause = parentId
-    ? eq(game_providers.parentId, parentId)
-    : undefined;
+  const whereClause =
+    parentId !== undefined ? eq(game_providers.parentId, parentId) : undefined;
   const rows = await db
     .select()
     .from(game_providers)
@@ -645,23 +644,16 @@ export async function getPaginatedGameProviders(
     },
   };
 }
-export const getAllGameProviders = async (
-  isParent?: boolean,
-  parentId?: number
-) => {
-  const conditions = [];
+export const getAllGameProviders = async (isParent?: boolean) => {
+  const providers =
+    isParent === true
+      ? await db
+          .select()
+          .from(game_providers)
+          .where(isNull(game_providers.parentId))
+      : await db.select().from(game_providers);
 
-  if (isParent) {
-    conditions.push(isNull(game_providers.parentId));
-  }
-
-  if (parentId) {
-    conditions.push(eq(game_providers.parentId, parentId));
-  }
-
-  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-
-  return await db.select().from(game_providers).where(whereClause);
+  return providers;
 };
 
 // game
@@ -690,57 +682,15 @@ export async function updateGame(id: number, data: any) {
 
   await db.update(games).set(data).where(eq(games.id, id));
 }
-export async function getPaginatedGameList(
-  page: number,
-  pageSize: number,
-  providerId?: number
-) {
+export async function getPaginatedGameList(page: number, pageSize: number) {
   const offset = (page - 1) * pageSize;
+  const rows = await db.select().from(games).limit(pageSize).offset(offset);
 
-  // Condition
-  const providerCondition = providerId
-    ? eq(games.providerId, providerId)
-    : undefined;
-
-  // Fetch rows with joins
-  const rows = await db
-    .select({
-      id: games.id,
-      name: games.name,
-      status: games.status,
-      isFavorite: games.isFavorite,
-      apiKey: games.apiKey,
-      licenseKey: games.licenseKey,
-      gameLogo: games.gameLogo,
-      secretPin: games.secretPin,
-      gameUrl: games.gameUrl,
-      ggrPercent: games.ggrPercent,
-      createdBy: games.createdBy,
-      createdAt: games.createdAt,
-      categoryInfo: {
-        id: dropdownOptions.id,
-        name: dropdownOptions.title,
-      },
-      providerInfo: {
-        id: game_providers.id,
-        name: game_providers.name,
-        licenseKey: game_providers.licenseKey,
-      },
-    })
-    .from(games)
-    .leftJoin(dropdownOptions, eq(dropdownOptions.id, games.categoryId))
-    .leftJoin(game_providers, eq(game_providers.id, games.providerId))
-    .where(providerCondition)
-    .limit(pageSize)
-    .offset(offset);
-
-  // Count total
   const countResult = await db
     .select({ count: sql`COUNT(*)`.as("count") })
-    .from(games)
-    .where(providerCondition);
+    .from(games);
 
-  const total = Number(countResult[0]?.count ?? 0);
+  const total = Number(countResult[0].count);
 
   return {
     data: rows,
@@ -753,52 +703,7 @@ export async function getPaginatedGameList(
   };
 }
 export async function getGameDetailsById(id: number) {
-  const [game] = await db
-    .select({
-      id: games.id,
-      name: games.name,
-      status: games.status,
-      isFavorite: games.isFavorite,
-      apiKey: games.apiKey,
-      licenseKey: games.licenseKey,
-      gameLogo: games.gameLogo,
-      secretPin: games.secretPin,
-      gameUrl: games.gameUrl,
-      ggrPercent: games.ggrPercent,
-      createdBy: games.createdBy,
-      createdAt: games.createdAt,
-      categoryInfo: {
-        id: dropdownOptions.id,
-        title: dropdownOptions.title,
-        dropdown_id: dropdownOptions.dropdown_id,
-        status: dropdownOptions.status,
-        created_by: dropdownOptions.created_by,
-        created_at: dropdownOptions.created_at,
-      },
-      providerInfo: {
-        id: game_providers.id,
-        name: game_providers.name,
-        parentId: game_providers.parentId,
-        status: game_providers.status,
-        minBalanceLimit: game_providers.minBalanceLimit,
-        mainBalance: game_providers.mainBalance,
-        totalExpense: game_providers.totalExpense,
-        providerIp: game_providers.providerIp,
-        licenseKey: game_providers.licenseKey,
-        phone: game_providers.phone,
-        email: game_providers.email,
-        whatsapp: game_providers.whatsapp,
-        parentName: game_providers.parentName,
-        telegram: game_providers.telegram,
-        country: game_providers.country,
-        logo: game_providers.logo,
-        createdAt: game_providers.createdAt,
-      },
-    })
-    .from(games)
-    .leftJoin(dropdownOptions, eq(dropdownOptions.id, games.categoryId))
-    .leftJoin(game_providers, eq(game_providers.id, games.providerId))
-    .where(eq(games.id, id));
+  const [game] = await db.select().from(games).where(eq(games.id, id));
 
   return game || null;
 }
@@ -847,9 +752,10 @@ export async function getPaginatedSportsProviders(
   parentId: any
 ) {
   const offset = (page - 1) * pageSize;
-  const whereClause = parentId
-    ? eq(sports_providers.parentId, parentId)
-    : undefined;
+  const whereClause =
+    parentId !== undefined
+      ? eq(sports_providers.parentId, parentId)
+      : undefined;
   const rows = await db
     .select()
     .from(sports_providers)
@@ -873,23 +779,16 @@ export async function getPaginatedSportsProviders(
     },
   };
 }
-export const getAllSportsProviders = async (
-  isParent?: boolean,
-  parentId?: number
-) => {
-  const conditions = [];
+export const getAllSportsProviders = async (isParent?: boolean) => {
+  const providers =
+    isParent === true
+      ? await db
+          .select()
+          .from(sports_providers)
+          .where(isNull(sports_providers.parentId))
+      : await db.select().from(sports_providers);
 
-  if (isParent) {
-    conditions.push(isNull(sports_providers.parentId));
-  }
-
-  if (parentId) {
-    conditions.push(eq(sports_providers.parentId, parentId));
-  }
-
-  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-
-  return await db.select().from(sports_providers).where(whereClause);
+  return providers;
 };
 
 // sport
@@ -918,58 +817,15 @@ export async function updateSport(id: number, data: any) {
 
   await db.update(sports).set(data).where(eq(sports.id, id));
 }
-
-export async function getPaginatedSportList(
-  page: number,
-  pageSize: number,
-  providerId?: number
-) {
+export async function getPaginatedSportList(page: number, pageSize: number) {
   const offset = (page - 1) * pageSize;
+  const rows = await db.select().from(sports).limit(pageSize).offset(offset);
 
-  // Condition
-  const providerCondition = providerId
-    ? eq(sports.providerId, providerId)
-    : undefined;
-
-  // Fetch rows with joins
-  const rows = await db
-    .select({
-      id: sports.id,
-      name: sports.name,
-      status: sports.status,
-      isFavorite: sports.isFavorite,
-      apiKey: sports.apiKey,
-      licenseKey: sports.licenseKey,
-      sportLogo: sports.sportLogo,
-      secretPin: sports.secretPin,
-      sportUrl: sports.sportUrl,
-      ggrPercent: sports.ggrPercent,
-      createdBy: sports.createdBy,
-      createdAt: sports.createdAt,
-      categoryInfo: {
-        id: dropdownOptions.id,
-        name: dropdownOptions.title,
-      },
-      providerInfo: {
-        id: sports_providers.id,
-        name: sports_providers.name,
-        licenseKey: sports_providers.licenseKey,
-      },
-    })
-    .from(sports)
-    .leftJoin(dropdownOptions, eq(dropdownOptions.id, sports.categoryId))
-    .leftJoin(sports_providers, eq(sports_providers.id, sports.providerId))
-    .where(providerCondition)
-    .limit(pageSize)
-    .offset(offset);
-
-  // Count total
   const countResult = await db
     .select({ count: sql`COUNT(*)`.as("count") })
-    .from(sports)
-    .where(providerCondition);
+    .from(sports);
 
-  const total = Number(countResult[0]?.count ?? 0);
+  const total = Number(countResult[0].count);
 
   return {
     data: rows,
@@ -982,52 +838,7 @@ export async function getPaginatedSportList(
   };
 }
 export async function getSportDetailsById(id: number) {
-  const [sport] = await db
-    .select({
-      id: sports.id,
-      name: sports.name,
-      status: sports.status,
-      isFavorite: sports.isFavorite,
-      apiKey: sports.apiKey,
-      licenseKey: sports.licenseKey,
-      sportLogo: sports.sportLogo,
-      secretPin: sports.secretPin,
-      sportUrl: sports.sportUrl,
-      ggrPercent: sports.ggrPercent,
-      createdBy: sports.createdBy,
-      createdAt: sports.createdAt,
-      categoryInfo: {
-        id: dropdownOptions.id,
-        title: dropdownOptions.title,
-        dropdown_id: dropdownOptions.dropdown_id,
-        status: dropdownOptions.status,
-        created_by: dropdownOptions.created_by,
-        created_at: dropdownOptions.created_at,
-      },
-      providerInfo: {
-        id: sports_providers.id,
-        name: sports_providers.name,
-        parentId: sports_providers.parentId,
-        status: sports_providers.status,
-        minBalanceLimit: sports_providers.minBalanceLimit,
-        mainBalance: sports_providers.mainBalance,
-        totalExpense: sports_providers.totalExpense,
-        providerIp: sports_providers.providerIp,
-        licenseKey: sports_providers.licenseKey,
-        phone: sports_providers.phone,
-        email: sports_providers.email,
-        whatsapp: sports_providers.whatsapp,
-        parentName: sports_providers.parentName,
-        telegram: sports_providers.telegram,
-        country: sports_providers.country,
-        logo: sports_providers.logo,
-        createdAt: sports_providers.createdAt,
-      },
-    })
-    .from(sports)
-    .leftJoin(dropdownOptions, eq(dropdownOptions.id, sports.categoryId))
-    .leftJoin(sports_providers, eq(sports_providers.id, sports.providerId))
-    .where(eq(sports.id, id));
+  const [sport] = await db.select().from(sports).where(eq(sports.id, id));
 
   return sport || null;
 }

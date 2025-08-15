@@ -52,7 +52,6 @@ import {
   addOrUpdateSportsProvider,
   addOrUpdateSport,
   getSportList,
-  deleteDropdownOption,
 } from "../controllers/admin.controller";
 
 const router = Router();
@@ -97,8 +96,6 @@ router.get(
   verifyToken,
   asyncHandler(getDropdownOptionsList)
 );
-
-router.post("/dropdown/:id", verifyToken, asyncHandler(deleteDropdownOption));
 
 // promotions
 router.post("/promotion", verifyToken, asyncHandler(addOrUpdatePromotion));

@@ -24,11 +24,9 @@ export const games = mysqlTable("games", {
   ggrPercent: varchar("ggr_percent", { length: 100 }).notNull(),
 
   // ➕ New fields:
-  categoryInfo: json("category_info"),
-  providerInfo: json("provider_info"),
-  createdBy: varchar("created_by", { length: 200 }),
-  categoryId: int("category_id").notNull(),
-  providerId: int("provider_id").notNull(),
+  categoryInfo: json("category_info"), // store full dropdownOptions object
+  providerInfo: json("provider_info"), // store full game_provider object
+  createdBy: varchar("created_by", { length: 200 }), // username from token
 
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
 });

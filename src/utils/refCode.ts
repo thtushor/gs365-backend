@@ -1,6 +1,7 @@
 import { db } from "../db/connection";
 import { users } from "../db/schema/users";
 import { adminUsers } from "../db/schema/AdminUsers";
+import { transactions } from "../db/schema/transactions";
 import { eq } from "drizzle-orm";
 
 function randomRefCode(length = 8) {
@@ -38,5 +39,29 @@ export async function generateUniqueRefCode(
   }
   throw new Error(
     "Failed to generate unique referral code after multiple attempts"
+  );
+}
+
+export function generateCustomTransactionId(): string {
+  const timestamp = Date.now().toString();
+  const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+  return `TXN${timestamp}${random}`;
+}
+
+export async function generateUniqueTransactionId(maxAttempts = 10): Promise<string> {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const transactionId = generateCustomTransactionId();
+    const exists = await db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.customTransactionId, transactionId))
+      .limit(1);
+    
+    if (!exists || exists.length === 0) {
+      return transactionId;
+    }
+  }
+  throw new Error(
+    "Failed to generate unique transaction ID after multiple attempts"
   );
 }

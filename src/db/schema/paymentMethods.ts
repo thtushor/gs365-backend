@@ -7,4 +7,4 @@ export const paymentMethods = mysqlTable("payment_methods", {
   status: ActivityStatus.default("active"),
 });
 
-export const PaymentMethods = paymentMethods.$inferInsert;
+export type PaymentMethods = typeof paymentMethods.$inferInsert;
