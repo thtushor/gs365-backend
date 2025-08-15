@@ -1,4 +1,4 @@
-import { and, eq, like, sql } from "drizzle-orm";
+import { and, desc, eq, like, sql } from "drizzle-orm";
 import { db } from "../db/connection";
 import { turnover } from "../db/schema/turnover";
 import type { NewTurnover } from "../db/schema/turnover";
@@ -51,7 +51,7 @@ export const TurnoverModel = {
       .where(whereConditions.length ? and(...whereConditions) : undefined)
       .limit(pageSize)
       .offset(offset)
-      .orderBy(turnover.id);
+      .orderBy(desc(turnover.id));
 
     const total = totalRows?.[0]?.count ?? 0;
 

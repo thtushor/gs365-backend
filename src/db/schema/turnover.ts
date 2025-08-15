@@ -7,7 +7,7 @@ import {
   mysqlEnum,
 } from "drizzle-orm/mysql-core";
 import { relations, sql } from "drizzle-orm";
-import { users, ActivityStatus } from "./users";
+import { users } from "./users";
 import { transactions } from "./transactions";
 
 export const TurnoverType = mysqlEnum("turnover_type", [
