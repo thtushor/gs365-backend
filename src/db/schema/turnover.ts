@@ -15,6 +15,8 @@ export const TurnoverType = mysqlEnum("turnover_type", [
   "promotion",
 ]);
 
+export const TurnoverStatus = mysqlEnum("turnover_status", ["active", "inactive","completed"]);
+
 export const turnover = mysqlTable("turnover", {
   id: int("id").primaryKey().autoincrement(),
   userId: int("user_id")
@@ -24,7 +26,7 @@ export const turnover = mysqlTable("turnover", {
     onDelete: "set null",
   }),
   type: TurnoverType.default("default"),
-  status: ActivityStatus.default("active"),
+  status: TurnoverStatus.default("active"),
   turnoverName: varchar("turnover_name", { length: 300 }).notNull(),
   targetTurnover: decimal("target_turnover", {
     precision: 20,
