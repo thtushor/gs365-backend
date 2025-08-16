@@ -5,7 +5,7 @@ import { game_providers } from "../db/schema/gameProvider";
 import { betResults } from "../db/schema/betResults";
 import { transactions } from "../db/schema/transactions";
 import { BalanceModel } from "./balance.model";
-import { generateJWT } from "../utils/jwt";
+import { generateJWT, verifyJwt } from "../utils/jwt";
 
 export interface GameWithProvider {
   id: number;
@@ -167,7 +167,7 @@ export const GameModel = {
         sessionId
       };
 
-      const token = generateJWT(tokenPayload, "1h");
+      const token = generateJWT(tokenPayload, "2h");
 
       // Update bet result with session token
 
@@ -186,7 +186,13 @@ export const GameModel = {
   async verifyGameToken(token: string): Promise<GameSessionToken & {currentBalance: number} | null> {
     try {
       // Verify JWT token
-      const decoded = generateJWT.verify(token) as GameSessionToken;
+      const decoded = verifyJwt(token) as GameSessionToken;
+
+      console.log({decoded})
+
+      if(!decoded){
+        throw new Error("Invalid token")
+      }
 
       const userBalance = await BalanceModel.calculatePlayerBalance(decoded.userId);
       if (userBalance.currentBalance<=0) {
@@ -227,6 +233,10 @@ export const GameModel = {
         updatedAt: new Date(),
       };
 
+      if(!update.gameSessionId){
+        throw Error("Game session id is required")
+      }
+
       if (update.betStatus === "win" && update.winAmount) {
         updateData.winAmount = update.winAmount.toString();
         updateData.multiplier = update.multiplier?.toString() || "1.0000";
@@ -244,15 +254,19 @@ export const GameModel = {
       }
 
       await db
-        .update(betResults)
-        .set(updateData)
-        .where(eq(betResults.sessionToken, update.sessionToken));
+        .insert(betResults)
+        .values(updateData)
+        // .where(eq(betResults.gameSessionId, update.gameSessionId));
+
+      
+      const [gameResult] = await db.select().from(betResults).where(eq(betResults.gameSessionId,update.gameSessionId))
 
       // Create transaction record
       if (update.betStatus === "win" && update.winAmount) {
         await db.insert(transactions).values({
           userId: tokenData.userId,
           type: "win",
+          gameId:gameResult.gameId,
           amount: update.winAmount.toString(),
           status: "approved",
           currencyId: 1, // Default currency, you might want to get this from user
@@ -262,6 +276,7 @@ export const GameModel = {
         await db.insert(transactions).values({
           userId: tokenData.userId,
           type: "loss",
+          gameId: gameResult.gameId,
           amount: update.lossAmount.toString(),
           status: "approved",
           currencyId: 1, // Default currency, you might want to get this from user
