@@ -42,23 +42,23 @@ router.post("/", (req, res, next) => {
 });
 
 // PUT /api/settings/:id - Update settings by ID
-router.put("/:id", (req, res, next) => {
+router.post("/update/:id", (req, res, next) => {
   updateSettings(req, res).catch(next);
 });
 
 // PUT /api/settings/update-current - Update current settings
-router.put("/update-current", (req, res, next) => {
+router.post("/update-current", (req, res, next) => {
   updateCurrentSettings(req, res).catch(next);
 });
 
 // PUT /api/settings/set-default-turnover - Set default turnover
-router.put("/set-default-turnover", (req, res, next) => {
+router.post("/set-default-turnover", (req, res, next) => {
   setDefaultTurnover(req, res).catch(next);
 });
 
 // DELETE /api/settings/:id - Delete settings
-router.delete("/:id", (req, res, next) => {
-  deleteSettings(req, res).catch(next);
+  router.post("/delete/:id", (req, res, next) => {
+    deleteSettings(req, res).catch(next);
 });
 
 export default router;
