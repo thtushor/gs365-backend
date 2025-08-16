@@ -176,17 +176,22 @@ export const GameModel = {
         .set({ sessionToken: token })
         .where(eq(betResults.id, betResult?.insertId));
 
-      return { token, sessionId, url: `https://gsgameprovider.vercel.app?sessionId=${sessionId}` };
+      return { token, sessionId, url: `https://gsgameprovider.vercel.app?sessionId=${sessionId}&token=${token}` };
     } catch (error) {
       console.error("Error in playGame:", error);
       throw error;
     }
   },
 
-  async verifyGameToken(token: string): Promise<GameSessionToken | null> {
+  async verifyGameToken(token: string): Promise<GameSessionToken & {currentBalance: number} | null> {
     try {
       // Verify JWT token
       const decoded = generateJWT.verify(token) as GameSessionToken;
+
+      const userBalance = await BalanceModel.calculatePlayerBalance(decoded.userId);
+      if (userBalance.currentBalance<=0) {
+        throw new Error("Insufficient balance");
+      }
       
       // Check if bet result exists
       const betResult = await db
@@ -199,7 +204,7 @@ export const GameModel = {
         throw new Error("Invalid session token");
       }
 
-      return decoded;
+      return {...decoded,currentBalance: userBalance.currentBalance};
     } catch (error) {
       console.error("Error verifying game token:", error);
       return null;

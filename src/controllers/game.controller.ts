@@ -145,6 +145,7 @@ export const GameController = {
           userName: tokenData.userName,
           betAmount: tokenData.betAmount,
           sessionId: tokenData.sessionId,
+          currentBalance: tokenData.currentBalance
         },
       });
     } catch (error: any) {
