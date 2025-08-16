@@ -62,8 +62,8 @@ export function generateJwtToken(
 }
 
 // Game session JWT functions
-export function generateJWT(payload: any, expiresIn: string = "1h"): string {
-  return jwt.sign(payload, process.env.JWT_SECRET || "your_jwt_secret", {
+export function generateJWT(payload: any, expiresIn: StringValue = "1h"): string {
+  return jwt.sign({ ...payload }, process.env.JWT_SECRET || "your_jwt_secret", {
     expiresIn: expiresIn,
   });
 }
