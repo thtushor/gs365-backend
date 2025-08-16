@@ -26,7 +26,7 @@ This document describes the comprehensive gaming system implemented for the Fash
 - **Balance Validation**: Check user balance before allowing bets
 - **Bet History**: Track user betting history
 - **Score Tracking**: Monitor user scores and levels
-- **Device Tracking**: Log device and IP information
+- **Device Tracking**: Automatically detect and log device and IP information from request headers
 
 ## 🏗️ Architecture
 
@@ -99,11 +99,12 @@ node test-gaming-api.js
 ### Game Session Creation
 ```
 1. User requests to play game
-2. System validates game exists and is active
-3. System checks user balance
-4. System creates bet_result record
-5. System generates JWT session token
-6. System returns token and session ID
+2. System automatically detects IP address and device information from request headers
+3. System validates game exists and is active
+4. System checks user balance
+5. System creates bet_result record with device tracking
+6. System generates JWT session token
+7. System returns token and session ID
 ```
 
 ### Bet Result Update

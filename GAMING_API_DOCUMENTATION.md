@@ -130,11 +130,11 @@ Creates a new game session and validates user balance.
   "userId": 123,
   "gameId": 1,
   "betAmount": 100.00,
-  "userScore": 1500,
-  "ipAddress": "192.168.1.1",
-  "deviceInfo": "Chrome 120.0.0.0 on Windows 10"
+  "userScore": 1500
 }
 ```
+
+**Note:** IP address and device information are automatically detected from the request headers and do not need to be provided in the request body.
 
 **Response:**
 ```json

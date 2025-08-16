@@ -7,9 +7,7 @@ const testData = {
   userId: 1,
   gameId: 1,
   betAmount: 100.00,
-  userScore: 1500,
-  ipAddress: '127.0.0.1',
-  deviceInfo: 'Test Device'
+  userScore: 1500
 };
 
 // Mock JWT token (you'll need to get a real one from your auth system)

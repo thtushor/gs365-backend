@@ -117,7 +117,7 @@ export const GameModel = {
     }
   },
 
-  async playGame(request: PlayGameRequest): Promise<{ token: string; sessionId: string }> {
+  async playGame(request: PlayGameRequest): Promise<{ token: string; sessionId: string,url:string }> {
     try {
       // Validate game exists and is active
       const game = await db
@@ -180,7 +180,7 @@ export const GameModel = {
         .set({ sessionToken: token })
         .where(eq(betResults.id, betResult?.insertId));
 
-      return { token, sessionId };
+      return { token, sessionId, url: `https://gsgameprovider.vercel.app?sessionId=${sessionId}` };
     } catch (error) {
       console.error("Error in playGame:", error);
       throw error;

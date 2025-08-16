@@ -205,6 +205,8 @@ export const GameController = {
         lossAmount: lossAmount ? Number(lossAmount) : undefined,
         gameSessionId,
         multiplier: multiplier ? Number(multiplier) : undefined,
+        deviceType: device_type,
+        ipAddress: ip_address,
       });
 
       res.status(200).json({
