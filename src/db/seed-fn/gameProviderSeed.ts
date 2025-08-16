@@ -55,7 +55,7 @@ export const seedGameProviderAndGame = async () => {
           isFavorite: true,
           apiKey: generateRandomKey("GAME-API"),
           licenseKey: generateRandomKey("GAME-LICENSE"),
-          gameLogo: "https://example.com/crash-logo.png",
+          gameLogo: "http://glorypos.com/image-upload/gs-image/7d95ffa9-b44e-460b-95ce-ad70a3ab4e9c-a2aabecb-c56e-4bde-8383-f30f247b9c40.png",
           secretPin: Math.floor(100000 + Math.random() * 900000).toString(), // random 6-digit pin
           gameUrl: "https://example.com/crash-game",
           ggrPercent: (5 + Math.floor(Math.random() * 15)).toString(), // random 5–20%
@@ -68,6 +68,7 @@ export const seedGameProviderAndGame = async () => {
         set: {
           name: sql`values(${games.name})`,
           gameUrl: sql`values(${games.gameUrl})`,
+          gameLogo: sql`values(${games.gameLogo})`,
         },
       });
 

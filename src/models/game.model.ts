@@ -87,7 +87,16 @@ export const GameModel = {
 
       return result.map(row => ({
         ...row,
-        provider: row.provider || {
+        status: row.status || "inactive" as string,
+        isFavorite: row.isFavorite ?? false,
+        createdAt: row.createdAt || new Date(),
+        provider: row.provider ? {
+          id: row.provider.id,
+          name: row.provider.name,
+          logo: row.provider.logo,
+          status: row.provider.status || "inactive",
+          country: row.provider.country,
+        } : {
           id: 0,
           name: "Unknown Provider",
           logo: "",
@@ -139,8 +148,7 @@ export const GameModel = {
           deviceInfo: request.deviceInfo,
           betPlacedAt: new Date(),
           gameStartedAt: new Date(),
-        })
-        .returning();
+        });
 
       // Generate JWT token
       const tokenPayload: GameSessionToken = {
@@ -158,10 +166,11 @@ export const GameModel = {
       const token = generateJWT(tokenPayload, "1h");
 
       // Update bet result with session token
+
       await db
         .update(betResults)
         .set({ sessionToken: token })
-        .where(eq(betResults.id, betResult.id));
+        .where(eq(betResults.id, betResult?.insertId));
 
       return { token, sessionId };
     } catch (error) {
@@ -233,7 +242,6 @@ export const GameModel = {
           amount: update.winAmount.toString(),
           status: "approved",
           currencyId: 1, // Default currency, you might want to get this from user
-          description: `Game win: ${tokenData.gameName}`,
           createdAt: new Date(),
         });
       } else if (update.betStatus === "loss" && update.lossAmount) {
@@ -243,7 +251,6 @@ export const GameModel = {
           amount: update.lossAmount.toString(),
           status: "approved",
           currencyId: 1, // Default currency, you might want to get this from user
-          description: `Game loss: ${tokenData.gameName}`,
           createdAt: new Date(),
         });
       }
