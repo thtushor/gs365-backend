@@ -1,8 +1,29 @@
 import { Request, Response } from "express";
 import { GameModel } from "../models/game.model";
 import { asyncHandler } from "../utils/asyncHandler";
+import * as UAParser from "ua-parser-js";
 
 export const GameController = {
+  // Helper function to get client IP (same as user controller)
+  getClientIp(req: Request): string {
+    let ip =
+      (req.headers["x-forwarded-for"] as string)
+        ?.split(",")
+        .map((s) => s.trim())[0] ||
+      (req.headers["x-real-ip"] as string) ||
+      req.socket?.remoteAddress ||
+      (req.connection as any)?.remoteAddress ||
+      req.ip ||
+      "Unknown";
+    if (ip === "::1" || ip === "0:0:0:0:0:0:0:1") {
+      ip = "127.0.0.1";
+    }
+    if (ip.startsWith("::ffff:")) {
+      ip = ip.replace("::ffff:", "");
+    }
+    return ip;
+  },
+
   // Get all games with provider information
   getAllGames: asyncHandler(async (req: Request, res: Response) => {
     try {
@@ -26,7 +47,7 @@ export const GameController = {
   // Play game - validate balance and generate session token
   playGame: asyncHandler(async (req: Request, res: Response) => {
     try {
-      const { userId, gameId, betAmount, userScore, ipAddress, deviceInfo } = req.body;
+      const { userId, gameId, betAmount, userScore } = req.body;
 
       // Validate required fields
       if (!userId || !gameId || !betAmount) {
@@ -43,13 +64,34 @@ export const GameController = {
         });
       }
 
+      // --- Device Info Extraction (same as user controller) ---
+      const userAgent = req.headers["user-agent"] || "";
+      const parser = new UAParser.UAParser(userAgent);
+      const uaResult = parser.getResult();
+      const device_type = uaResult.device.type || "Desktop";
+      const device_name = uaResult.device.model || uaResult.os.name || "Unknown";
+      const os_version = uaResult.os.name
+        ? `${uaResult.os.name} ${uaResult.os.version || ""}`.trim()
+        : "Unknown";
+      const browser = uaResult.browser.name || "Unknown";
+      const browser_version = uaResult.browser.version || "Unknown";
+      const ip_address = GameController.getClientIp(req);
+      
+      // Combine device info into a single string (similar to user controller)
+      const deviceInfo = `${browser} ${browser_version} on ${os_version}`;
+
       const result = await GameModel.playGame({
         userId: Number(userId),
         gameId: Number(gameId),
         betAmount: Number(betAmount),
         userScore: userScore ? Number(userScore) : undefined,
-        ipAddress,
-        deviceInfo,
+        ipAddress: ip_address,
+        deviceInfo: deviceInfo,
+        deviceType: device_type,
+        deviceName: device_name,
+        osVersion: os_version,
+        browser: browser,
+        browserVersion: browser_version,
       });
 
       res.status(200).json({
@@ -119,6 +161,13 @@ export const GameController = {
   updateBetResult: asyncHandler(async (req: Request, res: Response) => {
     try {
       const { sessionToken, betStatus, winAmount, lossAmount, gameSessionId, multiplier } = req.body;
+
+      // Get device info for audit trail
+      const userAgent = req.headers["user-agent"] || "";
+      const parser = new UAParser.UAParser(userAgent);
+      const uaResult = parser.getResult();
+      const device_type = uaResult.device.type || "Desktop";
+      const ip_address = GameController.getClientIp(req);
 
       // Validate required fields
       if (!sessionToken || !betStatus) {

@@ -34,6 +34,11 @@ export interface PlayGameRequest {
   userScore?: number;
   ipAddress?: string;
   deviceInfo?: string;
+  deviceType?: string;
+  deviceName?: string;
+  osVersion?: string;
+  browser?: string;
+  browserVersion?: string;
 }
 
 export interface GameSessionToken {
@@ -55,6 +60,8 @@ export interface BetResultUpdate {
   lossAmount?: number;
   gameSessionId?: string;
   multiplier?: number;
+  deviceType?: string;
+  ipAddress?: string;
 }
 
 export const GameModel = {
@@ -146,6 +153,7 @@ export const GameModel = {
           userScore: request.userScore || 0,
           ipAddress: request.ipAddress,
           deviceInfo: request.deviceInfo,
+          isMobile: request.deviceType === "mobile" || request.deviceType === "tablet",
           betPlacedAt: new Date(),
           gameStartedAt: new Date(),
         });
@@ -227,6 +235,11 @@ export const GameModel = {
 
       if (update.gameSessionId) {
         updateData.gameSessionId = update.gameSessionId;
+      }
+
+      // Add device tracking for audit trail
+      if (update.deviceType) {
+        updateData.isMobile = update.deviceType === "mobile" || update.deviceType === "tablet";
       }
 
       await db
