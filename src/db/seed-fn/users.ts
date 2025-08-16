@@ -1,7 +1,5 @@
 import "dotenv/config";
-import { drizzle } from "drizzle-orm/mysql2";
 import { users } from "../schema";
-import mysql from "mysql2/promise";
 import { db } from "../connection";
 import { sql } from "drizzle-orm";
 

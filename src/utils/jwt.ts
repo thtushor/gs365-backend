@@ -60,3 +60,14 @@ export function generateJwtToken(
     expiresIn: expiresIn,
   });
 }
+
+// Game session JWT functions
+export function generateJWT(payload: any, expiresIn: string = "1h"): string {
+  return jwt.sign(payload, process.env.JWT_SECRET || "your_jwt_secret", {
+    expiresIn: expiresIn,
+  });
+}
+
+generateJWT.verify = function(token: string): any {
+  return jwt.verify(token, process.env.JWT_SECRET || "your_jwt_secret");
+};
