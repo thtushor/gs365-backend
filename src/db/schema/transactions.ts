@@ -12,6 +12,7 @@ import { users } from "./users";
 import { paymentGatewayProviderAccount } from "./paymentGatewayProviderAccount";
 import { currencies } from "./currency";
 import { promotions } from "./promotions";
+import { games } from "./games";
 
 export const TransactionStatus = mysqlEnum("transaction_status", [
   "approved",
@@ -22,6 +23,8 @@ export const TransactionStatus = mysqlEnum("transaction_status", [
 export const TransactionType = mysqlEnum("transaction_type", [
   "deposit",
   "withdraw",
+  "win",
+  "loss",
 ]);
 
 export const transactions = mysqlTable("transactions", {
@@ -36,6 +39,11 @@ export const transactions = mysqlTable("transactions", {
     .references(() => currencies.id),
   promotionId: int("promotion_id").references(() => promotions.id, {
     onDelete: "set null",
+  }),
+  gameId: int("game_id").references(()=>{
+    return games.id
+  },{
+    onDelete: "set null"
   }),
   status: TransactionStatus.default("pending"),
   customTransactionId: varchar("custom_transaction_id", {
