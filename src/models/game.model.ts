@@ -49,8 +49,6 @@ export interface GameSessionToken {
   userName: string;
   betAmount: number;
   sessionId: string;
-  iat: number;
-  exp: number;
 }
 
 export interface BetResultUpdate {
@@ -166,9 +164,7 @@ export const GameModel = {
         gameName: game[0].name,
         userName: "User", // You might want to get this from user table
         betAmount: request.betAmount,
-        sessionId,
-        iat: Math.floor(Date.now() / 1000),
-        exp: Math.floor(Date.now() / 1000) + (60 * 60), // 1 hour
+        sessionId
       };
 
       const token = generateJWT(tokenPayload, "1h");

@@ -50,19 +50,19 @@ export const GameController = {
       const { userId, gameId, betAmount, userScore } = req.body;
 
       // Validate required fields
-      if (!userId || !gameId || !betAmount) {
+      if (!userId || !gameId) {
         return res.status(400).json({
           success: false,
           message: "userId, gameId, and betAmount are required",
         });
       }
 
-      if (betAmount <= 0) {
-        return res.status(400).json({
-          success: false,
-          message: "Bet amount must be greater than 0",
-        });
-      }
+      // if (betAmount <= 0) {
+      //   return res.status(400).json({
+      //     success: false,
+      //     message: "Bet amount must be greater than 0",
+      //   });
+      // }
 
       // --- Device Info Extraction (same as user controller) ---
       const userAgent = req.headers["user-agent"] || "";
@@ -100,6 +100,7 @@ export const GameController = {
         data: {
           sessionToken: result.token,
           sessionId: result.sessionId,
+          url: result.url,
           expiresIn: "1 hour",
         },
       });
@@ -144,8 +145,6 @@ export const GameController = {
           userName: tokenData.userName,
           betAmount: tokenData.betAmount,
           sessionId: tokenData.sessionId,
-          issuedAt: new Date(tokenData.iat * 1000),
-          expiresAt: new Date(tokenData.exp * 1000),
         },
       });
     } catch (error: any) {
