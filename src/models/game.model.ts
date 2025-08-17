@@ -1,4 +1,4 @@
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, isNotNull, gte } from "drizzle-orm";
 import { db } from "../db/connection";
 import { games } from "../db/schema/games";
 import { game_providers } from "../db/schema/gameProvider";
@@ -233,6 +233,8 @@ export const GameModel = {
         updatedAt: new Date(),
       };
 
+
+
       if(!update.gameSessionId){
         throw Error("Game session id is required")
       }
@@ -248,6 +250,25 @@ export const GameModel = {
         updateData.gameSessionId = update.gameSessionId;
       }
 
+      if(update.sessionToken){
+        updateData.sessionToken = update.sessionToken;
+      }
+
+      const [gameResult] = await db.select().from(betResults).where(and(eq(betResults.gameSessionId,update.gameSessionId),isNotNull(betResults.gameId),gte(betResults.gameId,0)))
+
+      if(!gameResult){
+        throw Error("Game session id is not valid")
+      }
+      
+
+      if(!gameResult.gameId){
+        throw Error("Game id is not valid")
+      }
+
+      if(gameResult.gameId){
+        updateData.gameId = gameResult.gameId;
+      }
+
       // Add device tracking for audit trail
       if (update.deviceType) {
         updateData.isMobile = update.deviceType === "mobile" || update.deviceType === "tablet";
@@ -259,7 +280,7 @@ export const GameModel = {
         // .where(eq(betResults.gameSessionId, update.gameSessionId));
 
       
-      const [gameResult] = await db.select().from(betResults).where(eq(betResults.gameSessionId,update.gameSessionId))
+      
 
       // Create transaction record
       if (update.betStatus === "win" && update.winAmount) {
