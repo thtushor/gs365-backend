@@ -74,9 +74,9 @@ export const BetResultController = {
         message: "Bet results retrieved successfully",
         data: result.data,
         pagination: {
-          total: result.total,
-          limit: Number(limit),
-          offset: Number(offset),
+          page: Number(offset),
+          pageSize: Number(limit),
+          totalPages: Math.ceil(result.total / Number(limit)),
           hasMore: result.total > (Number(offset) + Number(limit))
         },
         filters: result.filters,
