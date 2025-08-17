@@ -3,6 +3,7 @@ import { db } from "../db/connection";
 import { betResults } from "../db/schema/betResults";
 import { games } from "../db/schema/games";
 import { game_providers } from "../db/schema/gameProvider";
+import { users } from "../db/schema";
 
 export interface BetResultFilters {
   userId?: number;
@@ -582,6 +583,7 @@ export const BetResultModel = {
       const rankingQuery = db
         .select({
           userId: betResults.userId,
+          user: users,
           totalBets: sql<number>`COUNT(*)`,
           totalWins: sql<number>`COUNT(CASE WHEN ${betResults.betStatus} = 'win' THEN 1 END)`,
           totalLosses: sql<number>`COUNT(CASE WHEN ${betResults.betStatus} = 'loss' THEN 1 END)`,
@@ -591,6 +593,7 @@ export const BetResultModel = {
           lastPlayed: sql<Date>`MAX(${betResults.createdAt})`,
         })
         .from(betResults)
+        .leftJoin(users, eq(betResults.userId, users.id))
         .where(and(...whereConditions))
         .groupBy(betResults.userId)
         .having(sql`COUNT(*) >= ${filters.minGames}`)
@@ -614,6 +617,7 @@ export const BetResultModel = {
 
         return {
           userId: row.userId,
+          user: row.user,
           rank: filters.offset + index + 1,
           totalBets,
           totalWins,
