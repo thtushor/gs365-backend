@@ -19,8 +19,8 @@ export const betResults = mysqlTable("bet_results", {
   playingStatus: mysqlEnum("playing_status", ["playing", "completed", "abandoned"]).default("playing"),
   
   // Game session details
-  sessionToken: varchar("session_token", { length: 500 }).notNull(),
-  gameSessionId: varchar("game_session_id", { length: 200 }),
+  sessionToken: text("session_token").default(""),
+  gameSessionId: text("game_session_id").default(""),
   
   // Betting details
   winAmount: decimal("win_amount", { precision: 20, scale: 2 }).default("0"),
