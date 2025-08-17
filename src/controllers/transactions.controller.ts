@@ -4,7 +4,7 @@ import { transactions } from "../db/schema/transactions";
 import { promotions } from "../db/schema/promotions";
 import { settings } from "../db/schema/settings";
 import { turnover } from "../db/schema/turnover";
-import { eq, and, like, asc, desc, sql } from "drizzle-orm";
+import { eq, and, like, asc, desc, sql, inArray } from "drizzle-orm";
 import { generateUniqueTransactionId } from "../utils/refCode";
 
 type CreateDepositBody = {
@@ -152,7 +152,9 @@ export const getTransactions = async (req: Request, res: Response) => {
     const validTypes = ["deposit", "withdraw"] as const;
     const validStatuses = ["approved", "pending", "rejected"] as const;
 
-    const whereClauses: any[] = [];
+    const whereClauses: any[] = [
+      inArray(transactions.type, validTypes),
+    ];
     if (type && (validTypes as readonly string[]).includes(type)) {
       whereClauses.push(eq(transactions.type, type as any));
     }
