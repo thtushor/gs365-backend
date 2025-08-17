@@ -13,7 +13,7 @@ export const getAllCountries = async (req: Request, res: Response) => {
   try {
     const status = req.query.status as "active" | "inactive" | undefined;
     const searchKey = req?.query?.searchKey as string;
-    const pageSize = parseInt((req.query.pageSize as string) || "200", 10);
+    const pageSize = parseInt((req.query.pageSize as string) || "250", 10);
     const page = parseInt((req.query.page as string) || "1", 10);
 
     const whereCondition = [];
@@ -228,45 +228,57 @@ export const getAllLanguagesHandler = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to fetch languages", errors: err });
   }
 };
-
 export const assignCountryLanguage = async (req: Request, res: Response) => {
   try {
-    const { countryId, languageId, status } = req.body;
-    if (!countryId || !languageId || !status) {
-      return res
-        .status(400)
-        .json({ error: "countryId, languageId, and status are required" });
+    const { countryId, languageIds, status } = req.body;
+
+    if (
+      !countryId ||
+      !Array.isArray(languageIds) ||
+      languageIds.length === 0 ||
+      !status
+    ) {
+      return res.status(400).json({
+        error: "countryId, languageIds (array), and status are required",
+      });
     }
-    // Upsert: check if exists, update if so, else insert
-    const existing = await db
-      .select()
-      .from(countryLanguages)
-      .where(
-        and(
-          eq(countryLanguages.countryId, countryId),
-          eq(countryLanguages.languageId, languageId)
-        )
-      );
-    if (existing.length > 0) {
-      await db
-        .update(countryLanguages)
-        .set({ status })
+
+    for (const languageId of languageIds) {
+      const existing = await db
+        .select()
+        .from(countryLanguages)
         .where(
           and(
             eq(countryLanguages.countryId, countryId),
             eq(countryLanguages.languageId, languageId)
           )
         );
-    } else {
-      await db
-        .insert(countryLanguages)
-        .values({ countryId, languageId, status });
+
+      if (existing.length > 0) {
+        // update status if exists
+        await db
+          .update(countryLanguages)
+          .set({ status })
+          .where(
+            and(
+              eq(countryLanguages.countryId, countryId),
+              eq(countryLanguages.languageId, languageId)
+            )
+          );
+      } else {
+        // insert new mapping
+        await db
+          .insert(countryLanguages)
+          .values({ countryId, languageId, status });
+      }
     }
+
     res
       .status(201)
-      .json({ message: "Language assigned to country successfully." });
+      .json({ message: "Languages assigned to country successfully." });
   } catch (err) {
-    res.status(500).json({ error: "Failed to assign language to country" });
+    console.error("Error assigning country languages:", err);
+    res.status(500).json({ error: "Failed to assign languages to country" });
   }
 };
 
@@ -348,45 +360,63 @@ export const updateCountryLanguageStatus = async (
   res: Response
 ) => {
   try {
-    const { id, countryId, languageId, status } = req.body;
-    if (!id || !countryId || !languageId || !status) {
-      return res
-        .status(400)
-        .json({ error: "id, countryId, languageId, and status are required" });
+    const { id, countryId, languageIds, status } = req.body;
+
+    if (
+      !id ||
+      !countryId ||
+      !Array.isArray(languageIds) ||
+      languageIds.length === 0 ||
+      !status
+    ) {
+      return res.status(400).json({
+        error: "id, countryId, languageIds (array), and status are required",
+      });
     }
-    // Check for duplicate combination (excluding current record)
-    const duplicate = await db
+
+    // Remove old records for this id/countryId
+    await db
+      .delete(countryLanguages)
+      .where(eq(countryLanguages.countryId, countryId));
+
+    // Check for duplicates (optional since we are replacing)
+    const existing = await db
       .select()
       .from(countryLanguages)
-      .where(
-        and(
-          eq(countryLanguages.countryId, countryId),
-          eq(countryLanguages.languageId, languageId),
-          not(eq(countryLanguages.id, id))
-        )
+      .where(eq(countryLanguages.countryId, countryId));
+
+    const existingLanguageIds = new Set(existing.map((row) => row.languageId));
+
+    const newLanguages = languageIds.filter(
+      (langId: number) => !existingLanguageIds.has(langId)
+    );
+
+    // Insert new country-language combinations
+    if (newLanguages.length > 0) {
+      await db.insert(countryLanguages).values(
+        newLanguages.map((langId: number) => ({
+          countryId,
+          languageId: langId,
+          status,
+        }))
       );
-    if (duplicate.length > 0) {
-      return res
-        .status(409)
-        .json({ error: "This country-language combination already exists." });
     }
-    // Update the record by id
-    await db
-      .update(countryLanguages)
-      .set({ countryId, languageId, status })
-      .where(eq(countryLanguages.id, id));
+
+    // Fetch updated list
     const updated = await db
       .select()
       .from(countryLanguages)
-      .where(eq(countryLanguages.id, id));
+      .where(eq(countryLanguages.countryId, countryId));
+
     res.json({
       status: true,
-      data: updated[0],
-      message: "Country-language status updated",
+      data: updated,
+      message: "Country-language status updated with multiple languages",
     });
   } catch (err) {
-    res
-      .status(500)
-      .json({ error: "Failed to update country-language status", errors: err });
+    res.status(500).json({
+      error: "Failed to update country-language status",
+      errors: err,
+    });
   }
 };
