@@ -304,4 +304,311 @@ export const BetResultController = {
       });
     }
   }),
+
+  // NEW: Get player rankings/leaderboard
+  getPlayerRankings: asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const {
+        rankBy = 'totalWins', // 'totalWins', 'totalWinAmount', 'winRate', 'totalProfit'
+        sortOrder = 'desc',
+        limit = 50,
+        offset = 0,
+        dateFrom,
+        dateTo,
+        gameId,
+        minGames = 1, // Minimum games played to be included in rankings
+        includeStats = 'true'
+      } = req.query;
+
+      // Validate rankBy parameter
+      const validRankByOptions = ['totalWins', 'totalWinAmount', 'winRate', 'totalProfit', 'totalBets', 'avgBetAmount'];
+      if (!validRankByOptions.includes(rankBy as string)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid rankBy parameter. Must be one of: ${validRankByOptions.join(', ')}`,
+        });
+      }
+
+      // Validate sortOrder
+      if (!['asc', 'desc'].includes(sortOrder as string)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid sortOrder. Must be 'asc' or 'desc'",
+        });
+      }
+
+      const filters = {
+        rankBy: rankBy as "totalWins"|"totalWinAmount"|"winRate"|"totalProfit"|"totalBets"|"avgBetAmount",
+        sortOrder: sortOrder as 'asc' | 'desc',
+        limit: Number(limit),
+        offset: Number(offset),
+        dateFrom: dateFrom ? new Date(dateFrom as string) : undefined,
+        dateTo: dateTo ? new Date(dateTo as string) : undefined,
+        gameId: gameId ? Number(gameId) : undefined,
+        minGames: Number(minGames),
+        includeStats: includeStats === 'true'
+      };
+
+      const result = await BetResultModel.getPlayerRankings(filters);
+
+      res.status(200).json({
+        success: true,
+        message: "Player rankings retrieved successfully",
+        data: result.data,
+        pagination: {
+          total: result.total,
+          limit: Number(limit),
+          offset: Number(offset),
+          hasMore: result.total > (Number(offset) + Number(limit))
+        },
+        ranking: {
+          rankBy: rankBy,
+          sortOrder: sortOrder,
+          minGames: Number(minGames)
+        },
+        count: result.data.length
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: "Failed to retrieve player rankings",
+        error: error.message,
+      });
+    }
+  }),
+
+  // NEW: Get top winners leaderboard
+  getTopWinners: asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const {
+        limit = 50,
+        offset = 0,
+        dateFrom,
+        dateTo,
+        gameId,
+        minGames = 1
+      } = req.query;
+
+      const filters = {
+        limit: Number(limit),
+        offset: Number(offset),
+        dateFrom: dateFrom ? new Date(dateFrom as string) : undefined,
+        dateTo: dateTo ? new Date(dateTo as string) : undefined,
+        gameId: gameId ? Number(gameId) : undefined,
+        minGames: Number(minGames)
+      };
+
+      const result = await BetResultModel.getTopWinners(filters);
+
+      res.status(200).json({
+        success: true,
+        message: "Top winners leaderboard retrieved successfully",
+        data: result.data,
+        pagination: {
+          total: result.total,
+          limit: Number(limit),
+          offset: Number(offset),
+          hasMore: result.total > (Number(offset) + Number(limit))
+        },
+        count: result.data.length
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: "Failed to retrieve top winners",
+        error: error.message,
+      });
+    }
+  }),
+
+  // NEW: Get top losers leaderboard
+  getTopLosers: asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const {
+        limit = 50,
+        offset = 0,
+        dateFrom,
+        dateTo,
+        gameId,
+        minGames = 1
+      } = req.query;
+
+      const filters = {
+        limit: Number(limit),
+        offset: Number(offset),
+        dateFrom: dateFrom ? new Date(dateFrom as string) : undefined,
+        dateTo: dateTo ? new Date(dateTo as string) : undefined,
+        gameId: gameId ? Number(gameId) : undefined,
+        minGames: Number(minGames)
+      };
+
+      const result = await BetResultModel.getTopLosers(filters);
+
+      res.status(200).json({
+        success: true,
+        message: "Top losers leaderboard retrieved successfully",
+        data: result.data,
+        pagination: {
+          total: result.total,
+          limit: Number(limit),
+          offset: Number(offset),
+          hasMore: result.total > (Number(offset) + Number(limit))
+        },
+        count: result.data.length
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: "Failed to retrieve top losers",
+        error: error.message,
+      });
+    }
+  }),
+
+  // NEW: Get player performance analytics
+  getPlayerPerformance: asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const {
+        userId,
+        dateFrom,
+        dateTo,
+        gameId,
+        groupBy = 'day' // 'day', 'week', 'month', 'game'
+      } = req.query;
+
+      if (!userId) {
+        return res.status(400).json({
+          success: false,
+          message: "User ID is required",
+        });
+      }
+
+      // Validate groupBy parameter
+      const validGroupByOptions = ['day', 'week', 'month', 'game'];
+      if (!validGroupByOptions.includes(groupBy as string)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid groupBy parameter. Must be one of: ${validGroupByOptions.join(', ')}`,
+        });
+      }
+
+      const filters = {
+        userId: Number(userId),
+        dateFrom: dateFrom ? new Date(dateFrom as string) : undefined,
+        dateTo: dateTo ? new Date(dateTo as string) : undefined,
+        gameId: gameId ? Number(gameId) : undefined,
+        groupBy: groupBy as "day"|"week"|"month"|"game"
+      };
+
+      const result = await BetResultModel.getPlayerPerformance(filters);
+
+      res.status(200).json({
+        success: true,
+        message: "Player performance analytics retrieved successfully",
+        data: result,
+        filters: {
+          userId: Number(userId),
+          dateFrom: dateFrom,
+          dateTo: dateTo,
+          gameId: gameId,
+          groupBy: groupBy
+        }
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: "Failed to retrieve player performance",
+        error: error.message,
+      });
+    }
+  }),
+
+  // NEW: Get game performance analytics
+  getGamePerformance: asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const {
+        gameId,
+        dateFrom,
+        dateTo,
+        groupBy = 'day' // 'day', 'week', 'month', 'user'
+      } = req.query;
+
+      if (!gameId) {
+        return res.status(400).json({
+          success: false,
+          message: "Game ID is required",
+        });
+      }
+
+      // Validate groupBy parameter
+      const validGroupByOptions = ['day', 'week', 'month', 'user'];
+      if (!validGroupByOptions.includes(groupBy as string)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid groupBy parameter. Must be one of: ${validGroupByOptions.join(', ')}`,
+        });
+      }
+
+      const filters = {
+        gameId: Number(gameId),
+        dateFrom: dateFrom ? new Date(dateFrom as string) : undefined,
+        dateTo: dateTo ? new Date(dateTo as string) : undefined,
+        groupBy: groupBy as "day"|"week"|"month"|"user"
+      };
+
+      const result = await BetResultModel.getGamePerformance(filters);
+
+      res.status(200).json({
+        success: true,
+        message: "Game performance analytics retrieved successfully",
+        data: result,
+        filters: {
+          gameId: Number(gameId),
+          dateFrom: dateFrom,
+          dateTo: dateTo,
+          groupBy: groupBy
+        }
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: "Failed to retrieve game performance",
+        error: error.message,
+      });
+    }
+  }),
+
+  // NEW: Get comprehensive dashboard stats
+  getDashboardStats: asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const {
+        dateFrom,
+        dateTo,
+        gameId,
+        userId
+      } = req.query;
+
+      const filters = {
+        dateFrom: dateFrom ? new Date(dateFrom as string) : undefined,
+        dateTo: dateTo ? new Date(dateTo as string) : undefined,
+        gameId: gameId ? Number(gameId) : undefined,
+        userId: userId ? Number(userId) : undefined
+      };
+
+      const result = await BetResultModel.getDashboardStats(filters);
+
+      res.status(200).json({
+        success: true,
+        message: "Dashboard statistics retrieved successfully",
+        data: result,
+        filters: filters
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: "Failed to retrieve dashboard statistics",
+        error: error.message,
+      });
+    }
+  }),
 };
