@@ -25,12 +25,12 @@ export const betResults = mysqlTable("bet_results", {
   // Betting details
   winAmount: decimal("win_amount", { precision: 20, scale: 2 }).default("0"),
   lossAmount: decimal("loss_amount", { precision: 20, scale: 2 }).default("0"),
-  multiplier: decimal("multiplier", { precision: 10, scale: 4 }).default("1.0000"),
+  multiplier: decimal("multiplier", { precision: 10, scale: 4 }).default("0.0000"),
   
   // Game metadata
-  gameName: varchar("game_name", { length: 300 }).notNull(),
-  gameProvider: varchar("game_provider", { length: 300 }),
-  gameCategory: varchar("game_category", { length: 200 }),
+  gameName: text("game_name").default(""),
+  gameProvider: text("game_provider").default(""),
+  gameCategory: text("game_category").default(""),
   
   // User context
   userScore: int("user_score").default(0),
@@ -38,12 +38,12 @@ export const betResults = mysqlTable("bet_results", {
   
   // Timing
   betPlacedAt: datetime("bet_placed_at").default(sql`CURRENT_TIMESTAMP`),
-  gameStartedAt: datetime("game_started_at"),
-  gameCompletedAt: datetime("game_completed_at"),
+  gameStartedAt: datetime("game_started_at").default(sql`CURRENT_TIMESTAMP`),
+  gameCompletedAt: datetime("game_completed_at").default(sql`CURRENT_TIMESTAMP`),
   
   // Additional tracking
-  ipAddress: varchar("ip_address", { length: 45 }),
-  deviceInfo: text("device_info"),
+  ipAddress: varchar("ip_address", { length: 45 }).default(""),
+  deviceInfo: text("device_info").default(""),
   isMobile: boolean("is_mobile").default(false),
   
   // Audit fields
