@@ -16,6 +16,7 @@ export const sports = mysqlTable("sports", {
   parentId: int("parent_id"),
   status: mysqlEnum("status", ["active", "inactive"]).default("inactive"),
   isFavorite: boolean("is_favorite").default(false),
+  isExclusive: boolean("is_exclusive").default(false),
   apiKey: text("api_key").notNull(),
   licenseKey: text("license_key").notNull(),
   sportLogo: text("sport_logo").notNull(),

@@ -5,6 +5,7 @@ import {
   mysqlEnum,
   mysqlTable,
   serial,
+  text,
   varchar,
 } from "drizzle-orm/mysql-core";
 
@@ -18,6 +19,7 @@ export const dropdownOptions = mysqlTable("dropdown_options", {
   id: int("id").primaryKey().autoincrement(),
   title: varchar("title", { length: 200 }).notNull().unique(),
   dropdown_id: int("dropdown_id").notNull(),
+  imgUrl: text("img_url"),
   status: mysqlEnum("status", ["active", "inactive"]).default("inactive"),
   created_by: varchar("created_by", { length: 200 }).notNull(),
   created_at: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),

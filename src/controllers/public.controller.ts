@@ -1,5 +1,12 @@
 import { Request, Response } from "express";
 import {
+  getAllDropdowns,
+  getDropdownById,
+  getGameDetailsById,
+  getPaginatedCategoryWiseGameList,
+  getPaginatedDropdowns,
+  getPaginatedGameList,
+  getProvidersByCategoryId,
   getPublicPaginatedPromotions,
   getPublicPromotionById,
 } from "../models/public.model";
@@ -8,6 +15,7 @@ import {
   ambassadors,
   announcements,
   banners,
+  dropdownOptions,
   gamingLicenses,
   responsibleGaming,
   sponsors,
@@ -365,6 +373,186 @@ export const getActiveUtils = async (req: Request, res: Response) => {
     return res.status(500).json({
       status: false,
       message: "Server error.",
+    });
+  }
+};
+export const getActiveCategories = async (req: Request, res: Response) => {
+  try {
+    const { id, page = 1, pageSize = 10, isPaginate = false } = req.query;
+
+    const dropdownId = id ? Number(id) : undefined;
+
+    if (dropdownId) {
+      const dropdown = await getDropdownById(dropdownId);
+      if (!dropdown) {
+        return res.status(404).json({
+          status: false,
+          message: "Dropdown not found.",
+        });
+      }
+
+      return res.status(200).json({
+        status: true,
+        message: "Dropdown fetched successfully.",
+        data: dropdown,
+      });
+    }
+
+    if (!isPaginate) {
+      const data = await getAllDropdowns();
+
+      return res.status(200).json({
+        status: true,
+        message: "Dropdowns fetched successfully.",
+        data,
+      });
+    }
+    const result = await getPaginatedDropdowns(Number(page), Number(pageSize));
+
+    return res.status(200).json({
+      status: true,
+      message: "Dropdowns fetched successfully.",
+      data: result.data,
+      pagination: result.pagination,
+    });
+  } catch (error) {
+    console.error("Error fetching dropdowns:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Server error.",
+    });
+  }
+};
+
+export const getProvidersByCategory = async (req: Request, res: Response) => {
+  try {
+    const { categoryId } = req.params; // <-- use params
+    console.log("category id", categoryId);
+
+    if (!categoryId) {
+      return res.status(400).json({
+        status: false,
+        message: "categoryId is required",
+      });
+    }
+
+    const providers = await getProvidersByCategoryId(Number(categoryId));
+
+    return res.status(200).json({
+      status: true,
+      message: "Providers fetched successfully.",
+      data: providers,
+    });
+  } catch (error) {
+    console.error("Error fetching providers by category:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+export const getGameList = async (req: Request, res: Response) => {
+  try {
+    const { id, page = 1, pageSize = 10, categoryId } = req.query;
+
+    const gameId = id ? Number(id) : undefined;
+    if (gameId) {
+      const gameDetails = await getGameDetailsById(gameId);
+      if (!gameDetails) {
+        return res.status(404).json({
+          status: false,
+          message: "Game not found.",
+        });
+      }
+
+      return res.status(200).json({
+        status: true,
+        message: "Game details fetched successfully.",
+        data: gameDetails,
+      });
+    }
+
+    if (categoryId) {
+      const result = await getPaginatedCategoryWiseGameList(
+        Number(page),
+        Number(pageSize),
+        Number(categoryId)
+      );
+
+      return res.status(200).json({
+        status: true,
+        message: "Category wise game list fetched successfully.",
+        data: result.data,
+        pagination: result.pagination,
+      });
+    }
+
+    const result = await getPaginatedGameList(Number(page), Number(pageSize));
+
+    return res.status(200).json({
+      status: true,
+      message: "All game list fetched successfully.",
+      data: result.data,
+      pagination: result.pagination,
+    });
+  } catch (error) {
+    console.error("Error fetching game list:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Server error",
+    });
+  }
+};
+export const getSportList = async (req: Request, res: Response) => {
+  try {
+    const { id, page = 1, pageSize = 10, categoryId } = req.query;
+
+    const gameId = id ? Number(id) : undefined;
+    if (gameId) {
+      const gameDetails = await getGameDetailsById(gameId);
+      if (!gameDetails) {
+        return res.status(404).json({
+          status: false,
+          message: "Game not found.",
+        });
+      }
+
+      return res.status(200).json({
+        status: true,
+        message: "Game details fetched successfully.",
+        data: gameDetails,
+      });
+    }
+
+    if (categoryId) {
+      const result = await getPaginatedCategoryWiseGameList(
+        Number(page),
+        Number(pageSize),
+        Number(categoryId)
+      );
+
+      return res.status(200).json({
+        status: true,
+        message: "Category wise game list fetched successfully.",
+        data: result.data,
+        pagination: result.pagination,
+      });
+    }
+
+    const result = await getPaginatedGameList(Number(page), Number(pageSize));
+
+    return res.status(200).json({
+      status: true,
+      message: "All game list fetched successfully.",
+      data: result.data,
+      pagination: result.pagination,
+    });
+  } catch (error) {
+    console.error("Error fetching game list:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Server error",
     });
   }
 };

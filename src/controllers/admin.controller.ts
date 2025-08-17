@@ -38,6 +38,8 @@ import {
   createSport,
   getSportDetailsById,
   getPaginatedSportList,
+  getGameSubProviderByGameProviderId,
+  getSportSubProviderBySportProviderId,
 } from "../models/admin.model";
 import { db } from "../db/connection";
 import {
@@ -809,7 +811,7 @@ export const getDropdownsList = async (req: Request, res: Response) => {
 };
 export const addDropdownOption = async (req: Request, res: Response) => {
   try {
-    const { dropdownId, title, status } = req.body;
+    const { dropdownId, title, status, imgUrl } = req.body;
     const userData = (req as unknown as { user: DecodedUser | null })?.user;
 
     if (!dropdownId || !title) {
@@ -854,6 +856,7 @@ export const addDropdownOption = async (req: Request, res: Response) => {
       dropdown_id: dropdownId,
       status: status || "inactive",
       created_by: userData?.username ?? "N/A",
+      imgUrl: imgUrl,
     });
 
     // Fetch all options under the dropdown
@@ -873,6 +876,7 @@ export const addDropdownOption = async (req: Request, res: Response) => {
         status: opt.status,
         created_at: opt.created_at,
         created_by: opt.created_by,
+        imgUrl: opt.imgUrl,
       })),
     };
 
@@ -966,6 +970,8 @@ export const getDropdownOptionsList = async (req: Request, res: Response) => {
       Number(page),
       Number(pageSize)
     );
+
+    console.log(result);
 
     return res.status(200).json({
       status: true,
@@ -2174,6 +2180,17 @@ export const getGameProvidersList = async (req: Request, res: Response) => {
       });
     }
 
+    if (parentId) {
+      const allSubProviders = await getGameSubProviderByGameProviderId(
+        Number(parentId)
+      );
+      return res.status(200).json({
+        status: true,
+        message: "All sub game providers fetched successfully.",
+        data: allSubProviders,
+      });
+    }
+
     if (publicList === "true") {
       const allProviders = await getAllGameProviders(isParentBool);
       return res.status(200).json({
@@ -2186,7 +2203,7 @@ export const getGameProvidersList = async (req: Request, res: Response) => {
     const result = await getPaginatedGameProviders(
       Number(page),
       Number(pageSize),
-      parentId
+      Number(parentId)
     );
 
     return res.status(200).json({
@@ -2239,7 +2256,7 @@ export const addOrUpdateGame = async (req: Request, res: Response) => {
       categoryId,
       providerId,
       createdBy,
-      isFavorite,
+      isExclusive,
     } = req.body;
 
     const createdByData = (req as any)?.user?.username ?? createdBy;
@@ -2256,7 +2273,7 @@ export const addOrUpdateGame = async (req: Request, res: Response) => {
       createdBy: Number(createdByData) || undefined,
       categoryInfo: null,
       providerInfo: null,
-      isFavorite,
+      isExclusive,
     };
 
     // Fetch category info
@@ -2486,6 +2503,17 @@ export const getSportsProvidersList = async (req: Request, res: Response) => {
       });
     }
 
+    if (parentId) {
+      const allSubProviders = await getSportSubProviderBySportProviderId(
+        Number(parentId)
+      );
+      return res.status(200).json({
+        status: true,
+        message: "All sub sport providers fetched successfully.",
+        data: allSubProviders,
+      });
+    }
+
     if (publicList === "true") {
       const allProviders = await getAllSportsProviders(isParentBool);
       return res.status(200).json({
@@ -2551,7 +2579,7 @@ export const addOrUpdateSport = async (req: Request, res: Response) => {
       categoryId,
       providerId,
       createdBy,
-      isFavorite,
+      isExclusive,
     } = req.body;
 
     const createdByData = (req as any)?.user?.username ?? createdBy;
@@ -2568,7 +2596,7 @@ export const addOrUpdateSport = async (req: Request, res: Response) => {
       createdBy: Number(createdByData) || undefined,
       categoryInfo: null,
       providerInfo: null,
-      isFavorite,
+      isExclusive,
     };
 
     // Fetch category info

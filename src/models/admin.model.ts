@@ -230,6 +230,7 @@ export const getDropdownById = async (id: number) => {
           id: opt.id,
           title: opt.title,
           status: opt.status,
+          imgUrl: opt.imgUrl,
           created_at: opt.created_at,
           created_by: opt.created_by,
         }))
@@ -266,6 +267,7 @@ export const getPaginatedDropdowns = async (page: number, pageSize: number) => {
               id: opt.id,
               title: opt.title,
               status: opt.status,
+              imgUrl: opt.imgUrl,
               created_at: opt.created_at,
               created_by: opt.created_by,
             }))
@@ -619,8 +621,9 @@ export async function getPaginatedGameProviders(
   parentId: any
 ) {
   const offset = (page - 1) * pageSize;
-  const whereClause =
-    parentId !== undefined ? eq(game_providers.parentId, parentId) : undefined;
+  const whereClause = parentId
+    ? eq(game_providers.parentId, parentId)
+    : undefined;
   const rows = await db
     .select()
     .from(game_providers)
@@ -644,6 +647,16 @@ export async function getPaginatedGameProviders(
     },
   };
 }
+
+export const getGameSubProviderByGameProviderId = async (parentId: number) => {
+  const whereClause = parentId
+    ? eq(game_providers.parentId, parentId)
+    : undefined;
+  const providers = await db.select().from(game_providers).where(whereClause);
+
+  return providers;
+};
+
 export const getAllGameProviders = async (isParent?: boolean) => {
   const providers =
     isParent === true
@@ -746,6 +759,17 @@ export async function getSportsProviderById(id: number) {
 
   return provider || null;
 }
+
+export const getSportSubProviderBySportProviderId = async (
+  parentId: number
+) => {
+  const whereClause = parentId
+    ? eq(sports_providers.parentId, parentId)
+    : undefined;
+  const providers = await db.select().from(sports_providers).where(whereClause);
+
+  return providers;
+};
 export async function getPaginatedSportsProviders(
   page: number,
   pageSize: number,
