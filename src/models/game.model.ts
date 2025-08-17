@@ -143,6 +143,7 @@ export const GameModel = {
         .values({
           userId: request.userId,
           gameId: request.gameId,
+          gameSessionId: sessionId,
           betAmount: request.betAmount.toString(),
           sessionToken: "", // Will be updated after token generation
           gameName: game[0].name,
@@ -255,6 +256,8 @@ export const GameModel = {
       }
 
       const [gameResult] = await db.select().from(betResults).where(and(eq(betResults.gameSessionId,update.gameSessionId),isNotNull(betResults.gameId),gte(betResults.gameId,0)))
+
+      console.log({gameResult})
 
       if(!gameResult){
         throw Error("Game session id is not valid")
