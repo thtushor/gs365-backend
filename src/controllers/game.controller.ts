@@ -170,10 +170,10 @@ export const GameController = {
       const ip_address = GameController.getClientIp(req);
 
       // Validate required fields
-      if (!sessionToken || !betStatus) {
+      if (!sessionToken || !betStatus || !gameSessionId) {
         return res.status(400).json({
           success: false,
-          message: "sessionToken and betStatus are required",
+          message: "sessionToken, betStatus, and gameSessionId are required",
         });
       }
 
@@ -198,7 +198,7 @@ export const GameController = {
         });
       }
 
-      const result = await GameModel.updateBetResult({
+       await GameModel.updateBetResult({
         sessionToken,
         betStatus,
         winAmount: winAmount ? Number(winAmount) : undefined,

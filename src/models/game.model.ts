@@ -222,6 +222,7 @@ export const GameModel = {
     try {
       // Verify token first
       const tokenData = await this.verifyGameToken(update.sessionToken);
+      
       if (!tokenData) {
         throw new Error("Invalid session token");
       }
@@ -247,40 +248,75 @@ export const GameModel = {
         updateData.lossAmount = update.lossAmount.toString();
       }
 
-      if (update.gameSessionId) {
-        updateData.gameSessionId = update.gameSessionId;
+
+
+      // Verify the bet result record exists
+      let gameResult = await db
+        .select()
+        .from(betResults)
+        .where(eq(betResults.gameSessionId, update.gameSessionId))
+        .limit(1)
+        .then(results => results[0]);
+
+      if (!gameResult) {
+        // If bet result doesn't exist, try to find it by session token
+        const [tokenResult] = await db
+          .select()
+          .from(betResults)
+          .where(eq(betResults.sessionToken, update.sessionToken))
+          .limit(1);
+          
+        if (!tokenResult) {
+          throw new Error("No bet result found for this session");
+        }
+        
+        // Update the gameSessionId if it was missing
+        if (!tokenResult.gameSessionId) {
+          await db
+            .update(betResults)
+            .set({ gameSessionId: update.gameSessionId })
+            .where(eq(betResults.sessionToken, update.sessionToken));
+        }
+        
+        // Use the token result for further processing
+        gameResult = tokenResult;
       }
 
-      if(update.sessionToken){
-        updateData.sessionToken = update.sessionToken;
-      }
-
-      const [gameResult] = await db.select().from(betResults).where(and(eq(betResults.gameSessionId,update.gameSessionId),isNotNull(betResults.gameId),gte(betResults.gameId,0)))
-
-      console.log({gameResult})
-
-      if(!gameResult){
-        throw Error("Game session id is not valid")
+      if (!gameResult.gameId) {
+        throw new Error("Game id is not valid");
       }
       
-
-      if(!gameResult.gameId){
-        throw Error("Game id is not valid")
-      }
-
-      if(gameResult.gameId){
-        updateData.gameId = gameResult.gameId;
+      // Ensure we have a valid bet result record to update
+      if (!gameResult.id) {
+        throw new Error("Invalid bet result record");
       }
 
       // Add device tracking for audit trail
       if (update.deviceType) {
         updateData.isMobile = update.deviceType === "mobile" || update.deviceType === "tablet";
       }
+      
+      if (update.ipAddress) {
+        updateData.ipAddress = update.ipAddress;
+      }
 
-      await db
-        .insert(betResults)
-        .values(updateData)
-        // .where(eq(betResults.gameSessionId, update.gameSessionId));
+      console.log("Updating bet result with data:", updateData);
+      console.log("Game session ID:", update.gameSessionId);
+      
+      try {
+        console.log("Executing update query...");
+        const result = await db
+          .update(betResults)
+          .set(updateData)
+          .where(eq(betResults.gameSessionId, update.gameSessionId));
+        
+        console.log("Update result:", result);
+      } catch (updateError) {
+        console.error("Error during update:", updateError);
+        console.error("Update data:", updateData);
+        console.error("Game session ID:", update.gameSessionId);
+        throw updateError;
+      }
 
       
       
