@@ -43,7 +43,7 @@ export const games = mysqlTable("games", {
 
   // ➕ New fields:
   categoryInfo: json("category_info").$type<CategoryInfo>(),
-  providerInfo: json("provider_info").$type<ProviderInfo>(), // store full game_provider object
+  providerInfo: json("provider_info").$type<ProviderInfo>(),
   createdBy: varchar("created_by", { length: 200 }), // username from token
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
 });

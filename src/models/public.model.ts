@@ -264,11 +264,17 @@ export async function getGameDetailsById(id: number) {
 }
 export async function getPaginatedGameList(page: number, pageSize: number) {
   const offset = (page - 1) * pageSize;
-  const rows = await db.select().from(games).limit(pageSize).offset(offset);
+  const rows = await db
+    .select()
+    .from(games)
+    .where(eq(games.status, "active"))
+    .limit(pageSize)
+    .offset(offset);
 
   const countResult = await db
     .select({ count: sql`COUNT(*)`.as("count") })
-    .from(games);
+    .from(games)
+    .where(eq(games.status, "active"));
 
   const total = Number(countResult[0].count);
 
@@ -328,11 +334,17 @@ export async function getSportDetailsById(id: number) {
 }
 export async function getPaginatedSportList(page: number, pageSize: number) {
   const offset = (page - 1) * pageSize;
-  const rows = await db.select().from(sports).limit(pageSize).offset(offset);
+  const rows = await db
+    .select()
+    .from(sports)
+    .where(eq(sports.status, "active"))
+    .limit(pageSize)
+    .offset(offset);
 
   const countResult = await db
     .select({ count: sql`COUNT(*)`.as("count") })
-    .from(sports);
+    .from(sports)
+    .where(eq(sports.status, "active"));
 
   const total = Number(countResult[0].count);
 

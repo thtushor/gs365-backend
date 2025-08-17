@@ -9,6 +9,7 @@ import {
   text,
   varchar,
 } from "drizzle-orm/mysql-core";
+import { CategoryInfo, ProviderInfo } from "./games";
 
 export const sports = mysqlTable("sports", {
   id: int("id").primaryKey().autoincrement(),
@@ -25,8 +26,8 @@ export const sports = mysqlTable("sports", {
   ggrPercent: varchar("ggr_percent", { length: 100 }).notNull(),
 
   // ➕ New fields:
-  categoryInfo: json("category_info"), // store full dropdownOptions object
-  providerInfo: json("provider_info"), // store full game_provider object
+  categoryInfo: json("category_info").$type<CategoryInfo>(),
+  providerInfo: json("provider_info").$type<ProviderInfo>(),
   createdBy: varchar("created_by", { length: 200 }), // username from token
 
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),

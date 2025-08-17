@@ -4,6 +4,7 @@ import {
   getDropdownById,
   getGameDetailsById,
   getPaginatedCategoryWiseGameList,
+  getPaginatedCategoryWiseSportList,
   getPaginatedDropdowns,
   getPaginatedGameList,
   getProvidersByCategoryId,
@@ -526,7 +527,7 @@ export const getSportList = async (req: Request, res: Response) => {
     }
 
     if (categoryId) {
-      const result = await getPaginatedCategoryWiseGameList(
+      const result = await getPaginatedCategoryWiseSportList(
         Number(page),
         Number(pageSize),
         Number(categoryId)
