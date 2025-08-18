@@ -697,7 +697,35 @@ export async function updateGame(id: number, data: any) {
 }
 export async function getPaginatedGameList(page: number, pageSize: number) {
   const offset = (page - 1) * pageSize;
-  const rows = await db.select().from(games).limit(pageSize).offset(offset);
+  const rows = await db
+    .select({
+      // Flatten game fields
+      id: games.id,
+      name: games.name,
+      parentId: games.parentId,
+      status: games.status,
+      isFavorite: games.isFavorite,
+      isExclusive: games.isExclusive,
+      apiKey: games.apiKey,
+      licenseKey: games.licenseKey,
+      gameLogo: games.gameLogo,
+      secretPin: games.secretPin,
+      gameUrl: games.gameUrl,
+      ggrPercent: games.ggrPercent,
+      categoryId: games.categoryId,
+      providerId: games.providerId,
+      createdBy: games.createdBy,
+      createdAt: games.createdAt,
+
+      // Join info
+      categoryInfo: dropdownOptions,
+      providerInfo: game_providers,
+    })
+    .from(games)
+    .leftJoin(dropdownOptions, eq(games.categoryId, dropdownOptions.id))
+    .leftJoin(game_providers, eq(games.providerId, game_providers.id))
+    .limit(pageSize)
+    .offset(offset);
 
   const countResult = await db
     .select({ count: sql`COUNT(*)`.as("count") })
@@ -715,10 +743,37 @@ export async function getPaginatedGameList(page: number, pageSize: number) {
     },
   };
 }
-export async function getGameDetailsById(id: number) {
-  const [game] = await db.select().from(games).where(eq(games.id, id));
+export async function getGameDetailsById(gameId: number) {
+  const result = await db
+    .select({
+      // Flatten game fields
+      id: games.id,
+      name: games.name,
+      parentId: games.parentId,
+      status: games.status,
+      isFavorite: games.isFavorite,
+      isExclusive: games.isExclusive,
+      apiKey: games.apiKey,
+      licenseKey: games.licenseKey,
+      gameLogo: games.gameLogo,
+      secretPin: games.secretPin,
+      gameUrl: games.gameUrl,
+      ggrPercent: games.ggrPercent,
+      categoryId: games.categoryId,
+      providerId: games.providerId,
+      createdBy: games.createdBy,
+      createdAt: games.createdAt,
 
-  return game || null;
+      // Join info
+      categoryInfo: dropdownOptions,
+      providerInfo: game_providers,
+    })
+    .from(games)
+    .leftJoin(dropdownOptions, eq(games.categoryId, dropdownOptions.id))
+    .leftJoin(game_providers, eq(games.providerId, game_providers.id))
+    .where(eq(games.id, gameId));
+
+  return result[0]; // full info
 }
 
 // sports provider
@@ -776,10 +831,9 @@ export async function getPaginatedSportsProviders(
   parentId: any
 ) {
   const offset = (page - 1) * pageSize;
-  const whereClause =
-    parentId !== undefined
-      ? eq(sports_providers.parentId, parentId)
-      : undefined;
+  const whereClause = parentId
+    ? eq(sports_providers.parentId, parentId)
+    : undefined;
   const rows = await db
     .select()
     .from(sports_providers)
@@ -826,6 +880,8 @@ export async function createSport(data: any) {
     throw new Error("DUPLICATE_NAME");
   }
 
+  console.log(data);
+
   await db.insert(sports).values(data);
 }
 
@@ -843,7 +899,36 @@ export async function updateSport(id: number, data: any) {
 }
 export async function getPaginatedSportList(page: number, pageSize: number) {
   const offset = (page - 1) * pageSize;
-  const rows = await db.select().from(sports).limit(pageSize).offset(offset);
+
+  const rows = await db
+    .select({
+      // Flatten sports fields
+      id: sports.id,
+      name: sports.name,
+      parentId: sports.parentId,
+      status: sports.status,
+      isFavorite: sports.isFavorite,
+      isExclusive: sports.isExclusive,
+      apiKey: sports.apiKey,
+      licenseKey: sports.licenseKey,
+      sportLogo: sports.sportLogo,
+      secretPin: sports.secretPin,
+      sportUrl: sports.sportUrl,
+      ggrPercent: sports.ggrPercent,
+      categoryId: sports.categoryId,
+      providerId: sports.providerId,
+      createdBy: sports.createdBy,
+      createdAt: sports.createdAt,
+
+      // Join info
+      categoryInfo: dropdownOptions,
+      providerInfo: sports_providers,
+    })
+    .from(sports)
+    .leftJoin(dropdownOptions, eq(sports.categoryId, dropdownOptions.id))
+    .leftJoin(sports_providers, eq(sports.providerId, sports_providers.id))
+    .limit(pageSize)
+    .offset(offset);
 
   const countResult = await db
     .select({ count: sql`COUNT(*)`.as("count") })
@@ -851,8 +936,15 @@ export async function getPaginatedSportList(page: number, pageSize: number) {
 
   const total = Number(countResult[0].count);
 
+  // Flatten each row into a single object
+  const data = rows.map((row) => ({
+    ...row,
+    categoryInfo: row.categoryInfo || null,
+    providerInfo: row.providerInfo || null,
+  }));
+
   return {
-    data: rows,
+    data,
     pagination: {
       page,
       pageSize,
@@ -861,8 +953,42 @@ export async function getPaginatedSportList(page: number, pageSize: number) {
     },
   };
 }
-export async function getSportDetailsById(id: number) {
-  const [sport] = await db.select().from(sports).where(eq(sports.id, id));
 
-  return sport || null;
+export async function getSportDetailsById(id: number) {
+  const [sport] = await db
+    .select({
+      // Flatten sports fields
+      id: sports.id,
+      name: sports.name,
+      parentId: sports.parentId,
+      status: sports.status,
+      isFavorite: sports.isFavorite,
+      isExclusive: sports.isExclusive,
+      apiKey: sports.apiKey,
+      licenseKey: sports.licenseKey,
+      sportLogo: sports.sportLogo,
+      secretPin: sports.secretPin,
+      sportUrl: sports.sportUrl,
+      ggrPercent: sports.ggrPercent,
+      categoryId: sports.categoryId,
+      providerId: sports.providerId,
+      createdBy: sports.createdBy,
+      createdAt: sports.createdAt,
+
+      // Join info
+      categoryInfo: dropdownOptions,
+      providerInfo: game_providers,
+    })
+    .from(sports)
+    .leftJoin(dropdownOptions, eq(sports.categoryId, dropdownOptions.id))
+    .leftJoin(game_providers, eq(sports.providerId, game_providers.id))
+    .where(eq(sports.id, id));
+
+  if (!sport) return null;
+
+  return {
+    ...sport,
+    categoryInfo: sport.categoryInfo || null,
+    providerInfo: sport.providerInfo || null,
+  };
 }

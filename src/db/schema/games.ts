@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   boolean,
   datetime,
@@ -9,24 +9,8 @@ import {
   text,
   varchar,
 } from "drizzle-orm/mysql-core";
-// types for JSON columns
-export type CategoryInfo = {
-  id: number;
-  title: string;
-  dropdown_id: number;
-  imgUrl?: string | null;
-  status: "active" | "inactive";
-  created_by: string;
-  created_at: string;
-};
-export interface ProviderInfo {
-  id: number;
-  name: string;
-  status: "active" | "inactive";
-  country: string;
-  logo: string;
-  createdAt: string;
-}
+import { dropdownOptions } from "./dropdowns";
+import { game_providers } from "./gameProvider";
 export const games = mysqlTable("games", {
   id: int("id").primaryKey().autoincrement(),
   name: varchar("name", { length: 300 }).notNull().unique(),
@@ -41,9 +25,21 @@ export const games = mysqlTable("games", {
   gameUrl: varchar("game_url", { length: 300 }).notNull(),
   ggrPercent: varchar("ggr_percent", { length: 100 }).notNull(),
 
-  // ➕ New fields:
-  categoryInfo: json("category_info").$type<CategoryInfo>(),
-  providerInfo: json("provider_info").$type<ProviderInfo>(),
+  // 🔑 Foreign keys
+  categoryId: int("category_id"),
+  providerId: int("provider_id"),
+
   createdBy: varchar("created_by", { length: 200 }), // username from token
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
+
+export const gameRelations = relations(games, ({ one }) => ({
+  category: one(dropdownOptions, {
+    fields: [games.categoryId],
+    references: [dropdownOptions.id],
+  }),
+  provider: one(game_providers, {
+    fields: [games.providerId],
+    references: [game_providers.id],
+  }),
+}));

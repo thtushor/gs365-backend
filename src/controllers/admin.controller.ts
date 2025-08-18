@@ -2221,27 +2221,27 @@ export const getGameProvidersList = async (req: Request, res: Response) => {
   }
 };
 export const addOrUpdateGame = async (req: Request, res: Response) => {
-  try {
-    const userData = (req as unknown as { user: DecodedUser | null })?.user;
+  const userData = (req as unknown as { user: DecodedUser | null })?.user;
 
-    const requiredFields = {
-      name: "Game name is required",
-      apiKey: "API Key is required",
-      licenseKey: "License Key is required",
-      gameLogo: "Game Logo is required",
-      secretPin: "Secret Pin is required",
-      gameUrl: "Game URL is required",
-      ggrPercent: "GGR Percent is required",
-      categoryId: "Category is required",
-      providerId: "Game Provider is required",
-    };
+  const requiredFields = {
+    name: "Game name is required",
+    apiKey: "API Key is required",
+    licenseKey: "License Key is required",
+    gameLogo: "Game Logo is required",
+    secretPin: "Secret Pin is required",
+    gameUrl: "Game URL is required",
+    ggrPercent: "GGR Percent is required",
+    categoryId: "Category is required",
+    providerId: "Game Provider is required",
+  };
 
-    for (const [field, message] of Object.entries(requiredFields)) {
-      if (!req.body?.[field]) {
-        return res.status(400).json({ status: false, message });
-      }
+  for (const [field, message] of Object.entries(requiredFields)) {
+    if (!req.body?.[field]) {
+      return res.status(400).json({ status: false, message });
     }
-
+  }
+  try {
+    const userData = (req as any)?.user;
     const {
       id,
       name,
@@ -2259,8 +2259,9 @@ export const addOrUpdateGame = async (req: Request, res: Response) => {
       isExclusive,
     } = req.body;
 
-    const createdByData = (req as any)?.user?.username ?? createdBy;
-    const payload: any = {
+    const createdByData = userData?.username ?? createdBy;
+
+    const payload = {
       name,
       parentId: Number(parentId) || null,
       status,
@@ -2270,46 +2271,17 @@ export const addOrUpdateGame = async (req: Request, res: Response) => {
       secretPin,
       gameUrl,
       ggrPercent,
-      createdBy: Number(createdByData) || undefined,
-      categoryInfo: null,
-      providerInfo: null,
+      categoryId: Number(categoryId),
+      providerId: Number(providerId),
+      createdBy: createdByData,
       isExclusive,
     };
-
-    // Fetch category info
-    const [categoryInfo] = await db
-      .select()
-      .from(dropdownOptions)
-      .where(eq(dropdownOptions.id, Number(categoryId)));
-
-    if (!categoryInfo) {
-      return res
-        .status(400)
-        .json({ status: false, message: "Invalid category ID" });
-    }
-
-    payload.categoryInfo = categoryInfo;
-
-    // Fetch provider info
-    const [providerInfo] = await db
-      .select()
-      .from(game_providers)
-      .where(eq(game_providers.id, Number(providerId)));
-
-    if (!providerInfo) {
-      return res
-        .status(400)
-        .json({ status: false, message: "Invalid provider ID" });
-    }
-
-    payload.providerInfo = providerInfo;
 
     if (id) {
       await updateGame(Number(id), payload);
       return res.status(200).json({
         status: true,
         message: "Game updated successfully",
-        data: payload,
       });
     } else {
       await createGame(payload);
@@ -2320,25 +2292,24 @@ export const addOrUpdateGame = async (req: Request, res: Response) => {
     }
   } catch (error: any) {
     console.error("Error in addOrUpdateGame:", error);
-
     if (error.message === "DUPLICATE_NAME") {
       return res
         .status(409)
         .json({ status: false, message: "Game name already exists." });
     }
-
     return res
       .status(500)
       .json({ status: false, message: "Internal server error" });
   }
 };
+
 export const getGameList = async (req: Request, res: Response) => {
   try {
     const { id, page = 1, pageSize = 10 } = req.query;
 
     const gameId = id ? Number(id) : undefined;
     if (gameId) {
-      const gameDetails = await getGameDetailsById(gameId);
+      const gameDetails = await getGameDetailsById(Number(gameId));
       if (!gameDetails) {
         return res.status(404).json({
           status: false,
@@ -2594,38 +2565,10 @@ export const addOrUpdateSport = async (req: Request, res: Response) => {
       sportUrl,
       ggrPercent,
       createdBy: Number(createdByData) || undefined,
-      categoryInfo: null,
-      providerInfo: null,
+      categoryId: Number(categoryId),
+      providerId: Number(providerId),
       isExclusive,
     };
-
-    // Fetch category info
-    const [categoryInfo] = await db
-      .select()
-      .from(dropdownOptions)
-      .where(eq(dropdownOptions.id, Number(categoryId)));
-
-    if (!categoryInfo) {
-      return res
-        .status(400)
-        .json({ status: false, message: "Invalid category ID" });
-    }
-
-    payload.categoryInfo = categoryInfo;
-
-    // Fetch provider info
-    const [providerInfo] = await db
-      .select()
-      .from(sports_providers)
-      .where(eq(sports_providers.id, Number(providerId)));
-
-    if (!providerInfo) {
-      return res
-        .status(400)
-        .json({ status: false, message: "Invalid provider ID" });
-    }
-
-    payload.providerInfo = providerInfo;
 
     if (id) {
       await updateSport(Number(id), payload);
