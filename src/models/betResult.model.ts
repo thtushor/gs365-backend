@@ -3,7 +3,7 @@ import { db } from "../db/connection";
 import { betResults } from "../db/schema/betResults";
 import { games } from "../db/schema/games";
 import { game_providers } from "../db/schema/gameProvider";
-import { users } from "../db/schema";
+import { dropdownOptions, users } from "../db/schema";
 
 export interface BetResultFilters {
   userId?: number;
@@ -19,14 +19,20 @@ export interface BetResultFilters {
   isMobile?: boolean;
   limit?: number;
   offset?: number;
-  sortBy?: 'createdAt' | 'betAmount' | 'userScore' | 'betPlacedAt';
-  sortOrder?: 'asc' | 'desc';
+  sortBy?: "createdAt" | "betAmount" | "userScore" | "betPlacedAt";
+  sortOrder?: "asc" | "desc";
 }
 
 // NEW: Player ranking interfaces
 export interface PlayerRankingFilters {
-  rankBy: 'totalWins' | 'totalWinAmount' | 'winRate' | 'totalProfit' | 'totalBets' | 'avgBetAmount';
-  sortOrder: 'asc' | 'desc';
+  rankBy:
+    | "totalWins"
+    | "totalWinAmount"
+    | "winRate"
+    | "totalProfit"
+    | "totalBets"
+    | "avgBetAmount";
+  sortOrder: "asc" | "desc";
   limit: number;
   offset: number;
   dateFrom?: Date;
@@ -71,14 +77,14 @@ export interface PlayerPerformanceFilters {
   dateFrom?: Date;
   dateTo?: Date;
   gameId?: number;
-  groupBy: 'day' | 'week' | 'month' | 'game';
+  groupBy: "day" | "week" | "month" | "game";
 }
 
 export interface GamePerformanceFilters {
   gameId: number;
   dateFrom?: Date;
   dateTo?: Date;
-  groupBy: 'day' | 'week' | 'month' | 'user';
+  groupBy: "day" | "week" | "month" | "user";
 }
 
 export interface DashboardStatsFilters {
@@ -153,8 +159,8 @@ export const BetResultModel = {
         isMobile,
         limit = 50,
         offset = 0,
-        sortBy = 'createdAt',
-        sortOrder = 'desc'
+        sortBy = "createdAt",
+        sortOrder = "desc",
       } = filters;
 
       // Build where conditions
@@ -169,11 +175,21 @@ export const BetResultModel = {
       }
 
       if (betStatus && betStatus.length > 0) {
-        whereConditions.push(inArray(betResults.betStatus, betStatus as ("win" | "loss" | "pending" | "cancelled")[]));
+        whereConditions.push(
+          inArray(
+            betResults.betStatus,
+            betStatus as ("win" | "loss" | "pending" | "cancelled")[]
+          )
+        );
       }
 
       if (playingStatus && playingStatus.length > 0) {
-        whereConditions.push(inArray(betResults.playingStatus, playingStatus as ("playing" | "completed" | "abandoned")[]));
+        whereConditions.push(
+          inArray(
+            betResults.playingStatus,
+            playingStatus as ("playing" | "completed" | "abandoned")[]
+          )
+        );
       }
 
       if (dateFrom) {
@@ -185,11 +201,15 @@ export const BetResultModel = {
       }
 
       if (minBetAmount) {
-        whereConditions.push(gte(betResults.betAmount, minBetAmount.toString()));
+        whereConditions.push(
+          gte(betResults.betAmount, minBetAmount.toString())
+        );
       }
 
       if (maxBetAmount) {
-        whereConditions.push(lte(betResults.betAmount, maxBetAmount.toString()));
+        whereConditions.push(
+          lte(betResults.betAmount, maxBetAmount.toString())
+        );
       }
 
       if (gameName) {
@@ -197,7 +217,9 @@ export const BetResultModel = {
       }
 
       if (providerName) {
-        whereConditions.push(like(betResults.gameProvider, `%${providerName}%`));
+        whereConditions.push(
+          like(betResults.gameProvider, `%${providerName}%`)
+        );
       }
 
       if (isMobile !== undefined) {
@@ -216,12 +238,15 @@ export const BetResultModel = {
       const totalResult = await countQuery;
       const total = totalResult[0]?.count || 0;
 
-      
       // Apply sorting
-      const sortField = sortBy === 'betAmount' ? betResults.betAmount :
-                       sortBy === 'userScore' ? betResults.userScore :
-                       sortBy === 'betPlacedAt' ? betResults.betPlacedAt :
-                       betResults.createdAt;
+      const sortField =
+        sortBy === "betAmount"
+          ? betResults.betAmount
+          : sortBy === "userScore"
+          ? betResults.userScore
+          : sortBy === "betPlacedAt"
+          ? betResults.betPlacedAt
+          : betResults.createdAt;
 
       // Build main query with joins
       let query = db
@@ -252,12 +277,14 @@ export const BetResultModel = {
           updatedBy: betResults.updatedBy,
           createdAt: betResults.createdAt,
           updatedAt: betResults.updatedAt,
+
           // Game details
           gameId_join: games.id,
           gameName_join: games.name,
           gameLogo: games.gameLogo,
           gameUrl: games.gameUrl,
           gameStatus: games.status,
+
           // Provider details
           providerId: game_providers.id,
           providerName: game_providers.name,
@@ -267,29 +294,28 @@ export const BetResultModel = {
         })
         .from(betResults)
         .leftJoin(games, eq(betResults.gameId, games.id))
-        .leftJoin(game_providers, eq(games.providerInfo, sql`JSON_EXTRACT(${games.providerInfo}, '$.id')`))
+        .leftJoin(game_providers, eq(games.providerId, game_providers.id)) // ✅ changed here
         .where(and(...whereConditions))
-        .orderBy(sortOrder === 'asc' ? asc(sortField) : desc(sortField))
-        .limit(limit).offset(offset);
-      
-
-
-    
+        .orderBy(sortOrder === "asc" ? asc(sortField) : desc(sortField))
+        .limit(limit)
+        .offset(offset);
 
       // Apply pagination
-      
 
       const results = await query;
 
       // Transform results to include parsed provider info and structured data
-      const transformedResults: BetResultWithDetails[] = results.map(row => {
+      const transformedResults: BetResultWithDetails[] = results.map((row) => {
         // Parse provider info from JSON if available
         let parsedProviderInfo = null;
         if (row.gameProvider) {
           try {
             parsedProviderInfo = JSON.parse(row.gameProvider);
           } catch (error) {
-            console.warn('Failed to parse provider info JSON:', row.gameProvider);
+            console.warn(
+              "Failed to parse provider info JSON:",
+              row.gameProvider
+            );
           }
         }
 
@@ -297,19 +323,19 @@ export const BetResultModel = {
           id: row.id,
           userId: row.userId,
           gameId: row.gameId,
-          betAmount: row.betAmount || '',
-          betStatus: row.betStatus || '',
-          playingStatus: row.playingStatus || '',
-          sessionToken: row.sessionToken || '',
+          betAmount: row.betAmount || "",
+          betStatus: row.betStatus || "",
+          playingStatus: row.playingStatus || "",
+          sessionToken: row.sessionToken || "",
           gameSessionId: row.gameSessionId,
-          winAmount: row.winAmount || '',
-          lossAmount: row.lossAmount || '',
-          multiplier: row.multiplier || '',
-          gameName: row.gameName || '',
-          gameProvider: row.gameProvider || '',
-          gameCategory: row.gameCategory || '',
+          winAmount: row.winAmount || "",
+          lossAmount: row.lossAmount || "",
+          multiplier: row.multiplier || "",
+          gameName: row.gameName || "",
+          gameProvider: row.gameProvider || "",
+          gameCategory: row.gameCategory || "",
           userScore: row.userScore || 0,
-          userLevel: row.userLevel || '',
+          userLevel: row.userLevel || "",
           betPlacedAt: row.betPlacedAt || new Date(),
           gameStartedAt: row.gameStartedAt,
           gameCompletedAt: row.gameCompletedAt,
@@ -320,20 +346,24 @@ export const BetResultModel = {
           updatedBy: row.updatedBy,
           createdAt: row.createdAt || new Date(),
           updatedAt: row.updatedAt || new Date(),
-          gameDetails: row.gameId_join ? {
-            id: row.gameId_join,
-            name: row.gameName_join || row.gameName || '',
-            gameLogo: row.gameLogo || '',
-            gameUrl: row.gameUrl || '',
-            status: row.gameStatus || 'unknown',
-          } : undefined,
-          providerDetails: row.providerId ? {
-            id: row.providerId,
-            name: row.providerName || 'Unknown Provider',
-            logo: row.providerLogo || '',
-            status: row.providerStatus || 'unknown',
-            country: row.providerCountry || 'Unknown',
-          } : undefined,
+          gameDetails: row.gameId_join
+            ? {
+                id: row.gameId_join,
+                name: row.gameName_join || row.gameName || "",
+                gameLogo: row.gameLogo || "",
+                gameUrl: row.gameUrl || "",
+                status: row.gameStatus || "unknown",
+              }
+            : undefined,
+          providerDetails: row.providerId
+            ? {
+                id: row.providerId,
+                name: row.providerName || "Unknown Provider",
+                logo: row.providerLogo || "",
+                status: row.providerStatus || "unknown",
+                country: row.providerCountry || "Unknown",
+              }
+            : undefined,
         };
       });
 
@@ -378,22 +408,31 @@ export const BetResultModel = {
           updatedBy: betResults.updatedBy,
           createdAt: betResults.createdAt,
           updatedAt: betResults.updatedAt,
+
           // Game details
           gameId_join: games.id,
           gameName_join: games.name,
           gameLogo: games.gameLogo,
           gameUrl: games.gameUrl,
           gameStatus: games.status,
+
           // Provider details
           providerId: game_providers.id,
           providerName: game_providers.name,
           providerLogo: game_providers.logo,
           providerStatus: game_providers.status,
           providerCountry: game_providers.country,
+
+          // Category details
+          categoryId_join: dropdownOptions.id,
+          categoryTitle: dropdownOptions.title,
+          categoryImgUrl: dropdownOptions.imgUrl,
+          categoryStatus: dropdownOptions.status,
         })
         .from(betResults)
         .leftJoin(games, eq(betResults.gameId, games.id))
-        .leftJoin(game_providers, eq(games.providerInfo, sql`JSON_EXTRACT(${games.providerInfo}, '$.id')`))
+        .leftJoin(game_providers, eq(games.providerId, game_providers.id)) // ✅ use providerId now
+        .leftJoin(dropdownOptions, eq(games.categoryId, dropdownOptions.id)) // ✅ join category
         .where(eq(betResults.id, id))
         .limit(1);
 
@@ -407,19 +446,19 @@ export const BetResultModel = {
         id: row.id,
         userId: row.userId,
         gameId: row.gameId,
-        betAmount: row.betAmount || '',
-        betStatus: row.betStatus || '',
-        playingStatus: row.playingStatus || '',
-        sessionToken: row.sessionToken || '',
+        betAmount: row.betAmount || "",
+        betStatus: row.betStatus || "",
+        playingStatus: row.playingStatus || "",
+        sessionToken: row.sessionToken || "",
         gameSessionId: row.gameSessionId,
-        winAmount: row.winAmount || '',
-        lossAmount: row.lossAmount || '',
-        multiplier: row.multiplier || '',
-        gameName: row.gameName || '',
-        gameProvider: row.gameProvider || '',
-        gameCategory: row.gameCategory || '',
+        winAmount: row.winAmount || "",
+        lossAmount: row.lossAmount || "",
+        multiplier: row.multiplier || "",
+        gameName: row.gameName || "",
+        gameProvider: row.gameProvider || "",
+        gameCategory: row.gameCategory || "",
         userScore: row.userScore || 0,
-        userLevel: row.userLevel || '',
+        userLevel: row.userLevel || "",
         betPlacedAt: row.betPlacedAt || new Date(),
         gameStartedAt: row.gameStartedAt,
         gameCompletedAt: row.gameCompletedAt,
@@ -430,20 +469,24 @@ export const BetResultModel = {
         updatedBy: row.updatedBy,
         createdAt: row.createdAt || new Date(),
         updatedAt: row.updatedAt || new Date(),
-        gameDetails: row.gameId_join ? {
-          id: row.gameId_join,
-          name: row.gameName_join || row.gameName || '',
-          gameLogo: row.gameLogo || '',
-          gameUrl: row.gameUrl || '',
-          status: row.gameStatus || 'unknown',
-        } : undefined,
-        providerDetails: row.providerId ? {
-          id: row.providerId,
-          name: row.providerName || 'Unknown Provider',
-          logo: row.providerLogo || '',
-          status: row.providerStatus || 'unknown',
-          country: row.providerCountry || 'Unknown',
-        } : undefined,
+        gameDetails: row.gameId_join
+          ? {
+              id: row.gameId_join,
+              name: row.gameName_join || row.gameName || "",
+              gameLogo: row.gameLogo || "",
+              gameUrl: row.gameUrl || "",
+              status: row.gameStatus || "unknown",
+            }
+          : undefined,
+        providerDetails: row.providerId
+          ? {
+              id: row.providerId,
+              name: row.providerName || "Unknown Provider",
+              logo: row.providerLogo || "",
+              status: row.providerStatus || "unknown",
+              country: row.providerCountry || "Unknown",
+            }
+          : undefined,
       };
     } catch (error) {
       console.error("Error fetching bet result by ID:", error);
@@ -451,7 +494,12 @@ export const BetResultModel = {
     }
   },
 
-  async getBetResultStats(filters?: Omit<BetResultFilters, 'limit' | 'offset' | 'sortBy' | 'sortOrder'>): Promise<{
+  async getBetResultStats(
+    filters?: Omit<
+      BetResultFilters,
+      "limit" | "offset" | "sortBy" | "sortOrder"
+    >
+  ): Promise<{
     totalBets: number;
     totalBetAmount: number;
     totalWins: number;
@@ -473,7 +521,12 @@ export const BetResultModel = {
       }
 
       if (filters?.betStatus && filters.betStatus.length > 0) {
-        whereConditions.push(inArray(betResults.betStatus, filters.betStatus as ("win" | "loss" | "pending" | "cancelled")[]));
+        whereConditions.push(
+          inArray(
+            betResults.betStatus,
+            filters.betStatus as ("win" | "loss" | "pending" | "cancelled")[]
+          )
+        );
       }
 
       if (filters?.dateFrom) {
@@ -548,22 +601,22 @@ export const BetResultModel = {
       // Build the ranking query based on rankBy parameter
       let orderByField: any;
       switch (filters.rankBy) {
-        case 'totalWins':
+        case "totalWins":
           orderByField = sql`total_wins`;
           break;
-        case 'totalWinAmount':
+        case "totalWinAmount":
           orderByField = sql`total_win_amount`;
           break;
-        case 'winRate':
+        case "winRate":
           orderByField = sql`win_rate`;
           break;
-        case 'totalProfit':
+        case "totalProfit":
           orderByField = sql`total_profit`;
           break;
-        case 'totalBets':
+        case "totalBets":
           orderByField = sql`total_bets`;
           break;
-        case 'avgBetAmount':
+        case "avgBetAmount":
           orderByField = sql`avg_bet_amount`;
           break;
         default:
@@ -597,7 +650,9 @@ export const BetResultModel = {
         .where(and(...whereConditions))
         .groupBy(betResults.userId)
         .having(sql`COUNT(*) >= ${filters.minGames}`)
-        .orderBy(filters.sortOrder === 'desc' ? desc(orderByField) : asc(orderByField))
+        .orderBy(
+          filters.sortOrder === "desc" ? desc(orderByField) : asc(orderByField)
+        )
         .limit(filters.limit)
         .offset(filters.offset);
 
@@ -635,7 +690,12 @@ export const BetResultModel = {
       // Add additional stats if requested
       if (filters.includeStats) {
         for (const ranking of rankings) {
-          const stats = await this.getPlayerStats(ranking.userId, filters.dateFrom, filters.dateTo, filters.gameId);
+          const stats = await this.getPlayerStats(
+            ranking.userId,
+            filters.dateFrom,
+            filters.dateTo,
+            filters.gameId
+          );
           ranking.stats = stats;
         }
       }
@@ -849,25 +909,25 @@ export const BetResultModel = {
       let dateFormat: string;
 
       switch (filters.groupBy) {
-        case 'day':
+        case "day":
           groupByField = sql`DATE(${betResults.createdAt})`;
-          dateFormat = 'YYYY-MM-DD';
+          dateFormat = "YYYY-MM-DD";
           break;
-        case 'week':
+        case "week":
           groupByField = sql`YEARWEEK(${betResults.createdAt})`;
-          dateFormat = 'YYYY-WW';
+          dateFormat = "YYYY-WW";
           break;
-        case 'month':
+        case "month":
           groupByField = sql`DATE_FORMAT(${betResults.createdAt}, '%Y-%m')`;
-          dateFormat = 'YYYY-MM';
+          dateFormat = "YYYY-MM";
           break;
-        case 'game':
+        case "game":
           groupByField = betResults.gameId;
-          dateFormat = 'game';
+          dateFormat = "game";
           break;
         default:
           groupByField = sql`DATE(${betResults.createdAt})`;
-          dateFormat = 'YYYY-MM-DD';
+          dateFormat = "YYYY-MM-DD";
       }
 
       const performanceQuery = db
@@ -892,7 +952,7 @@ export const BetResultModel = {
         userId: filters.userId,
         groupBy: filters.groupBy,
         dateFormat,
-        data: results.map(row => ({
+        data: results.map((row) => ({
           period: row.period,
           totalBets: row.totalBets || 0,
           totalWins: row.totalWins || 0,
@@ -901,7 +961,10 @@ export const BetResultModel = {
           totalLossAmount: Number(row.totalLossAmount) || 0,
           totalBetAmount: Number(row.totalBetAmount) || 0,
           avgBetAmount: Number(row.avgBetAmount) || 0,
-          winRate: row.totalBets > 0 ? Math.round((row.totalWins / row.totalBets) * 10000) / 100 : 0,
+          winRate:
+            row.totalBets > 0
+              ? Math.round((row.totalWins / row.totalBets) * 10000) / 100
+              : 0,
           totalProfit: Number(row.totalWinAmount) - Number(row.totalLossAmount),
         })),
       };
@@ -928,25 +991,25 @@ export const BetResultModel = {
       let periodFormat: string;
 
       switch (filters.groupBy) {
-        case 'day':
+        case "day":
           groupByField = sql`DATE(${betResults.createdAt})`;
-          periodFormat = 'YYYY-MM-DD';
+          periodFormat = "YYYY-MM-DD";
           break;
-        case 'week':
+        case "week":
           groupByField = sql`YEARWEEK(${betResults.createdAt})`;
-          periodFormat = 'YYYY-WW';
+          periodFormat = "YYYY-WW";
           break;
-        case 'month':
+        case "month":
           groupByField = sql`DATE_FORMAT(${betResults.createdAt}, '%Y-%m')`;
-          periodFormat = 'YYYY-MM';
+          periodFormat = "YYYY-MM";
           break;
-        case 'user':
+        case "user":
           groupByField = betResults.userId;
-          periodFormat = 'user';
+          periodFormat = "user";
           break;
         default:
           groupByField = sql`DATE(${betResults.createdAt})`;
-          periodFormat = 'YYYY-MM-DD';
+          periodFormat = "YYYY-MM-DD";
       }
 
       const performanceQuery = db
@@ -971,7 +1034,7 @@ export const BetResultModel = {
         gameId: filters.gameId,
         groupBy: filters.groupBy,
         periodFormat,
-        data: results.map(row => ({
+        data: results.map((row) => ({
           period: row.period,
           totalBets: row.totalBets || 0,
           totalWins: row.totalWins || 0,
@@ -980,7 +1043,10 @@ export const BetResultModel = {
           totalLossAmount: Number(row.totalLossAmount) || 0,
           totalBetAmount: Number(row.totalBetAmount) || 0,
           uniquePlayers: row.uniquePlayers || 0,
-          winRate: row.totalBets > 0 ? Math.round((row.totalWins / row.totalBets) * 10000) / 100 : 0,
+          winRate:
+            row.totalBets > 0
+              ? Math.round((row.totalWins / row.totalBets) * 10000) / 100
+              : 0,
           totalProfit: Number(row.totalWinAmount) - Number(row.totalLossAmount),
         })),
       };
@@ -1011,7 +1077,8 @@ export const BetResultModel = {
         whereConditions.push(eq(betResults.userId, filters.userId));
       }
 
-      const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
+      const whereClause =
+        whereConditions.length > 0 ? and(...whereConditions) : undefined;
 
       // Overall stats
       const overallStats = await db
@@ -1091,9 +1158,16 @@ export const BetResultModel = {
           totalLossAmount: Math.round(totalLossAmount * 100) / 100,
           uniquePlayers: stats.uniquePlayers || 0,
           uniqueGames: stats.uniqueGames || 0,
-          winRate: totalBets > 0 ? Math.round((totalWins / totalBets) * 10000) / 100 : 0,
-          totalProfit: Math.round((totalWinAmount - totalLossAmount) * 100) / 100,
-          averageBetAmount: totalBets > 0 ? Math.round((totalBetAmount / totalBets) * 100) / 100 : 0,
+          winRate:
+            totalBets > 0
+              ? Math.round((totalWins / totalBets) * 10000) / 100
+              : 0,
+          totalProfit:
+            Math.round((totalWinAmount - totalLossAmount) * 100) / 100,
+          averageBetAmount:
+            totalBets > 0
+              ? Math.round((totalBetAmount / totalBets) * 100) / 100
+              : 0,
         },
         topPerformers: topPerformers.map((player, index) => ({
           rank: index + 1,
@@ -1101,7 +1175,7 @@ export const BetResultModel = {
           totalWins: player.totalWins || 0,
           totalWinAmount: Math.round(Number(player.totalWinAmount) * 100) / 100,
         })),
-        recentActivity: recentActivity.map(bet => ({
+        recentActivity: recentActivity.map((bet) => ({
           id: bet.id,
           userId: bet.userId,
           gameId: bet.gameId,
@@ -1111,9 +1185,9 @@ export const BetResultModel = {
           lossAmount: Number(bet.lossAmount) || 0,
           createdAt: bet.createdAt,
         })),
-        gamePopularity: gamePopularity.map(game => ({
+        gamePopularity: gamePopularity.map((game) => ({
           gameId: game.gameId,
-          gameName: game.gameName || 'Unknown Game',
+          gameName: game.gameName || "Unknown Game",
           totalBets: game.totalBets || 0,
           totalBetAmount: Math.round(Number(game.totalBetAmount) * 100) / 100,
         })),
@@ -1125,7 +1199,12 @@ export const BetResultModel = {
   },
 
   // Helper method to get player stats
-   async getPlayerStats(userId: number, dateFrom?: Date, dateTo?: Date, gameId?: number): Promise<{
+  async getPlayerStats(
+    userId: number,
+    dateFrom?: Date,
+    dateTo?: Date,
+    gameId?: number
+  ): Promise<{
     gamesPlayed: string[];
     favoriteGame: string;
     bestWin: number;
@@ -1168,7 +1247,7 @@ export const BetResultModel = {
       const bestWin = await db
         .select({ winAmount: betResults.winAmount })
         .from(betResults)
-        .where(and(whereClause, eq(betResults.betStatus, 'win')))
+        .where(and(whereClause, eq(betResults.betStatus, "win")))
         .orderBy(desc(betResults.winAmount))
         .limit(1);
 
@@ -1176,13 +1255,13 @@ export const BetResultModel = {
       const worstLoss = await db
         .select({ lossAmount: betResults.lossAmount })
         .from(betResults)
-        .where(and(whereClause, eq(betResults.betStatus, 'loss')))
+        .where(and(whereClause, eq(betResults.betStatus, "loss")))
         .orderBy(desc(betResults.lossAmount))
         .limit(1);
 
       return {
-        gamesPlayed: gamesPlayed.map(g => g.gameName || 'Unknown Game'),
-        favoriteGame: favoriteGame[0]?.gameName || 'Unknown Game',
+        gamesPlayed: gamesPlayed.map((g) => g.gameName || "Unknown Game"),
+        favoriteGame: favoriteGame[0]?.gameName || "Unknown Game",
         bestWin: Number(bestWin[0]?.winAmount) || 0,
         worstLoss: Number(worstLoss[0]?.lossAmount) || 0,
       };
@@ -1190,11 +1269,10 @@ export const BetResultModel = {
       console.error("Error fetching player stats:", error);
       return {
         gamesPlayed: [],
-        favoriteGame: 'Unknown Game',
+        favoriteGame: "Unknown Game",
         bestWin: 0,
         worstLoss: 0,
       };
     }
   },
 };
-

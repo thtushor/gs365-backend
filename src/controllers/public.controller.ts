@@ -7,9 +7,12 @@ import {
   getPaginatedCategoryWiseSportList,
   getPaginatedDropdowns,
   getPaginatedGameList,
-  getProvidersByCategoryId,
+  getPaginatedSportList,
+  getAllProvidersByCategoryId,
   getPublicPaginatedPromotions,
   getPublicPromotionById,
+  getSportDetailsById,
+  getGameOrSportListBasedOnCategoryAndProvider,
 } from "../models/public.model";
 import { db } from "../db/connection";
 import {
@@ -437,7 +440,7 @@ export const getProvidersByCategory = async (req: Request, res: Response) => {
       });
     }
 
-    const providers = await getProvidersByCategoryId(Number(categoryId));
+    const providers = await getAllProvidersByCategoryId(Number(categoryId));
 
     return res.status(200).json({
       status: true,
@@ -511,7 +514,7 @@ export const getSportList = async (req: Request, res: Response) => {
 
     const gameId = id ? Number(id) : undefined;
     if (gameId) {
-      const gameDetails = await getGameDetailsById(gameId);
+      const gameDetails = await getSportDetailsById(gameId);
       if (!gameDetails) {
         return res.status(404).json({
           status: false,
@@ -541,13 +544,50 @@ export const getSportList = async (req: Request, res: Response) => {
       });
     }
 
-    const result = await getPaginatedGameList(Number(page), Number(pageSize));
+    const result = await getPaginatedSportList(Number(page), Number(pageSize));
 
     return res.status(200).json({
       status: true,
       message: "All game list fetched successfully.",
       data: result.data,
       pagination: result.pagination,
+    });
+  } catch (error) {
+    console.error("Error fetching game list:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Server error",
+    });
+  }
+};
+export const getProviderAndCategory = async (req: Request, res: Response) => {
+  try {
+    const { categoryId, providerId, type } = req.query;
+
+    // validate type
+    if (type !== "games" && type !== "sports") {
+      return res.status(400).json({
+        status: false,
+        message: "Invalid type. Must be 'games' or 'sports'.",
+      });
+    }
+    if (!providerId) {
+      return res.status(400).json({
+        status: false,
+        message: "Invalid category or provider id.",
+      });
+    }
+
+    const result = await getGameOrSportListBasedOnCategoryAndProvider(
+      type,
+      Number(providerId),
+      categoryId ? Number(categoryId) : undefined
+    );
+
+    return res.status(200).json({
+      status: true,
+      message: "Category wise game list fetched successfully.",
+      data: result.data,
     });
   } catch (error) {
     console.error("Error fetching game list:", error);

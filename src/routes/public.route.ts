@@ -10,12 +10,13 @@ import {
   getActiveUtils,
   getActiveVideoAdvertisement,
   getGameList,
+  getProviderAndCategory,
   getProvidersByCategory,
   getPublicActiveBannerImages,
   getPublicPromotionList,
+  getSportList,
 } from "../controllers/public.controller";
 import { asyncHandler } from "../utils/asyncHandler";
-import { getSportList } from "../controllers/admin.controller";
 
 const router = Router();
 
@@ -36,5 +37,6 @@ router.get(
 );
 router.get("/category-wise-games", asyncHandler(getGameList));
 router.get("/category-wise-sports", asyncHandler(getSportList));
+router.get("/category-provider", asyncHandler(getProviderAndCategory));
 
 export default router;

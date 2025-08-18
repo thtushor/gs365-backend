@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   boolean,
   datetime,
@@ -9,7 +9,8 @@ import {
   text,
   varchar,
 } from "drizzle-orm/mysql-core";
-import { CategoryInfo, ProviderInfo } from "./games";
+import { dropdownOptions } from "./dropdowns";
+import { sports_providers } from "./sportsProvider";
 
 export const sports = mysqlTable("sports", {
   id: int("id").primaryKey().autoincrement(),
@@ -25,10 +26,21 @@ export const sports = mysqlTable("sports", {
   sportUrl: varchar("sport_url", { length: 300 }).notNull(),
   ggrPercent: varchar("ggr_percent", { length: 100 }).notNull(),
 
-  // ➕ New fields:
-  categoryInfo: json("category_info").$type<CategoryInfo>(),
-  providerInfo: json("provider_info").$type<ProviderInfo>(),
+  // 🔑 Foreign keys
+  categoryId: int("category_id"),
+  providerId: int("provider_id"),
   createdBy: varchar("created_by", { length: 200 }), // username from token
 
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
+
+export const sportsRelation = relations(sports, ({ one }) => ({
+  category: one(dropdownOptions, {
+    fields: [sports.categoryId],
+    references: [dropdownOptions.id],
+  }),
+  provider: one(sports_providers, {
+    fields: [sports.providerId],
+    references: [sports_providers.id],
+  }),
+}));
