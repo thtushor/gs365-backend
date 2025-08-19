@@ -60,7 +60,7 @@ import {
 } from "../db/schema";
 import { and, count, desc, eq, ilike, inArray, ne, or, sql } from "drizzle-orm";
 import { generateJwtToken, verifyJwt } from "../utils/jwt";
-import { getUsersWithFilters } from "../models/user.model";
+import { getUsersWithFilters, getUserProfileById } from "../models/user.model";
 import * as UAParser from "ua-parser-js";
 import { DecodedUser } from "../middlewares/verifyToken";
 import { createPromotionRequiredFields } from "../utils/requiredFields";
@@ -435,6 +435,55 @@ export const getPlayers = async (
   };
   const result = await getUsersWithFilters(filters);
   res.json({ status: true, data: result });
+};
+
+export const getUserProfile = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+    
+    if (!id) {
+      res.status(400).json({ 
+        status: false, 
+        message: "User ID is required" 
+      });
+      return;
+    }
+
+    const userId = Number(id);
+    if (isNaN(userId)) {
+      res.status(400).json({ 
+        status: false, 
+        message: "Invalid user ID" 
+      });
+      return;
+    }
+
+    const userProfile = await getUserProfileById(userId);
+    
+    if (!userProfile) {
+      res.status(404).json({ 
+        status: false, 
+        message: "User not found" 
+      });
+      return;
+    }
+
+    res.json({
+      status: true,
+      message: "User profile fetched successfully",
+      data: userProfile,
+    });
+  } catch (error) {
+    console.error("Error fetching user profile:", error);
+    res.status(500).json({ 
+      status: false, 
+      message: "Failed to fetch user profile",
+      error: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
 };
 
 export const getAdmins = async (req: Request, res: Response) => {

@@ -8,6 +8,7 @@ import {
   adminProfile,
   adminLogout,
   getPlayers,
+  getUserProfile,
   getAdmins,
   updateAdminProfile,
   deleteAdmin,
@@ -65,6 +66,7 @@ router.post("/create-admin", verifyToken, asyncHandler(adminRegistration));
 router.post("/logout", verifyToken, asyncHandler(adminLogout));
 router.get("/profile", verifyToken, asyncHandler(adminProfile));
 router.get("/players", verifyToken, asyncHandler(getPlayers));
+router.get("/players/:id/profile", verifyToken, asyncHandler(getUserProfile));
 router.get("/admins", verifyToken, asyncHandler(getAdmins));
 router.get("/agents", verifyToken, asyncHandler(getAgents));
 

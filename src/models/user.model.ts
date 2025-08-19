@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
-import { eq, or, and, like, sql } from "drizzle-orm";
+import { eq, or, and, like, sql, inArray } from "drizzle-orm";
 import { users } from "../db/schema/users";
 import { currencies } from "../db/schema/currency";
 import { adminUsers } from "../db/schema/AdminUsers";
@@ -9,6 +9,7 @@ import bcrypt from "bcryptjs";
 
 import { db } from "../db/connection";
 import { BalanceModel } from "./balance.model";
+import { desc } from "drizzle-orm";
 
 export const findUserByUsernameOrEmail = async (usernameOrEmail: string) => {
   const [user] = await db
@@ -491,4 +492,231 @@ export const updateUser = async (
 export const deleteUser = async (id: number) => {
   const result = await db.delete(users).where(eq(users.id, id));
   return result;
+};
+
+export const getUserProfileById = async (id: number): Promise<any> => {
+  try {
+    // Get user with all related information
+    const [user] = await db
+      .select({
+        // User basic info
+        id: users.id,
+        fullname: users.fullname,
+        username: users.username,
+        email: users.email,
+        phone: users.phone,
+        isVerified: users.isVerified,
+        status: users.status,
+        created_at: users.created_at,
+        device_type: users.device_type,
+        ip_address: users.ip_address,
+        lastLogin: users.lastLogin,
+        lastIp: users.lastIp,
+        isLoggedIn: users.isLoggedIn,
+        // Currency info
+        currencyCode: currencies.code,
+        currencyName: currencies.name,
+        currencySymbol: currencies.symbol,
+        // Admin referrer info (affiliate/agent)
+        adminReferrerName: sql<string>`admin_referrer.fullname`,
+        adminReferrerUsername: sql<string>`admin_referrer.username`,
+        adminReferrerRole: sql<string>`admin_referrer.role`,
+        adminReferrerPhone: sql<string>`admin_referrer.phone`,
+        adminReferrerEmail: sql<string>`admin_referrer.email`,
+        // User referrer info (from referred_by column)
+        userReferrerName: sql<string>`user_referrer.fullname`,
+        userReferrerUsername: sql<string>`user_referrer.username`,
+        userReferrerPhone: sql<string>`user_referrer.phone`,
+        userReferrerEmail: sql<string>`user_referrer.email`,
+        // Created by info
+        createdByName: sql<string>`created_by_user.fullname`,
+        createdByUsername: sql<string>`created_by_user.username`,
+        createdByRole: sql<string>`created_by_user.role`,
+      })
+      .from(users)
+      .leftJoin(currencies, eq(users.currency_id, currencies.id))
+      .leftJoin(sql`${adminUsers} as admin_referrer`, eq(users.referred_by_admin_user, sql`admin_referrer.id`))
+      .leftJoin(sql`${users} as user_referrer`, eq(users.referred_by, sql`user_referrer.id`))
+      .leftJoin(sql`${adminUsers} as created_by_user`, eq(users.created_by, sql`created_by_user.id`))
+      .where(eq(users.id, id));
+
+    if (!user) return null;
+
+    // Get balance information using BalanceModel
+    const balance = await BalanceModel.calculatePlayerBalance(user.id);
+
+   
+
+    // Get bet results summary
+    const betResultsSummary = await db
+      .select({
+        totalBets: sql<number>`COUNT(*)`,
+        totalWins: sql<number>`COUNT(CASE WHEN bet_status = 'win' THEN 1 END)`,
+        totalLosses: sql<number>`COUNT(CASE WHEN bet_status = 'loss' THEN 1 END)`,
+        totalPending: sql<number>`COUNT(CASE WHEN bet_status = 'pending' THEN 1 END)`,
+        totalBetAmount: sql<number>`COALESCE(SUM(CAST(bet_amount AS DECIMAL(10,2))), 0)`,
+        totalWinAmount: sql<number>`COALESCE(SUM(CAST(win_amount AS DECIMAL(10,2))), 0)`,
+        totalLossAmount: sql<number>`COALESCE(SUM(CAST(loss_amount AS DECIMAL(10,2))), 0)`,
+        lastBetDate: sql<Date>`MAX(created_at)`,
+        firstBetDate: sql<Date>`MIN(created_at)`,
+      })
+      .from(sql`bet_results`)
+      .where(eq(sql`bet_results.user_id`, user.id));
+
+    // Get recent transactions (last 10)
+    const recentTransactions = await db
+      .select({
+        id: transactions.id,
+        type: transactions.type,
+        amount: transactions.amount,
+        status: transactions.status,
+        createdAt: transactions.createdAt,
+        gameId: transactions.gameId,
+        customTransactionId: transactions.customTransactionId,
+        givenTransactionId: transactions.givenTransactionId,
+      })
+      .from(transactions)
+      .where(and(eq(transactions.userId, user.id)))
+      .orderBy(desc(transactions.createdAt))
+      .limit(10);
+
+    // Get recent bet results (last 10)
+    const recentBetResults = await db
+      .select({
+        id: sql<number>`bet_results.id`,
+        gameName: sql<string>`bet_results.game_name`,
+        betAmount: sql<string>`bet_results.bet_amount`,
+        betStatus: sql<string>`bet_results.bet_status`,
+        winAmount: sql<string>`bet_results.win_amount`,
+        lossAmount: sql<string>`bet_results.loss_amount`,
+        multiplier: sql<string>`bet_results.multiplier`,
+        createdAt: sql<Date>`bet_results.created_at`,
+      })
+      .from(sql`bet_results`)
+      .where(eq(sql`bet_results.user_id`, user.id))
+      .orderBy(desc(sql`bet_results.created_at`))
+      .limit(10);
+
+    // Determine user type based on referrers
+    let userType = 'player';
+    let referrerType = null;
+    let referrerDetails = null;
+
+    if (user.adminReferrerRole) {
+      if (['superAffiliate', 'affiliate'].includes(user.adminReferrerRole)) {
+        userType = 'affiliate_user';
+        referrerType = 'affiliate';
+        referrerDetails = {
+          name: user.adminReferrerName,
+          username: user.adminReferrerUsername,
+          role: user.adminReferrerRole,
+          phone: user.adminReferrerPhone,
+          email: user.adminReferrerEmail,
+        };
+      } else if (['superAgent', 'agent'].includes(user.adminReferrerRole)) {
+        userType = 'agent_user';
+        referrerType = 'agent';
+        referrerDetails = {
+          name: user.adminReferrerName,
+          username: user.adminReferrerUsername,
+          role: user.adminReferrerRole,
+          phone: user.adminReferrerPhone,
+          email: user.adminReferrerEmail,
+        };
+      }
+    } else if (user.userReferrerName) {
+      userType = 'referred_player';
+      referrerType = 'player';
+      referrerDetails = {
+        name: user.userReferrerName,
+        username: user.userReferrerUsername,
+        phone: user.userReferrerPhone,
+        email: user.userReferrerEmail,
+      };
+    }
+
+    return {
+      // Basic user information
+      id: user.id,
+      fullname: user.fullname,
+      username: user.username,
+      email: user.email,
+      phone: user.phone,
+      isVerified: user.isVerified,
+      status: user.status,
+      created_at: user.created_at,
+      lastLogin: user.lastLogin,
+      lastIp: user.lastIp,
+      isLoggedIn: user.isLoggedIn,
+      device_type: user.device_type,
+      ip_address: user.ip_address,
+
+      // Currency information
+      currency: {
+        code: user.currencyCode,
+        name: user.currencyName,
+        symbol: user.currencySymbol,
+      },
+
+      // User type and referrer information
+      userType,
+      referrerType,
+      referrerDetails,
+
+      // Created by information
+      createdBy: {
+        name: user.createdByName,
+        username: user.createdByUsername,
+        role: user.createdByRole,
+      },
+
+      // Balance information
+      balance: {
+        currentBalance: balance.currentBalance,
+        totalDeposits: balance.totalDeposits,
+        totalWithdrawals: balance.totalWithdrawals,
+        totalWins: balance.totalWins,
+        totalLosses: balance.totalLosses,
+        pendingDeposits: balance.pendingDeposits,
+        pendingWithdrawals: balance.pendingWithdrawals,
+        approvedDeposits: balance.approvedDeposits,
+        approvedWithdrawals: balance.approvedWithdrawals,
+        currencyCode: balance.currencyCode,
+      },
+
+      // Transaction summary
+      transactionSummary: {
+        totalTransactions: Number(recentTransactions.length || 0),
+        totalDepositTransactions: Number(recentTransactions.filter(t => t.type === 'deposit').length || 0),
+        totalWithdrawTransactions: Number(recentTransactions.filter(t => t.type === 'withdraw').length || 0),
+        totalWinTransactions: Number(recentTransactions.filter(t => t.type === 'win').length || 0),
+        totalLossTransactions: Number(recentTransactions.filter(t => t.type === 'loss').length || 0),
+        lastTransactionDate: recentTransactions[0]?.createdAt,
+        firstTransactionDate: recentTransactions[recentTransactions.length - 1]?.createdAt,
+      },
+
+      // Bet results summary
+      betResultsSummary: {
+        totalBets: Number(betResultsSummary[0]?.totalBets || 0),
+        totalWins: Number(betResultsSummary[0]?.totalWins || 0),
+        totalLosses: Number(betResultsSummary[0]?.totalLosses || 0),
+        totalPending: Number(betResultsSummary[0]?.totalPending || 0),
+        totalBetAmount: Number(betResultsSummary[0]?.totalBetAmount || 0),
+        totalWinAmount: Number(betResultsSummary[0]?.totalWinAmount || 0),
+        totalLossAmount: Number(betResultsSummary[0]?.totalLossAmount || 0),
+        winRate: betResultsSummary[0]?.totalBets > 0 
+          ? ((Number(betResultsSummary[0]?.totalWins || 0) / Number(betResultsSummary[0]?.totalBets || 1)) * 100).toFixed(2)
+          : '0.00',
+        lastBetDate: betResultsSummary[0]?.lastBetDate,
+        firstBetDate: betResultsSummary[0]?.firstBetDate,
+      },
+
+      // Recent activity
+      recentTransactions,
+      recentBetResults,
+    };
+  } catch (error) {
+    console.error("Error getting user profile:", error);
+    throw error;
+  }
 };
