@@ -3,7 +3,7 @@ import { db } from "../db/connection";
 import { betResults } from "../db/schema/betResults";
 import { games } from "../db/schema/games";
 import { game_providers } from "../db/schema/gameProvider";
-import { dropdownOptions } from "../db/schema";
+import { dropdownOptions, users } from "../db/schema";
 
 export interface BetResultFilters {
   userId?: number;
@@ -38,6 +38,7 @@ export interface PlayerRankingFilters {
   dateFrom?: Date;
   dateTo?: Date;
   gameId?: number;
+  userId?: number;
   minGames: number;
   includeStats: boolean;
 }
@@ -598,6 +599,10 @@ export const BetResultModel = {
         whereConditions.push(eq(betResults.gameId, filters.gameId));
       }
 
+      if (filters.userId) {
+        whereConditions.push(eq(betResults.userId, filters.userId));
+      }
+
       // Build order-by expression based on rankBy parameter (use raw expressions, not aliases)
       let orderByExpr: any;
       switch (filters.rankBy) {
@@ -639,6 +644,9 @@ export const BetResultModel = {
       const rankingBase = db
         .select({
           userId: betResults.userId,
+          user: users,
+          game: games,
+          provider: game_providers,
           totalBets: sql<number>`COUNT(*)`,
           totalWins: sql<number>`COUNT(CASE WHEN ${betResults.betStatus} = 'win' THEN 1 END)`,
           totalLosses: sql<number>`COUNT(CASE WHEN ${betResults.betStatus} = 'loss' THEN 1 END)`,
@@ -647,7 +655,10 @@ export const BetResultModel = {
           totalBetAmount: sql<number>`COALESCE(SUM(${betResults.betAmount}), 0)`,
           lastPlayed: sql<Date>`MAX(${betResults.createdAt})`,
         })
-        .from(betResults);
+        .from(betResults)
+        .leftJoin(users, eq(betResults.userId, users.id))
+        .leftJoin(games, eq(betResults.gameId, games.id))
+        .leftJoin(game_providers, eq(games.providerId, game_providers.id));
 
       const rankingQuery = (whereConditions.length > 0
         ? rankingBase.where(and(...whereConditions))
@@ -674,6 +685,9 @@ export const BetResultModel = {
 
         return {
           userId: row.userId,
+          user: {...row.user, password: undefined},
+          game: row.game,
+          provider: row.provider,
           rank: filters.offset + index + 1,
           totalBets,
           totalWins,

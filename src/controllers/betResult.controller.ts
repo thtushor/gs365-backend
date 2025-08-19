@@ -316,6 +316,7 @@ export const BetResultController = {
         dateFrom,
         dateTo,
         gameId,
+        userId,
         minGames = 1, // Minimum games played to be included in rankings
         includeStats = 'true'
       } = req.query;
@@ -346,7 +347,8 @@ export const BetResultController = {
         dateTo: dateTo ? new Date(dateTo as string) : undefined,
         gameId: gameId ? Number(gameId) : undefined,
         minGames: Number(minGames),
-        includeStats: includeStats === 'true'
+        includeStats: includeStats === 'true',
+        userId: userId ? Number(userId) : undefined
       };
 
       const result = await BetResultModel.getPlayerRankings(filters);
