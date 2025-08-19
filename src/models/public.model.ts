@@ -227,12 +227,31 @@ export const getPaginatedDropdowns = async (page: number, pageSize: number) => {
   };
 };
 
-export const getAllProvidersByCategoryId = async (categoryId: number) => {
+export const getAllProvidersByCategoryId = async (
+  categoryId: number | "exclusive"
+) => {
+  // exclusive games
+  if (categoryId === "exclusive") {
+    // --- EXCLUSIVE GAMES ---
+    const exclusiveGames = await db
+      .select()
+      .from(games)
+      .where(and(eq(games.isExclusive, true), eq(games.status, "active")));
+
+    // --- EXCLUSIVE SPORTS ---
+    const exclusiveSports = await db
+      .select()
+      .from(sports)
+      .where(and(eq(sports.isExclusive, true), eq(sports.status, "active")));
+
+    return [...exclusiveGames, ...exclusiveSports];
+  }
+
   // --- GAME PROVIDERS ---
   const matchedGameProviders = await db
     .select({ providerId: games.providerId })
     .from(games)
-    .where(eq(games.categoryId, categoryId));
+    .where(and(eq(games.categoryId, categoryId), eq(games.status, "active")));
 
   const gameProviderIds = [
     ...new Set(
@@ -246,14 +265,19 @@ export const getAllProvidersByCategoryId = async (categoryId: number) => {
     ? await db
         .select()
         .from(game_providers)
-        .where(inArray(game_providers.id, gameProviderIds))
+        .where(
+          and(
+            inArray(game_providers.id, gameProviderIds),
+            eq(game_providers.status, "active")
+          )
+        )
     : [];
 
   // --- SPORT PROVIDERS ---
   const matchedSportProviders = await db
     .select({ providerId: sports.providerId })
     .from(sports)
-    .where(eq(sports.categoryId, categoryId));
+    .where(and(eq(sports.categoryId, categoryId), eq(sports.status, "active")));
 
   const sportProviderIds = [
     ...new Set(
@@ -266,14 +290,15 @@ export const getAllProvidersByCategoryId = async (categoryId: number) => {
   const sport_providers_list = sportProviderIds.length
     ? await db
         .select()
-        .from(game_providers)
-        .where(inArray(game_providers.id, sportProviderIds))
+        .from(sports_providers)
+        .where(
+          and(
+            inArray(sports_providers.id, sportProviderIds),
+            eq(sports_providers.status, "active")
+          )
+        )
     : [];
-
-  return {
-    game_providers: game_providers_list,
-    sport_providers: sport_providers_list,
-  };
+  return [...game_providers_list, ...sport_providers_list];
 };
 
 export async function getGameDetailsById(id: number) {
@@ -607,3 +632,196 @@ export async function getGameOrSportListBasedOnCategoryAndProvider(
     })),
   };
 }
+export const getAllGamesOrSports = async (
+  providerId: number,
+  categoryId: number
+) => {
+  // --- EXCLUSIVE GAMES ---
+  const gamesList = await db
+    .select({
+      id: games.id,
+      name: games.name,
+      parentId: games.parentId,
+      status: games.status,
+      isFavorite: games.isFavorite,
+      isExclusive: games.isExclusive,
+      apiKey: games.apiKey,
+      licenseKey: games.licenseKey,
+      logo: games.gameLogo,
+      secretPin: games.secretPin,
+      url: games.gameUrl,
+      ggrPercent: games.ggrPercent,
+      categoryId: games.categoryId,
+      providerId: games.providerId,
+      createdBy: games.createdBy,
+      createdAt: games.createdAt,
+      categoryInfo: dropdownOptions,
+      providerInfo: game_providers,
+    })
+    .from(games)
+    .leftJoin(dropdownOptions, eq(games.categoryId, dropdownOptions.id))
+    .leftJoin(game_providers, eq(games.providerId, game_providers.id))
+    .where(
+      and(
+        eq(games.categoryId, categoryId),
+        eq(games.providerId, providerId),
+        eq(games.status, "active")
+      )
+    );
+
+  // --- EXCLUSIVE SPORTS ---
+  const sportsList = await db
+    .select({
+      id: sports.id,
+      name: sports.name,
+      parentId: sports.parentId,
+      status: sports.status,
+      isFavorite: sports.isFavorite,
+      isExclusive: sports.isExclusive,
+      apiKey: sports.apiKey,
+      licenseKey: sports.licenseKey,
+      logo: sports.sportLogo,
+      secretPin: sports.secretPin,
+      url: sports.sportUrl,
+      ggrPercent: sports.ggrPercent,
+      categoryId: sports.categoryId,
+      providerId: sports.providerId,
+      createdBy: sports.createdBy,
+      createdAt: sports.createdAt,
+      categoryInfo: dropdownOptions,
+      providerInfo: sports_providers,
+    })
+    .from(sports)
+    .leftJoin(dropdownOptions, eq(sports.categoryId, dropdownOptions.id))
+    .leftJoin(sports_providers, eq(sports.providerId, sports_providers.id))
+    .where(
+      and(
+        eq(sports.categoryId, categoryId),
+        eq(sports.providerId, providerId),
+        eq(sports.status, "active")
+      )
+    );
+
+  return [...gamesList, ...sportsList];
+};
+
+export const getAllGamesOrSportsByProviderId = async (
+  providerId: number,
+  type: "games" | "sports"
+) => {
+  if (type === "games") {
+    // Fetch games only
+    const gamesList = await db
+      .select({
+        id: games.id,
+        name: games.name,
+        parentId: games.parentId,
+        status: games.status,
+        isFavorite: games.isFavorite,
+        isExclusive: games.isExclusive,
+        apiKey: games.apiKey,
+        licenseKey: games.licenseKey,
+        logo: games.gameLogo,
+        secretPin: games.secretPin,
+        url: games.gameUrl,
+        ggrPercent: games.ggrPercent,
+        categoryId: games.categoryId,
+        providerId: games.providerId,
+        createdBy: games.createdBy,
+        createdAt: games.createdAt,
+        categoryInfo: dropdownOptions,
+        providerInfo: game_providers,
+      })
+      .from(games)
+      .leftJoin(dropdownOptions, eq(games.categoryId, dropdownOptions.id))
+      .leftJoin(game_providers, eq(games.providerId, game_providers.id))
+      .where(and(eq(games.providerId, providerId), eq(games.status, "active")));
+
+    return gamesList;
+  } else if (type === "sports") {
+    // Fetch sports only
+    const sportsList = await db
+      .select({
+        id: sports.id,
+        name: sports.name,
+        parentId: sports.parentId,
+        status: sports.status,
+        isFavorite: sports.isFavorite,
+        isExclusive: sports.isExclusive,
+        apiKey: sports.apiKey,
+        licenseKey: sports.licenseKey,
+        logo: sports.sportLogo,
+        secretPin: sports.secretPin,
+        url: sports.sportUrl,
+        ggrPercent: sports.ggrPercent,
+        categoryId: sports.categoryId,
+        providerId: sports.providerId,
+        createdBy: sports.createdBy,
+        createdAt: sports.createdAt,
+        categoryInfo: dropdownOptions,
+        providerInfo: sports_providers,
+      })
+      .from(sports)
+      .leftJoin(dropdownOptions, eq(sports.categoryId, dropdownOptions.id))
+      .leftJoin(sports_providers, eq(sports.providerId, sports_providers.id))
+      .where(
+        and(eq(sports.providerId, providerId), eq(sports.status, "active"))
+      );
+
+    return sportsList;
+  }
+
+  // Return empty array if type is invalid
+  return [];
+};
+
+export const getAllActiveProviders = async () => {
+  // --- Game Providers with active games ---
+  const game_providers_list = await db
+    .select()
+    .from(game_providers)
+    .where(
+      inArray(
+        game_providers.id,
+        db
+          .select({ providerId: games.providerId })
+          .from(games)
+          .where(eq(games.status, "active"))
+      )
+    );
+
+  // --- Sports Providers with active sports ---
+  const sports_providers_list = await db
+    .select()
+    .from(sports_providers)
+    .where(
+      inArray(
+        sports_providers.id,
+        db
+          .select({ providerId: sports.providerId })
+          .from(sports)
+          .where(eq(sports.status, "active"))
+      )
+    );
+
+  return {
+    game_providers: game_providers_list,
+    sports_providers: sports_providers_list,
+  };
+};
+
+export const getExclusiveGamesSports = async () => {
+  // --- EXCLUSIVE GAMES ---
+  const exclusiveGames = await db
+    .select()
+    .from(games)
+    .where(and(eq(games.isExclusive, true), eq(games.status, "active")));
+
+  // --- EXCLUSIVE SPORTS ---
+  const exclusiveSports = await db
+    .select()
+    .from(sports)
+    .where(and(eq(sports.isExclusive, true), eq(sports.status, "active")));
+
+  return [...exclusiveGames, ...exclusiveSports];
+};

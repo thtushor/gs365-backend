@@ -9,12 +9,15 @@ import {
   getActiveSponsor,
   getActiveUtils,
   getActiveVideoAdvertisement,
+  getAllActiveProviderList,
+  getAllExclusiveGamesSportsList,
   getGameList,
   getProviderAndCategory,
   getProvidersByCategory,
   getPublicActiveBannerImages,
   getPublicPromotionList,
   getSportList,
+  getSportsAndGames,
 } from "../controllers/public.controller";
 import { asyncHandler } from "../utils/asyncHandler";
 
@@ -37,6 +40,11 @@ router.get(
 );
 router.get("/category-wise-games", asyncHandler(getGameList));
 router.get("/category-wise-sports", asyncHandler(getSportList));
-router.get("/category-provider", asyncHandler(getProviderAndCategory));
+router.get("/category-provider", asyncHandler(getSportsAndGames));
+router.get("/providers", asyncHandler(getAllActiveProviderList));
+router.get(
+  "/exclusive-games-sports",
+  asyncHandler(getAllExclusiveGamesSportsList)
+);
 
 export default router;
