@@ -13,6 +13,10 @@ import {
   getPublicPromotionById,
   getSportDetailsById,
   getGameOrSportListBasedOnCategoryAndProvider,
+  getAllGamesOrSports,
+  getAllActiveProviders,
+  getAllGamesOrSportsByProviderId,
+  getExclusiveGamesSports,
 } from "../models/public.model";
 import { db } from "../db/connection";
 import {
@@ -440,6 +444,16 @@ export const getProvidersByCategory = async (req: Request, res: Response) => {
       });
     }
 
+    if (categoryId === "exclusive") {
+      const exclusiveGames = await getAllProvidersByCategoryId(categoryId);
+
+      return res.status(200).json({
+        status: true,
+        message: "Exclusive games fetched successfully.",
+        data: exclusiveGames,
+      });
+    }
+
     const providers = await getAllProvidersByCategoryId(Number(categoryId));
 
     return res.status(200).json({
@@ -591,6 +605,97 @@ export const getProviderAndCategory = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Error fetching game list:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Server error",
+    });
+  }
+};
+export const getSportsAndGames = async (req: Request, res: Response) => {
+  try {
+    const { categoryId, providerId, type } = req.query;
+    const providerIdNum = Number(providerId);
+    const categoryIdNum = categoryId ? Number(categoryId) : undefined;
+    const typeValidate =
+      type === "games" || type === "sports" ? type : undefined;
+
+    if (!providerIdNum) {
+      return res.status(400).json({
+        status: false,
+        message: "Invalid category or provider id.",
+      });
+    }
+
+    if (!categoryIdNum && providerIdNum) {
+      console.log("fetch this man");
+      if (typeValidate) {
+        const result = await getAllGamesOrSportsByProviderId(
+          Number(providerId),
+          typeValidate
+        );
+        return res.status(200).json({
+          status: true,
+          message: "games and sports list fetched successfully.",
+          data: result,
+        });
+      }
+      return res.status(400).json({
+        status: false,
+        message: "Invalid provider type.",
+      });
+    }
+
+    const result = await getAllGamesOrSports(
+      Number(providerId),
+      Number(categoryId)
+    );
+
+    return res.status(200).json({
+      status: true,
+      message: "games and sports list fetched successfully.",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Error fetching game and sports list:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Server error",
+    });
+  }
+};
+
+export const getAllActiveProviderList = async (req: Request, res: Response) => {
+  try {
+    const result = await getAllActiveProviders();
+
+    return res.status(200).json({
+      status: true,
+      message: "games and sports provider list fetched successfully.",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Error fetching game and sports provider list:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Server error",
+    });
+  }
+};
+
+export const getAllExclusiveGamesSportsList = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const result = await getExclusiveGamesSports();
+
+    return res.status(200).json({
+      status: true,
+      message: "exclusive games and sports list fetched successfully.",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Error fetching exclusive game and sports list:", error);
     return res.status(500).json({
       status: false,
       message: "Server error",
