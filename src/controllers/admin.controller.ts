@@ -430,8 +430,8 @@ export const getPlayers = async (
     createdBy: userData.role !== "admin" ? userData.id : undefined,
     page: page ? Number(page) : 1,
     pageSize: pageSize ? Number(pageSize) : 10,
-    referred_by: Number(referred_by),
-    referred_by_admin_user: Number(referred_by_admin_user),
+    referred_by: Number(referred_by || 0),
+    referred_by_admin_user: Number(referred_by_admin_user || 0),
   };
   const result = await getUsersWithFilters(filters);
   res.json({ status: true, data: result });

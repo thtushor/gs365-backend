@@ -6,6 +6,9 @@ import {
   updateUser as updateUserModel,
   deleteUser as deleteUserModel,
   getUserById,
+  getUserDetailsById,
+  getUsersByReferrerType,
+  UserFilters,
 } from "../models/user.model";
 import bcrypt from "bcryptjs";
 
@@ -29,7 +32,115 @@ export const getAllUsers = async (req: Request, res: Response) => {
   }
 };
 
+export const getUsersWithFiltersController = async (req: Request, res: Response) => {
+  try {
+    const {
+      playerId,
+      phone,
+      status,
+      keyword,
+      page = 1,
+      pageSize = 10,
+      createdBy,
+      referred_by,
+      referred_by_admin_user,
+      userType = 'all',
+      currencyId,
+      dateFrom,
+      dateTo,
+    } = req.query;
 
+    const filters: UserFilters = {
+      playerId: playerId ? Number(playerId) : undefined,
+      phone: phone as string,
+      status: status as string,
+      keyword: keyword as string,
+      page: Number(page),
+      pageSize: Number(pageSize),
+      createdBy: createdBy ? Number(createdBy) : undefined,
+      referred_by: referred_by ? Number(referred_by) : undefined,
+      referred_by_admin_user: referred_by_admin_user ? Number(referred_by_admin_user) : undefined,
+      userType: userType as 'all' | 'affiliate' | 'agent' | 'player',
+      currencyId: currencyId ? Number(currencyId) : undefined,
+      dateFrom: dateFrom as string,
+      dateTo: dateTo as string,
+    };
+
+    const result = await getUsersWithFilters(filters);
+    
+    return res.json({
+      status: true,
+      message: "Users fetched successfully",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Error fetching users with filters:", error);
+    return res
+      .status(500)
+      .json({ status: false, message: "Failed to fetch users" });
+  }
+};
+
+export const getUserDetailsController = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    if (!id) {
+      return res
+        .status(400)
+        .json({ status: false, message: "User ID is required" });
+    }
+
+    const userDetails = await getUserDetailsById(Number(id));
+    
+    if (!userDetails) {
+      return res
+        .status(404)
+        .json({ status: false, message: "User not found" });
+    }
+
+    return res.json({
+      status: true,
+      message: "User details fetched successfully",
+      data: userDetails,
+    });
+  } catch (error) {
+    console.error("Error fetching user details:", error);
+    return res
+      .status(500)
+      .json({ status: false, message: "Failed to fetch user details" });
+  }
+};
+
+export const getUsersByReferrerTypeController = async (req: Request, res: Response) => {
+  try {
+    const { type } = req.params;
+    const { page = 1, pageSize = 10 } = req.query;
+
+    if (type !== 'affiliate' && type !== 'agent') {
+      return res
+        .status(400)
+        .json({ status: false, message: "Type must be 'affiliate' or 'agent'" });
+    }
+
+    const result = await getUsersByReferrerType(
+      type as 'affiliate' | 'agent',
+      Number(page),
+      Number(pageSize)
+    );
+
+    return res.json({
+      status: true,
+      message: `${type.charAt(0).toUpperCase() + type.slice(1)} users fetched successfully`,
+      data: result,
+    });
+  } catch (error) {
+    console.error(`Error fetching ${req.params.type} users:`, error);
+    return res
+      .status(500)
+      .json({ status: false, message: `Failed to fetch ${req.params.type} users` });
+  }
+};
 
 export const registerUser = async (req: Request, res: Response) => {
   try {
