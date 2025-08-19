@@ -3,7 +3,7 @@ import { db } from "../db/connection";
 import { betResults } from "../db/schema/betResults";
 import { games } from "../db/schema/games";
 import { game_providers } from "../db/schema/gameProvider";
-import { dropdownOptions, users } from "../db/schema";
+import { dropdownOptions } from "../db/schema";
 
 export interface BetResultFilters {
   userId?: number;
@@ -237,7 +237,7 @@ export const BetResultModel = {
 
       const totalResult = await countQuery;
       const total = totalResult[0]?.count || 0;
-
+      
       // Apply sorting
       const sortField =
         sortBy === "betAmount"
@@ -348,7 +348,7 @@ export const BetResultModel = {
           updatedAt: row.updatedAt || new Date(),
           gameDetails: row.gameId_join
             ? {
-                id: row.gameId_join,
+            id: row.gameId_join,
                 name: row.gameName_join || row.gameName || "",
                 gameLogo: row.gameLogo || "",
                 gameUrl: row.gameUrl || "",
@@ -357,7 +357,7 @@ export const BetResultModel = {
             : undefined,
           providerDetails: row.providerId
             ? {
-                id: row.providerId,
+            id: row.providerId,
                 name: row.providerName || "Unknown Provider",
                 logo: row.providerLogo || "",
                 status: row.providerStatus || "unknown",
@@ -471,7 +471,7 @@ export const BetResultModel = {
         updatedAt: row.updatedAt || new Date(),
         gameDetails: row.gameId_join
           ? {
-              id: row.gameId_join,
+          id: row.gameId_join,
               name: row.gameName_join || row.gameName || "",
               gameLogo: row.gameLogo || "",
               gameUrl: row.gameUrl || "",
@@ -480,7 +480,7 @@ export const BetResultModel = {
           : undefined,
         providerDetails: row.providerId
           ? {
-              id: row.providerId,
+          id: row.providerId,
               name: row.providerName || "Unknown Provider",
               logo: row.providerLogo || "",
               status: row.providerStatus || "unknown",
@@ -598,45 +598,47 @@ export const BetResultModel = {
         whereConditions.push(eq(betResults.gameId, filters.gameId));
       }
 
-      // Build the ranking query based on rankBy parameter
-      let orderByField: any;
+      // Build order-by expression based on rankBy parameter (use raw expressions, not aliases)
+      let orderByExpr: any;
       switch (filters.rankBy) {
         case "totalWins":
-          orderByField = sql`total_wins`;
+          orderByExpr = sql`COUNT(CASE WHEN ${betResults.betStatus} = 'win' THEN 1 END)`;
           break;
         case "totalWinAmount":
-          orderByField = sql`total_win_amount`;
+          orderByExpr = sql`COALESCE(SUM(CASE WHEN ${betResults.betStatus} = 'win' THEN ${betResults.winAmount} ELSE 0 END), 0)`;
           break;
         case "winRate":
-          orderByField = sql`win_rate`;
+          orderByExpr = sql`(COUNT(CASE WHEN ${betResults.betStatus} = 'win' THEN 1 END) / NULLIF(COUNT(*), 0))`;
           break;
         case "totalProfit":
-          orderByField = sql`total_profit`;
+          orderByExpr = sql`(COALESCE(SUM(CASE WHEN ${betResults.betStatus} = 'win' THEN ${betResults.winAmount} ELSE 0 END), 0) - COALESCE(SUM(CASE WHEN ${betResults.betStatus} = 'loss' THEN ${betResults.lossAmount} ELSE 0 END), 0))`;
           break;
         case "totalBets":
-          orderByField = sql`total_bets`;
+          orderByExpr = sql`COUNT(*)`;
           break;
         case "avgBetAmount":
-          orderByField = sql`avg_bet_amount`;
+          orderByExpr = sql`COALESCE(AVG(${betResults.betAmount}), 0)`;
           break;
         default:
-          orderByField = sql`total_wins`;
+          orderByExpr = sql`COUNT(CASE WHEN ${betResults.betStatus} = 'win' THEN 1 END)`;
       }
 
       // Get total count for pagination
       const countQuery = db
         .select({ count: sql<number>`COUNT(DISTINCT ${betResults.userId})` })
-        .from(betResults)
-        .where(and(...whereConditions));
+        .from(betResults);
+
+      if (whereConditions.length > 0) {
+        countQuery.where(and(...whereConditions));
+      }
 
       const totalResult = await countQuery;
       const total = totalResult[0]?.count || 0;
 
       // Main ranking query
-      const rankingQuery = db
+      const rankingBase = db
         .select({
           userId: betResults.userId,
-          user: users,
           totalBets: sql<number>`COUNT(*)`,
           totalWins: sql<number>`COUNT(CASE WHEN ${betResults.betStatus} = 'win' THEN 1 END)`,
           totalLosses: sql<number>`COUNT(CASE WHEN ${betResults.betStatus} = 'loss' THEN 1 END)`,
@@ -645,14 +647,14 @@ export const BetResultModel = {
           totalBetAmount: sql<number>`COALESCE(SUM(${betResults.betAmount}), 0)`,
           lastPlayed: sql<Date>`MAX(${betResults.createdAt})`,
         })
-        .from(betResults)
-        .leftJoin(users, eq(betResults.userId, users.id))
-        .where(and(...whereConditions))
+        .from(betResults);
+
+      const rankingQuery = (whereConditions.length > 0
+        ? rankingBase.where(and(...whereConditions))
+        : rankingBase)
         .groupBy(betResults.userId)
         .having(sql`COUNT(*) >= ${filters.minGames}`)
-        .orderBy(
-          filters.sortOrder === "desc" ? desc(orderByField) : asc(orderByField)
-        )
+        .orderBy(filters.sortOrder === "desc" ? desc(orderByExpr) : asc(orderByExpr))
         .limit(filters.limit)
         .offset(filters.offset);
 
@@ -672,7 +674,6 @@ export const BetResultModel = {
 
         return {
           userId: row.userId,
-          user: row.user,
           rank: filters.offset + index + 1,
           totalBets,
           totalWins,
@@ -733,14 +734,17 @@ export const BetResultModel = {
       // Get total count for pagination
       const countQuery = db
         .select({ count: sql<number>`COUNT(DISTINCT ${betResults.userId})` })
-        .from(betResults)
-        .where(and(...whereConditions));
+        .from(betResults);
+
+      if (whereConditions.length > 0) {
+        countQuery.where(and(...whereConditions));
+      }
 
       const totalResult = await countQuery;
       const total = totalResult[0]?.count || 0;
 
       // Get top winners by total win amount
-      const winnersQuery = db
+      const winnersBase = db
         .select({
           userId: betResults.userId,
           totalBets: sql<number>`COUNT(*)`,
@@ -751,11 +755,14 @@ export const BetResultModel = {
           totalBetAmount: sql<number>`COALESCE(SUM(${betResults.betAmount}), 0)`,
           lastPlayed: sql<Date>`MAX(${betResults.createdAt})`,
         })
-        .from(betResults)
-        .where(and(...whereConditions))
+        .from(betResults);
+
+      const winnersQuery = (whereConditions.length > 0
+        ? winnersBase.where(and(...whereConditions))
+        : winnersBase)
         .groupBy(betResults.userId)
         .having(sql`COUNT(*) >= ${filters.minGames}`)
-        .orderBy(desc(sql`total_win_amount`))
+        .orderBy(desc(sql`COALESCE(SUM(CASE WHEN ${betResults.betStatus} = 'win' THEN ${betResults.winAmount} ELSE 0 END), 0)`))
         .limit(filters.limit)
         .offset(filters.offset);
 
@@ -822,14 +829,17 @@ export const BetResultModel = {
       // Get total count for pagination
       const countQuery = db
         .select({ count: sql<number>`COUNT(DISTINCT ${betResults.userId})` })
-        .from(betResults)
-        .where(and(...whereConditions));
+        .from(betResults);
+
+      if (whereConditions.length > 0) {
+        countQuery.where(and(...whereConditions));
+      }
 
       const totalResult = await countQuery;
       const total = totalResult[0]?.count || 0;
 
       // Get top losers by total loss amount
-      const losersQuery = db
+      const losersBase = db
         .select({
           userId: betResults.userId,
           totalBets: sql<number>`COUNT(*)`,
@@ -840,11 +850,14 @@ export const BetResultModel = {
           totalBetAmount: sql<number>`COALESCE(SUM(${betResults.betAmount}), 0)`,
           lastPlayed: sql<Date>`MAX(${betResults.createdAt})`,
         })
-        .from(betResults)
-        .where(and(...whereConditions))
+        .from(betResults);
+
+      const losersQuery = (whereConditions.length > 0
+        ? losersBase.where(and(...whereConditions))
+        : losersBase)
         .groupBy(betResults.userId)
         .having(sql`COUNT(*) >= ${filters.minGames}`)
-        .orderBy(desc(sql`total_loss_amount`))
+        .orderBy(desc(sql`COALESCE(SUM(CASE WHEN ${betResults.betStatus} = 'loss' THEN ${betResults.lossAmount} ELSE 0 END), 0)`))
         .limit(filters.limit)
         .offset(filters.offset);
 
