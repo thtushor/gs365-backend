@@ -36,14 +36,14 @@ export const transactions = mysqlTable("transactions", {
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   currencyId: int("currency_id")
     .notNull()
-    .references(() => currencies.id),
+    .references(() => currencies.id, { onDelete: "cascade" }),
   promotionId: int("promotion_id").references(() => promotions.id, {
-    onDelete: "set null",
+    onDelete: "cascade",
   }),
-  gameId: int("game_id").references(()=>{
-    return games.id
-  },{
-    onDelete: "set null"
+  gameId: int("game_id").references(() => {
+    return games.id;
+  }, {
+    onDelete: "cascade",
   }),
   status: TransactionStatus.default("pending"),
   customTransactionId: varchar("custom_transaction_id", {
@@ -55,7 +55,7 @@ export const transactions = mysqlTable("transactions", {
   paymentGatewayProviderAccountId: int("provider_account_id").references(
     () => paymentGatewayProviderAccount.id,
     {
-      onDelete: "set null",
+      onDelete: "cascade",
     }
   ),
   // Bank-specific fields

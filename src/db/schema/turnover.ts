@@ -23,7 +23,7 @@ export const turnover = mysqlTable("turnover", {
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   transactionId: int("transaction_id").references(() => transactions.id, {
-    onDelete: "set null",
+    onDelete: "cascade",
   }),
   type: TurnoverType.default("default"),
   status: TurnoverStatus.default("active"),

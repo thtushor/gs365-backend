@@ -13,6 +13,7 @@ import {
 } from "./seed-fn/paymentMethods";
 import { seedGameProviderAndGame } from "./seed-fn/gameProviderSeed";
 import { seedBetResults } from "./seed-fn/betResults";
+import { seedTransactions } from "./seed-fn/transactions";
 
 async function seed() {
   try {
@@ -37,6 +38,9 @@ async function seed() {
     
     // Seed bet results (after games and users are seeded)
     await seedBetResults();
+
+    // Seed transactions
+    await seedTransactions();
   } catch (error) {
     console.error("❌ Failed to insert seed data:", error);
   } finally {
