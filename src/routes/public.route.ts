@@ -11,6 +11,7 @@ import {
   getActiveVideoAdvertisement,
   getAllActiveProviderList,
   getAllExclusiveGamesSportsList,
+  getAllPublicEvents,
   getGameList,
   getProviderAndCategory,
   getProvidersByCategory,
@@ -42,6 +43,7 @@ router.get("/category-wise-games", asyncHandler(getGameList));
 router.get("/category-wise-sports", asyncHandler(getSportList));
 router.get("/category-provider", asyncHandler(getSportsAndGames));
 router.get("/providers", asyncHandler(getAllActiveProviderList));
+router.get("/public-events", asyncHandler(getAllPublicEvents));
 router.get(
   "/exclusive-games-sports",
   asyncHandler(getAllExclusiveGamesSportsList)

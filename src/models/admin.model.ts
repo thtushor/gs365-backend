@@ -897,12 +897,35 @@ export async function updateSport(id: number, data: any) {
 
   await db.update(sports).set(data).where(eq(sports.id, id));
 }
-export async function getPaginatedSportList(page: number, pageSize: number) {
+export async function getPaginatedSportList(
+  page: number,
+  pageSize: number,
+  searchKeyword?: string,
+  status?: "active" | "inactive",
+  publicList?: boolean
+) {
   const offset = (page - 1) * pageSize;
 
-  const rows = await db
+  const whereClauses: any[] = [];
+  if (searchKeyword) {
+    const kw = `%${searchKeyword}%`;
+    whereClauses.push(or(like(sports.name, kw)));
+  }
+  if (status) {
+    whereClauses.push(eq(sports.status, status));
+  }
+
+  const filteredWhereClauses = whereClauses.filter(
+    (clause): clause is Exclude<typeof clause, boolean | undefined> =>
+      Boolean(clause)
+  );
+  const where = filteredWhereClauses.length
+    ? and(...filteredWhereClauses)
+    : undefined;
+
+  // Base query
+  const query = db
     .select({
-      // Flatten sports fields
       id: sports.id,
       name: sports.name,
       parentId: sports.parentId,
@@ -919,24 +942,32 @@ export async function getPaginatedSportList(page: number, pageSize: number) {
       providerId: sports.providerId,
       createdBy: sports.createdBy,
       createdAt: sports.createdAt,
-
-      // Join info
       categoryInfo: dropdownOptions,
       providerInfo: sports_providers,
     })
     .from(sports)
     .leftJoin(dropdownOptions, eq(sports.categoryId, dropdownOptions.id))
     .leftJoin(sports_providers, eq(sports.providerId, sports_providers.id))
-    .limit(pageSize)
-    .offset(offset);
+    .where(where);
 
-  const countResult = await db
-    .select({ count: sql`COUNT(*)`.as("count") })
-    .from(sports);
+  // Execute query with or without pagination
+  const rows = publicList
+    ? await query
+    : await query.limit(pageSize).offset(offset);
 
-  const total = Number(countResult[0].count);
+  // Count total rows (skip if publicList is true)
+  const total = publicList
+    ? rows.length
+    : Number(
+        (
+          await db
+            .select({ count: sql`COUNT(*)`.as("count") })
+            .from(sports)
+            .where(where)
+        )[0].count
+      );
 
-  // Flatten each row into a single object
+  // Flatten rows
   const data = rows.map((row) => ({
     ...row,
     categoryInfo: row.categoryInfo || null,
@@ -945,12 +976,14 @@ export async function getPaginatedSportList(page: number, pageSize: number) {
 
   return {
     data,
-    pagination: {
-      page,
-      pageSize,
-      total,
-      totalPages: Math.ceil(total / pageSize),
-    },
+    pagination: publicList
+      ? undefined
+      : {
+          page,
+          pageSize,
+          total,
+          totalPages: Math.ceil(total / pageSize),
+        },
   };
 }
 
