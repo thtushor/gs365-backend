@@ -4,6 +4,9 @@ import { transactions } from "../db/schema/transactions";
 import { promotions } from "../db/schema/promotions";
 import { settings } from "../db/schema/settings";
 import { turnover } from "../db/schema/turnover";
+import { users } from "../db/schema/users";
+import { games } from "../db/schema/games";
+import { currencies } from "../db/schema/currency";
 import { eq, and, like, asc, desc, sql, inArray } from "drizzle-orm";
 import { generateUniqueTransactionId } from "../utils/refCode";
 
@@ -189,8 +192,59 @@ export const getTransactions = async (req: Request, res: Response) => {
       .then((rows) => Number((rows as any)[0]?.count || 0));
 
     const data = await db
-      .select()
+      .select({
+        // Transaction fields
+        id: transactions.id,
+        userId: transactions.userId,
+        type: transactions.type,
+        amount: transactions.amount,
+        currencyId: transactions.currencyId,
+        promotionId: transactions.promotionId,
+        gameId: transactions.gameId,
+        status: transactions.status,
+        customTransactionId: transactions.customTransactionId,
+        givenTransactionId: transactions.givenTransactionId,
+        attachment: transactions.attachment,
+        notes: transactions.notes,
+        paymentGatewayProviderAccountId: transactions.paymentGatewayProviderAccountId,
+        accountNumber: transactions.accountNumber,
+        accountHolderName: transactions.accountHolderName,
+        bankName: transactions.bankName,
+        branchName: transactions.branchName,
+        branchAddress: transactions.branchAddress,
+        swiftCode: transactions.swiftCode,
+        iban: transactions.iban,
+        walletAddress: transactions.walletAddress,
+        network: transactions.network,
+        processedBy: transactions.processedBy,
+        processedAt: transactions.processedAt,
+        createdAt: transactions.createdAt,
+        updatedAt: transactions.updatedAt,
+        
+        // User fields
+        userUsername: users.username,
+        userFullname: users.fullname,
+        userPhone: users.phone,
+        userEmail: users.email,
+        userStatus: users.status,
+        userIsVerified: users.isVerified,
+        userCreatedAt: users.created_at,
+        
+        // Game fields
+        gameName: games.name,
+        gameStatus: games.status,
+        gameLogo: games.gameLogo,
+        gameUrl: games.gameUrl,
+        
+        // Currency fields
+        currencyCode: currencies.code,
+        currencyName: currencies.name,
+        currencySymbol: currencies.symbol,
+      })
       .from(transactions)
+      .leftJoin(users, eq(transactions.userId, users.id))
+      .leftJoin(games, eq(transactions.gameId, games.id))
+      .leftJoin(currencies, eq(transactions.currencyId, currencies.id))
       .where(whereExpr as any)
       .orderBy(orderExpr)
       .limit(perPage)

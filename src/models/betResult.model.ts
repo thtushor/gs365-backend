@@ -253,6 +253,7 @@ export const BetResultModel = {
       let query = db
         .select({
           id: betResults.id,
+          user: users,
           userId: betResults.userId,
           gameId: betResults.gameId,
           betAmount: betResults.betAmount,
@@ -294,6 +295,7 @@ export const BetResultModel = {
           providerCountry: game_providers.country,
         })
         .from(betResults)
+        .leftJoin(users, eq(betResults.userId, users.id))
         .leftJoin(games, eq(betResults.gameId, games.id))
         .leftJoin(game_providers, eq(games.providerId, game_providers.id)) // ✅ changed here
         .where(and(...whereConditions))
@@ -322,6 +324,7 @@ export const BetResultModel = {
 
         return {
           id: row.id,
+          user: row.user,
           userId: row.userId,
           gameId: row.gameId,
           betAmount: row.betAmount || "",

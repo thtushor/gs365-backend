@@ -335,7 +335,7 @@ export const updateUser = async (req: Request, res: Response) => {
   } catch (error) {
     return res
       .status(500)
-      .json({ status: false, message: "Failed to update user" });
+      .json({ status: false, message: "Failed to update user",error });
   }
 };
 
