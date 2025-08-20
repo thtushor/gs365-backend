@@ -53,6 +53,8 @@ import {
   addOrUpdateSportsProvider,
   addOrUpdateSport,
   getSportList,
+  createUpdateEvent,
+  getAllEvents,
 } from "../controllers/admin.controller";
 
 const router = Router();
@@ -130,7 +132,8 @@ router.post(
   verifyToken,
   asyncHandler(deleteAnnouncement)
 );
-
+router.post("/event", verifyToken, asyncHandler(createUpdateEvent));
+router.get("/events", verifyToken, asyncHandler(getAllEvents));
 router.post(
   "/website-popup",
   verifyToken,

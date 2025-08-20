@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   datetime,
   int,
@@ -8,6 +8,7 @@ import {
   text,
   varchar,
 } from "drizzle-orm/mysql-core";
+import { sports } from "./sports";
 
 export const banners = mysqlTable("hero_banners", {
   id: int("id").primaryKey().autoincrement(),
@@ -79,3 +80,18 @@ export const responsibleGaming = mysqlTable("responsible_gaming", {
   status: mysqlEnum("status", ["active", "inactive"]).default("inactive"),
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
+export const events = mysqlTable("events", {
+  id: int("id").primaryKey().autoincrement(),
+  status: mysqlEnum("status", ["active", "inactive"]).default("inactive"),
+  images: text("banner_images").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  sportId: int("sport_id").notNull(),
+  createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const eventsRelation = relations(events, ({ one }) => ({
+  sport: one(sports, {
+    fields: [events.sportId],
+    references: [sports.id],
+  }),
+}));

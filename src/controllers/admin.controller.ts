@@ -49,10 +49,12 @@ import {
   banners,
   dropdownOptions,
   dropdowns,
+  events,
   game_providers,
   gamingLicenses,
   responsibleGaming,
   sponsors,
+  sports,
   sports_providers,
   users,
   video_advertisement,
@@ -443,30 +445,30 @@ export const getUserProfile = async (
 ): Promise<void> => {
   try {
     const { id } = req.params;
-    
+
     if (!id) {
-      res.status(400).json({ 
-        status: false, 
-        message: "User ID is required" 
+      res.status(400).json({
+        status: false,
+        message: "User ID is required",
       });
       return;
     }
 
     const userId = Number(id);
     if (isNaN(userId)) {
-      res.status(400).json({ 
-        status: false, 
-        message: "Invalid user ID" 
+      res.status(400).json({
+        status: false,
+        message: "Invalid user ID",
       });
       return;
     }
 
     const userProfile = await getUserProfileById(userId);
-    
+
     if (!userProfile) {
-      res.status(404).json({ 
-        status: false, 
-        message: "User not found" 
+      res.status(404).json({
+        status: false,
+        message: "User not found",
       });
       return;
     }
@@ -478,10 +480,10 @@ export const getUserProfile = async (
     });
   } catch (error) {
     console.error("Error fetching user profile:", error);
-    res.status(500).json({ 
-      status: false, 
+    res.status(500).json({
+      status: false,
       message: "Failed to fetch user profile",
-      error: error instanceof Error ? error.message : "Unknown error"
+      error: error instanceof Error ? error.message : "Unknown error",
     });
   }
 };
@@ -1201,7 +1203,6 @@ export const getPromotionsList = async (req: Request, res: Response) => {
 };
 // cms
 export const createUpdateBanners = async (req: Request, res: Response) => {
-  console.log("hi");
   try {
     const { id, images, dateRange, status, title } = req.body;
     // Generate title if missing or not a string
@@ -1271,6 +1272,95 @@ export const getAllBanners = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("getAllBanners error:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Server error.",
+    });
+  }
+};
+export const createUpdateEvent = async (req: Request, res: Response) => {
+  try {
+    const { id, image, status, title, sportId } = req.body;
+
+    if (!sportId) {
+      return res.status(400).json({
+        status: false,
+        message: "Sport ID is required.",
+      });
+    }
+
+    // Generate title if missing or not a string
+    const finalTitle =
+      typeof title === "string" && title.trim().length > 0
+        ? title.trim()
+        : `Event - ${Math.floor(1000 + Math.random() * 9000)}`;
+
+    // Basic validation for single image object
+    if (!image || typeof image !== "object") {
+      return res.status(400).json({
+        status: false,
+        message: "Image object is required.",
+      });
+    }
+
+    const validatedStatus = status === "active" ? "active" : "inactive";
+
+    const payload = {
+      images: JSON.stringify(image), // store as array of one for consistency
+      status: validatedStatus as "active" | "inactive",
+      title: finalTitle,
+      sportId: sportId,
+    };
+
+    if (id) {
+      await db.update(events).set(payload).where(eq(events.id, id));
+      return res
+        .status(200)
+        .json({ status: true, message: "Event updated successfully." });
+    } else {
+      await db.insert(events).values(payload);
+      return res
+        .status(201)
+        .json({ status: true, message: "Event created successfully." });
+    }
+  } catch (error) {
+    console.error("createOrUpdateEvent error:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Server error.",
+    });
+  }
+};
+
+export const getAllEvents = async (req: Request, res: Response) => {
+  try {
+    const result = await db
+      .select({
+        id: events.id,
+        title: events.title,
+        sportId: events.sportId,
+        images: events.images,
+        createdAt: events.createdAt,
+        sportName: sports.name,
+        status: events.status,
+      })
+      .from(events)
+      .leftJoin(sports, eq(events.sportId, sports.id))
+      .orderBy(desc(events.createdAt));
+
+    // Safely parse images
+    const parsed = result.map((event) => ({
+      ...event,
+      images: event.images ? JSON.parse(event.images) : [],
+    }));
+
+    return res.status(200).json({
+      status: true,
+      data: parsed,
+      message: "Events data fetched successfully.",
+    });
+  } catch (error) {
+    console.error("getAllEvents error:", error);
     return res.status(500).json({
       status: false,
       message: "Server error.",
@@ -2649,7 +2739,7 @@ export const addOrUpdateSport = async (req: Request, res: Response) => {
 };
 export const getSportList = async (req: Request, res: Response) => {
   try {
-    const { id, page = 1, pageSize = 10 } = req.query;
+    const { id, page = 1, pageSize = 10, status, name, publicList } = req.query;
 
     const sportId = id ? Number(id) : undefined;
     if (sportId) {
@@ -2668,7 +2758,22 @@ export const getSportList = async (req: Request, res: Response) => {
       });
     }
 
-    const result = await getPaginatedSportList(Number(page), Number(pageSize));
+    const validSearchKeyword = (name as string) || "";
+    const validStatus =
+      status === "active"
+        ? "active"
+        : status === "inactive"
+        ? "inactive"
+        : undefined;
+
+    const validPublicList = publicList === "true" ? true : false;
+    const result = await getPaginatedSportList(
+      Number(page),
+      Number(pageSize),
+      validSearchKeyword,
+      validStatus,
+      validPublicList
+    );
 
     return res.status(200).json({
       status: true,

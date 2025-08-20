@@ -24,9 +24,12 @@ import {
   announcements,
   banners,
   dropdownOptions,
+  events,
   gamingLicenses,
   responsibleGaming,
   sponsors,
+  sports,
+  sports_providers,
   video_advertisement,
   website_popups,
 } from "../db/schema";
@@ -699,6 +702,46 @@ export const getAllExclusiveGamesSportsList = async (
     return res.status(500).json({
       status: false,
       message: "Server error",
+    });
+  }
+};
+export const getAllPublicEvents = async (req: Request, res: Response) => {
+  try {
+    const result = await db
+      .select({
+        id: events.id,
+        title: events.title,
+        sportId: events.sportId,
+        images: events.images,
+        createdAt: events.createdAt,
+        status: events.status,
+        sport: sports,
+        categoryInfo: dropdownOptions,
+        providerInfo: sports_providers,
+      })
+      .from(events)
+      .leftJoin(sports, eq(events.sportId, sports.id))
+      .leftJoin(dropdownOptions, eq(sports.categoryId, dropdownOptions.id))
+      .leftJoin(sports_providers, eq(sports.providerId, sports_providers.id))
+      .where(eq(events.status, "active"))
+      .orderBy(desc(events.createdAt));
+
+    // Safely parse images
+    const parsed = result.map((event) => ({
+      ...event,
+      images: event.images ? JSON.parse(event.images) : [],
+    }));
+
+    return res.status(200).json({
+      status: true,
+      data: parsed,
+      message: "Active events with full sports data fetched successfully.",
+    });
+  } catch (error) {
+    console.error("getAllPublicEvents error:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Server error.",
     });
   }
 };

@@ -28,7 +28,7 @@ export const GameController = {
   getAllGames: asyncHandler(async (req: Request, res: Response) => {
     try {
       const games = await GameModel.getAllGamesWithProvider();
-      
+
       res.status(200).json({
         success: true,
         message: "Games retrieved successfully",
@@ -69,14 +69,15 @@ export const GameController = {
       const parser = new UAParser.UAParser(userAgent);
       const uaResult = parser.getResult();
       const device_type = uaResult.device.type || "Desktop";
-      const device_name = uaResult.device.model || uaResult.os.name || "Unknown";
+      const device_name =
+        uaResult.device.model || uaResult.os.name || "Unknown";
       const os_version = uaResult.os.name
         ? `${uaResult.os.name} ${uaResult.os.version || ""}`.trim()
         : "Unknown";
       const browser = uaResult.browser.name || "Unknown";
       const browser_version = uaResult.browser.version || "Unknown";
       const ip_address = GameController.getClientIp(req);
-      
+
       // Combine device info into a single string (similar to user controller)
       const deviceInfo = `${browser} ${browser_version} on ${os_version}`;
 
@@ -145,7 +146,7 @@ export const GameController = {
           userName: tokenData.userName,
           betAmount: tokenData.betAmount,
           sessionId: tokenData.sessionId,
-          currentBalance: tokenData.currentBalance
+          currentBalance: tokenData.currentBalance,
         },
       });
     } catch (error: any) {
@@ -160,7 +161,14 @@ export const GameController = {
   // Update betting result (win/loss)
   updateBetResult: asyncHandler(async (req: Request, res: Response) => {
     try {
-      const { sessionToken, betStatus, winAmount, lossAmount, gameSessionId, multiplier } = req.body;
+      const {
+        sessionToken,
+        betStatus,
+        winAmount,
+        lossAmount,
+        gameSessionId,
+        multiplier,
+      } = req.body;
 
       // Get device info for audit trail
       const userAgent = req.headers["user-agent"] || "";
@@ -187,18 +195,20 @@ export const GameController = {
       if (betStatus === "win" && (!winAmount || winAmount <= 0)) {
         return res.status(400).json({
           success: false,
-          message: "winAmount is required and must be greater than 0 for win status",
+          message:
+            "winAmount is required and must be greater than 0 for win status",
         });
       }
 
       if (betStatus === "loss" && (!lossAmount || lossAmount <= 0)) {
         return res.status(400).json({
           success: false,
-          message: "lossAmount is required and must be greater than 0 for loss status",
+          message:
+            "lossAmount is required and must be greater than 0 for loss status",
         });
       }
 
-       await GameModel.updateBetResult({
+      await GameModel.updateBetResult({
         sessionToken,
         betStatus,
         winAmount: winAmount ? Number(winAmount) : undefined,
@@ -303,10 +313,13 @@ export const GameController = {
       }
 
       const games = await GameModel.getAllGamesWithProvider();
-      const filteredGames = games.filter(game => {
-        const gameCategory = game.categoryInfo?.name || game.categoryInfo?.label || "";
-        return gameCategory.toLowerCase().includes(category.toLowerCase()) &&
-               game.status === status;
+      const filteredGames = games.filter((game) => {
+        const gameCategory =
+          game.categoryInfo?.name || game.categoryInfo?.label || "";
+        return (
+          gameCategory.toLowerCase().includes(category.toLowerCase()) &&
+          game.status === status
+        );
       });
 
       res.status(200).json({
@@ -328,7 +341,7 @@ export const GameController = {
   getFavoriteGames: asyncHandler(async (req: Request, res: Response) => {
     try {
       const games = await GameModel.getAllGamesWithProvider();
-      const favoriteGames = games.filter(game => game.isFavorite);
+      const favoriteGames = games.filter((game) => game.isFavorite);
 
       res.status(200).json({
         success: true,
