@@ -706,17 +706,17 @@ export const BetResultModel = {
       });
 
       // Add additional stats if requested
-      if (filters.includeStats) {
-        for (const ranking of rankings) {
-          const stats = await this.getPlayerStats(
-            ranking.userId,
-            filters.dateFrom,
-            filters.dateTo,
-            filters.gameId
-          );
-          ranking.stats = stats;
-        }
-      }
+      // if (filters.includeStats) {
+      //   for (const ranking of rankings) {
+      //     const stats = await this.getPlayerStats(
+      //       ranking.userId,
+      //       filters.dateFrom,
+      //       filters.dateTo,
+      //       filters.gameId
+      //     );
+      //     ranking.stats = stats;
+      //   }
+      // }
 
       return {
         data: rankings,
