@@ -34,7 +34,7 @@ export const seedGameProviderAndGame = async () => {
           parentName: null,
           telegram: "@sohidul",
           country: "Bangladesh",
-          logo: "https://example.com/logo.png",
+          logo: "https://glorypos.com/image-upload/gs-image/2025-08-21T19-18-54-342Z-aeb4dfa4-dd7a-40c1-8824-b023e7cd3157.png",
         },
       ])
       .onDuplicateKeyUpdate({
@@ -55,12 +55,13 @@ export const seedGameProviderAndGame = async () => {
           isFavorite: true,
           apiKey: generateRandomKey("GAME-API"),
           licenseKey: generateRandomKey("GAME-LICENSE"),
-          gameLogo: "http://glorypos.com/image-upload/gs-image/7d95ffa9-b44e-460b-95ce-ad70a3ab4e9c-a2aabecb-c56e-4bde-8383-f30f247b9c40.png",
+          categoryId: 1,
+          gameLogo: "https://glorypos.com/image-upload/gs-image/2025-08-21T19-18-54-342Z-aeb4dfa4-dd7a-40c1-8824-b023e7cd3157.png",
           secretPin: Math.floor(100000 + Math.random() * 900000).toString(), // random 6-digit pin
           gameUrl: "https://example.com/crash-game",
           ggrPercent: (5 + Math.floor(Math.random() * 15)).toString(), // random 5–20%
-          categoryInfo: JSON.stringify({ category: "Arcade", mode: "Multiplayer" }),
-          providerInfo: JSON.stringify({ id: provider[0].insertId, name: "Sohidul Islam" }),
+          // categoryInfo: JSON.stringify({ category: "Arcade", mode: "Multiplayer" }),
+          // providerInfo: JSON.stringify({ id: provider[0].insertId, name: "Sohidul Islam" }),
           createdBy: "system",
         },
       ])
