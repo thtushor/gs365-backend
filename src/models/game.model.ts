@@ -405,6 +405,7 @@ export const GameModel = {
                 .update(turnover)
                 .set({
                   remainingTurnover: Number(item?.remainingTurnover).toString(),
+                  status:"completed",
                 })
                 .where(eq(turnover.id, item?.id));
               turnOverReduction =
