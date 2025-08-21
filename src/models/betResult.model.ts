@@ -309,7 +309,7 @@ export const BetResultModel = {
       const results = await query;
 
       // Transform results to include parsed provider info and structured data
-      const transformedResults: BetResultWithDetails[] = results.map((row) => {
+      const transformedResults: BetResultWithDetails[] = await Promise.all(results.map(async (row) => {
         // Parse provider info from JSON if available
         let parsedProviderInfo = null;
         if (row.gameProvider) {
@@ -323,9 +323,12 @@ export const BetResultModel = {
           }
         }
 
+        const userBalance = await BalanceModel.calculatePlayerBalance(row.userId)
+
         return {
           id: row.id,
           user: row.user,
+          userBalance,
           userId: row.userId,
           gameId: row.gameId,
           betAmount: row.betAmount || "",
@@ -370,7 +373,7 @@ export const BetResultModel = {
               }
             : undefined,
         };
-      });
+      }));
 
       return {
         data: transformedResults,
