@@ -9,6 +9,7 @@ import { games } from "../db/schema/games";
 import { currencies } from "../db/schema/currency";
 import { eq, and, like, asc, desc, sql, inArray } from "drizzle-orm";
 import { generateUniqueTransactionId } from "../utils/refCode";
+import { paymentGateway, paymentGatewayProvider, paymentGatewayProviderAccount } from "../db/schema";
 
 type CreateDepositBody = {
   userId: number;
@@ -68,6 +69,13 @@ export const createDeposit = async (req: Request, res: Response) => {
         (settingsRow as any)?.defaultTurnover ?? 1
       );
 
+      const [gateWayBonus] = paymentGatewayProviderAccountId  ? await tx.select({
+        bonus: paymentGateway.bonus
+      }).from(paymentGatewayProviderAccount)
+      .leftJoin(paymentGatewayProvider,eq(paymentGatewayProvider.id,paymentGatewayProviderAccount.paymentGatewayProviderId))
+      .leftJoin(paymentGateway,eq(paymentGateway.id,paymentGatewayProvider.gatewayId))
+      .where(eq(paymentGatewayProviderAccount.id,paymentGatewayProviderAccountId)).limit(1):[]
+
       // Create transaction
       const [createdTxn] = await tx.insert(transactions).values({
         userId: Number(userId),
@@ -96,7 +104,8 @@ export const createDeposit = async (req: Request, res: Response) => {
         transactionId: transactionId,
         type: "default",
         status: "active",
-        turnoverName: `Default turnover for TXN ${customTransactionId}`,
+        depositAmount: baseAmount,
+        turnoverName: `Deposited for TXN ${customTransactionId}`,
         targetTurnover: defaultTarget as any,
         remainingTurnover: defaultTarget as any,
       } as any);
@@ -112,7 +121,25 @@ export const createDeposit = async (req: Request, res: Response) => {
           transactionId: transactionId,
           type: "promotion",
           status: "active",
+          depositAmount: promoBase,
           turnoverName: `Promotion: ${promo.promotionName}`,
+          targetTurnover: promoTarget as any,
+          remainingTurnover: promoTarget as any,
+        } as any);
+      }
+
+      if(Number(gateWayBonus?.bonus||0)>0){
+        const bonusPercentage = Number(gateWayBonus?.bonus || 0);
+        const bonusAmount = (baseAmount * bonusPercentage) / 100;
+        const promoBase = bonusAmount;
+        const promoTarget = promoBase * Number(defaultTurnoverMultiply);
+        await tx.insert(turnover).values({
+          userId: Number(userId),
+          transactionId: transactionId,
+          type: "promotion",
+          status: "active",
+          depositAmount: promoBase,
+          turnoverName: `Gateway bonus: ${gateWayBonus.bonus}%`,
           targetTurnover: promoTarget as any,
           remainingTurnover: promoTarget as any,
         } as any);

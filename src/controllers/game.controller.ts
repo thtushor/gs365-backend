@@ -166,6 +166,7 @@ export const GameController = {
         betStatus,
         winAmount,
         lossAmount,
+        betAmount,
         gameSessionId,
         multiplier,
       } = req.body;
@@ -178,10 +179,10 @@ export const GameController = {
       const ip_address = GameController.getClientIp(req);
 
       // Validate required fields
-      if (!sessionToken || !betStatus || !gameSessionId) {
+      if (!sessionToken || !betStatus || !gameSessionId || !betAmount) {
         return res.status(400).json({
           success: false,
-          message: "sessionToken, betStatus, and gameSessionId are required",
+          message: "sessionToken, betStatus, betAmount and gameSessionId are required",
         });
       }
 
@@ -217,6 +218,7 @@ export const GameController = {
         multiplier: multiplier ? Number(multiplier) : undefined,
         deviceType: device_type,
         ipAddress: ip_address,
+        betAmount: betAmount
       });
 
       res.status(200).json({
@@ -224,6 +226,7 @@ export const GameController = {
         message: `Bet result updated successfully: ${betStatus}`,
         data: {
           betStatus,
+          betAmount,
           winAmount: winAmount || 0,
           lossAmount: lossAmount || 0,
           multiplier: multiplier || 1,

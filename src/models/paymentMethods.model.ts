@@ -36,7 +36,7 @@ export const PaymentMethodModel = {
       .from(paymentMethods)
       .where(
         and(
-          eq(sql`lower(${paymentMethods.name})`, name?.toLowerCase()),
+          eq(paymentMethods.name, name),
           status ? eq(paymentMethods.status, status) : undefined
         )
       );

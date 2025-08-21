@@ -1,4 +1,4 @@
-import { eq, and, sql, isNotNull, gte } from "drizzle-orm";
+import { eq, and, sql, isNotNull, gte, gt } from "drizzle-orm";
 import { db } from "../db/connection";
 import { games } from "../db/schema/games";
 import { game_providers } from "../db/schema/gameProvider";
@@ -6,7 +6,7 @@ import { betResults } from "../db/schema/betResults";
 import { transactions } from "../db/schema/transactions";
 import { BalanceModel } from "./balance.model";
 import { generateJWT, verifyJwt } from "../utils/jwt";
-import { dropdownOptions } from "../db/schema";
+import { dropdownOptions, turnover } from "../db/schema";
 
 export interface GameWithProvider {
   id: number;
@@ -57,6 +57,7 @@ export interface BetResultUpdate {
   betStatus: "win" | "loss";
   winAmount?: number;
   lossAmount?: number;
+  betAmount:number;
   gameSessionId?: string;
   multiplier?: number;
   deviceType?: string;
@@ -167,11 +168,14 @@ export const GameModel = {
         request.gameId
       }_${Date.now()}`;
 
+      
+
       // Create bet result record
-      const [betResult]: any = await db.insert(betResults).values({
-        userId: request.userId,
+      const [betResult] = await db.insert(betResults).values({
+        userId: Number(request.userId),
         gameId: request.gameId,
         gameSessionId: sessionId,
+        betBalance: userBalance.currentBalance?.toString(),
         betAmount: request.betAmount.toString(),
         sessionToken: "", // Will be updated after token generation
         gameName: game.name,
@@ -276,6 +280,7 @@ export const GameModel = {
         betStatus: update.betStatus,
         playingStatus: "completed",
         gameCompletedAt: new Date(),
+        betAmount: update.betAmount.toString(),
         updatedAt: new Date(),
       };
 
@@ -297,6 +302,10 @@ export const GameModel = {
         .where(eq(betResults.gameSessionId, update.gameSessionId))
         .limit(1)
         .then((results) => results[0]);
+
+        
+        gameResult && await db.delete(betResults).where(and(eq(betResults.gameSessionId,update.gameSessionId), eq(betResults.betStatus,"pending")))
+
 
       if (!gameResult) {
         // If bet result doesn't exist, try to find it by session token
@@ -345,11 +354,64 @@ export const GameModel = {
       console.log("Game session ID:", update.gameSessionId);
 
       try {
+        const userBalance = await BalanceModel.calculatePlayerBalance(gameResult.userId);
         console.log("Executing update query...");
         const result = await db
-          .update(betResults)
-          .set(updateData)
-          .where(eq(betResults.gameSessionId, update.gameSessionId));
+          .insert(betResults)
+          .values({...updateData,
+            betBalance: userBalance?.currentBalance,
+            gameId: gameResult?.gameId,
+            gameCategory: gameResult.gameCategory,
+            gameProvider: gameResult.gameProvider,
+            gameSessionId: gameResult.gameSessionId,
+            sessionToken: gameResult.sessionToken,
+            userId: gameResult.userId
+          })
+
+        
+        let turnOverReduction = update.betAmount;
+        const updatedBalance = userBalance.currentBalance-Number(update.lossAmount||0)
+
+        if(updatedBalance<10){
+          await db.delete(turnover).where(eq(turnover.userId,gameResult.userId))
+          return false;
+        }
+
+
+        const getActiveTurnOver = await db
+  .select()
+  .from(turnover)
+  .where(
+    and(
+      eq(turnover.userId, gameResult.userId),
+      gt(sql`CAST(${turnover.remainingTurnover} AS DECIMAL)`, 0)
+    )
+  );
+
+        for (const item of getActiveTurnOver) {
+          if (turnOverReduction > 0) {
+            if (Number(item?.remainingTurnover) >= turnOverReduction) {
+              await db
+                .update(turnover)
+                .set({
+                  remainingTurnover: (
+                    Number(item?.remainingTurnover) - Number(turnOverReduction)
+                  ).toString(),
+                })
+                .where(eq(turnover.id, item?.id));
+              turnOverReduction = 0;
+            } else {
+              await db
+                .update(turnover)
+                .set({
+                  remainingTurnover: Number(item?.remainingTurnover).toString(),
+                })
+                .where(eq(turnover.id, item?.id));
+              turnOverReduction =
+                turnOverReduction - Number(item?.remainingTurnover);
+            }
+          }
+        }
 
         console.log("Update result:", result);
       } catch (updateError) {

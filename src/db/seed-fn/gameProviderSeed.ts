@@ -56,7 +56,8 @@ export const seedGameProviderAndGame = async () => {
           apiKey: generateRandomKey("GAME-API"),
           licenseKey: generateRandomKey("GAME-LICENSE"),
           categoryId: 1,
-          gameLogo: "https://glorypos.com/image-upload/gs-image/2025-08-21T19-18-54-342Z-aeb4dfa4-dd7a-40c1-8824-b023e7cd3157.png",
+          providerId: provider[0].insertId,
+          gameLogo: "https://glorypos.com/image-upload/gs-image/2025-08-21T19-28-45-548Z-0539c0d2-9e65-4b9e-84d6-145a36824dc8.png",
           secretPin: Math.floor(100000 + Math.random() * 900000).toString(), // random 6-digit pin
           gameUrl: "https://example.com/crash-game",
           ggrPercent: (5 + Math.floor(Math.random() * 15)).toString(), // random 5–20%

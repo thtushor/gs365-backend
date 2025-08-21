@@ -52,6 +52,7 @@ export const PaymentGatewayModel = {
         maxDeposit: paymentGateway.maxDeposit,
         minWithdraw: paymentGateway.minWithdraw,
         maxWithdraw: paymentGateway.maxWithdraw,
+        bonus: paymentGateway.bonus,
         paymentMethods: {
           id: paymentMethods.id,
           name: paymentMethods.name,

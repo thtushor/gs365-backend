@@ -28,6 +28,10 @@ export const turnover = mysqlTable("turnover", {
   type: TurnoverType.default("default"),
   status: TurnoverStatus.default("active"),
   turnoverName: varchar("turnover_name", { length: 300 }).notNull(),
+  depositAmount: decimal("deposit_amount",{
+    precision: 20,
+    scale: 2
+  }),
   targetTurnover: decimal("target_turnover", {
     precision: 20,
     scale: 2,

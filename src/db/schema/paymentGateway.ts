@@ -10,6 +10,7 @@ export const paymentGateway = mysqlTable("payment_gateway", {
   maxDeposit: double("max_deposit"),
   minWithdraw: double("min_withdraw"),
   maxWithdraw: double("max_withdraw"),
+  bonus: double("bonus"),
   status: ActivityStatus.default("active"),
   countryId: int("country_code"),
   network: varchar("network", { length: 100 }),
