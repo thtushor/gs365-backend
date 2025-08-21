@@ -4,6 +4,7 @@ import { betResults } from "../db/schema/betResults";
 import { games } from "../db/schema/games";
 import { game_providers } from "../db/schema/gameProvider";
 import { dropdownOptions, users } from "../db/schema";
+import { BalanceModel } from "./balance.model";
 
 export interface BetResultFilters {
   userId?: number;
@@ -688,11 +689,12 @@ export const BetResultModel = {
         const avgBetAmount = totalBets > 0 ? totalBetAmount / totalBets : 0;
 
         const [userData] = await db.select().from(users).where((eq(users.id,row.userId)))
-        
+        const userBalance = await BalanceModel.calculatePlayerBalance(row.userId,userData.currency_id!)
 
         return {
           userId: row.userId,
           user: {...userData, password: undefined},
+          userBalance,
           // game: row.game,
           // provider: row.provider,
           rank: filters.offset + index + 1,
