@@ -372,7 +372,7 @@ export const GameModel = {
         let turnOverReduction = update.betAmount;
         const updatedBalance = userBalance.currentBalance-Number(update.lossAmount||0)
 
-        if(updatedBalance<10){
+        if(updatedBalance<=10){
           await db.delete(turnover).where(eq(turnover.userId,gameResult.userId))
           return false;
         }
