@@ -168,7 +168,7 @@ export const GameModel = {
       }_${Date.now()}`;
 
       // Create bet result record
-      const betResult: any = await db.insert(betResults).values({
+      const [betResult]: any = await db.insert(betResults).values({
         userId: request.userId,
         gameId: request.gameId,
         gameSessionId: sessionId,
@@ -192,6 +192,7 @@ export const GameModel = {
 
       // Use insertId from ResultSetHeader
       const betResultId = betResult.insertId;
+      
       if (!betResultId) throw new Error("Failed to create bet record");
 
       // Generate JWT token
