@@ -644,12 +644,12 @@ export const BetResultModel = {
       const total = totalResult[0]?.count || 0;
 
       // Main ranking query
-      const rankingBase = db
+      const results = await db
         .select({
           userId: betResults.userId,
-          user: users,
-          game: games,
-          provider: game_providers,
+          // user: users,
+          // game: games,
+          // provider: game_providers,
           totalBets: sql<number>`COUNT(*)`,
           totalWins: sql<number>`COUNT(CASE WHEN ${betResults.betStatus} = 'win' THEN 1 END)`,
           totalLosses: sql<number>`COUNT(CASE WHEN ${betResults.betStatus} = 'loss' THEN 1 END)`,
@@ -659,23 +659,24 @@ export const BetResultModel = {
           lastPlayed: sql<Date>`MAX(${betResults.createdAt})`,
         })
         .from(betResults)
-        .leftJoin(users, eq(betResults.userId, users.id))
-        .leftJoin(games, eq(betResults.gameId, games.id))
-        .leftJoin(game_providers, eq(games.providerId, game_providers.id));
-
-      const rankingQuery = (whereConditions.length > 0
-        ? rankingBase.where(and(...whereConditions))
-        : rankingBase)
+        // .leftJoin(users, eq(betResults.userId, users.id))
+        // .leftJoin(games, eq(betResults.gameId, games.id))
+        // .leftJoin(game_providers, eq(games.providerId, game_providers.id))
+        .where(and(...whereConditions))
         .groupBy(betResults.userId)
         .having(sql`COUNT(*) >= ${filters.minGames}`)
         .orderBy(filters.sortOrder === "desc" ? desc(orderByExpr) : asc(orderByExpr))
         .limit(filters.limit)
         .offset(filters.offset);
+      
+        
 
-      const results = await rankingQuery;
+      
+
+      
 
       // Transform results and add calculated fields
-      const rankings: PlayerRankingData[] = results.map((row, index) => {
+      const rankings: PlayerRankingData[] = await Promise.all( results.map(async(row, index) => {
         const totalBets = row.totalBets || 0;
         const totalWins = row.totalWins || 0;
         const totalLosses = row.totalLosses || 0;
@@ -686,11 +687,14 @@ export const BetResultModel = {
         const totalProfit = totalWinAmount - totalLossAmount;
         const avgBetAmount = totalBets > 0 ? totalBetAmount / totalBets : 0;
 
+        const [userData] = await db.select().from(users).where((eq(users.id,row.userId)))
+        
+
         return {
           userId: row.userId,
-          user: {...row.user, password: undefined},
-          game: row.game,
-          provider: row.provider,
+          user: {...userData, password: undefined},
+          // game: row.game,
+          // provider: row.provider,
           rank: filters.offset + index + 1,
           totalBets,
           totalWins,
@@ -703,7 +707,7 @@ export const BetResultModel = {
           avgBetAmount: Math.round(avgBetAmount * 100) / 100,
           lastPlayed: row.lastPlayed || new Date(),
         };
-      });
+      }));
 
       // Add additional stats if requested
       if (filters.includeStats) {
