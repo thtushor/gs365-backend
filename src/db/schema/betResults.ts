@@ -15,7 +15,7 @@ export const betResults = mysqlTable("bet_results", {
   userId: int("user_id").notNull(),
   gameId: int("game_id").notNull(),
   betBalance: decimal("bet_balance", { precision: 20, scale: 2 }).default("0"),
-  betAmount: decimal("bet_amount", { precision: 20, scale: 2 }).notNull(),
+  betAmount: decimal("bet_amount", { precision: 20, scale: 2 }).default("0"),
   betStatus: mysqlEnum("bet_status", ["win", "loss", "pending", "cancelled"]).default("pending"),
   playingStatus: mysqlEnum("playing_status", ["playing", "completed", "abandoned"]).default("playing"),
   
