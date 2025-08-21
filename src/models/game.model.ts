@@ -397,6 +397,7 @@ export const GameModel = {
                   remainingTurnover: (
                     Number(item?.remainingTurnover) - Number(turnOverReduction)
                   ).toString(),
+                  status: (Number(item?.remainingTurnover) - Number(turnOverReduction))<=0  ? "completed":"active"
                 })
                 .where(eq(turnover.id, item?.id));
               turnOverReduction = 0;
