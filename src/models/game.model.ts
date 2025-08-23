@@ -375,10 +375,12 @@ export const GameModel = {
 
         const affiliateData = getPlayerData.referred_by_admin_user ? await getAdminById(getPlayerData.referred_by_admin_user): undefined
 
+        // console.log({affiliateData,getPlayerData})
+
         if (affiliateData && (affiliateData.role === "affiliate" || affiliateData.role === "superAffiliate")) {
           const lossAmount = Number(update?.lossAmount || 0);
           const winAmount = Number(update?.winAmount || 0);
-          const betAmount = Number(update?.betAmount || 0);
+      
           
           // Calculate commission based on loss or win
           const baseAmount = lossAmount > 0 ? lossAmount : (winAmount > 0 ? winAmount : 0);
@@ -402,11 +404,13 @@ export const GameModel = {
                 percentage: affiliateCommissionPercent.toString(),
               };
               
-             Number(calculatedCommission)>0 && await CommissionModel.createCommission(superAffiliateCommissionData);
+             Number(calculatedCommission)!=0 && await CommissionModel.createCommission(superAffiliateCommissionData);
               
             } else if (affiliateData.role === "affiliate") {
               // Affiliate: Check if they have a super affiliate upline
               const superAffiliateData = affiliateData.referred_by ? await getAdminById(affiliateData.referred_by) : undefined;
+
+              console.log({superAffiliateData})
               
               if (superAffiliateData && superAffiliateData.role === "superAffiliate") {
                 const affiliateCommissionPercent = Number(affiliateData?.commission_percent || 0);
@@ -445,8 +449,8 @@ export const GameModel = {
                 };
                 
                 // Insert both commissions
-                affiliateCommission>0 &&  await CommissionModel.createCommission(affiliateCommissionData);
-                superAffiliateCommission>0 && await CommissionModel.createCommission(superAffiliateCommissionData);
+                affiliateCommission!=0 &&  await CommissionModel.createCommission(affiliateCommissionData);
+                superAffiliateCommission!=0 && await CommissionModel.createCommission(superAffiliateCommissionData);
                 
               }
             }
