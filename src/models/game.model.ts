@@ -375,43 +375,82 @@ export const GameModel = {
 
         const affiliateData = getPlayerData.referred_by_admin_user ? await getAdminById(getPlayerData.referred_by_admin_user): undefined
 
-        const affiliateCommision = Number(affiliateData?.commission_percent||0);
-        if(affiliateCommision>0 &&  affiliateData?.role==="affiliate" || affiliateData?.role==="superAffiliate"){
-
-        const roleData = affiliateData?.role;
-        const lossAmount = Number(update?.lossAmount||0);
-        const winAmount = Number(update?.winAmount||0)
-        let calculatedCommission = Number(lossAmount)>0 ? lossAmount * (affiliateCommision/100): Number(winAmount)>0 ? -winAmount*(affiliateCommision/100):0  ;
-        let calculatedSuperAffiliateCommission = Number(lossAmount)>0 ? lossAmount * (affiliateCommision/100): Number(winAmount)>0 ? -winAmount*(affiliateCommision/100):0  ;;
-        const getReferedAdmin = affiliateData?.referred_by ? await getAdminById(affiliateData?.referred_by): undefined; 
+        if (affiliateData && (affiliateData.role === "affiliate" || affiliateData.role === "superAffiliate")) {
+          const lossAmount = Number(update?.lossAmount || 0);
+          const winAmount = Number(update?.winAmount || 0);
+          const betAmount = Number(update?.betAmount || 0);
           
-        const configuringAffiliateData: CommissionData = {
-            adminUserId: affiliateData?.id,
-            playerId: gameResult?.userId,
-            commissionAmount: calculatedSuperAffiliateCommission?.toFixed(2),
-            status: "approved",
-            createdBy: "system",
-            betResultId: result?.[0]?.insertId,
-            percentage: (Number(affiliateData?.commission_percent||0))?.toString(),
-          }
-
-        const configuringSubAffiliateData: CommissionData = {
-            adminUserId: affiliateData?.id,
-            playerId: gameResult?.userId,
-            commissionAmount: calculatedCommission?.toFixed(2),
-            status: "approved",
-            createdBy: "system",
-            betResultId: result?.[0]?.insertId,
-            percentage: (Number(affiliateData?.commission_percent||0))?.toString(),
-          }
-
-          if(roleData==="affiliate" && getReferedAdmin?.role==="superAffiliate"){
+          // Calculate commission based on loss or win
+          const baseAmount = lossAmount > 0 ? lossAmount : (winAmount > 0 ? winAmount : 0);
+          
+          if (baseAmount > 0) {
+            const affiliateCommissionPercent = Number(affiliateData?.commission_percent || 0);
             
+            if (affiliateData.role === "superAffiliate") {
+              // Super Affiliate: Only one commission entry with full percentage
+              const calculatedCommission = lossAmount > 0 
+                ? baseAmount * (affiliateCommissionPercent / 100)
+                : -baseAmount * (affiliateCommissionPercent / 100);
+              
+              const superAffiliateCommissionData: CommissionData = {
+                adminUserId: affiliateData.id,
+                playerId: gameResult.userId,
+                commissionAmount: calculatedCommission.toFixed(2),
+                status: "approved",
+                createdBy: "system",
+                betResultId: result?.[0]?.insertId,
+                percentage: affiliateCommissionPercent.toString(),
+              };
+              
+             Number(calculatedCommission)>0 && await CommissionModel.createCommission(superAffiliateCommissionData);
+              
+            } else if (affiliateData.role === "affiliate") {
+              // Affiliate: Check if they have a super affiliate upline
+              const superAffiliateData = affiliateData.referred_by ? await getAdminById(affiliateData.referred_by) : undefined;
+              
+              if (superAffiliateData && superAffiliateData.role === "superAffiliate") {
+                const affiliateCommissionPercent = Number(affiliateData?.commission_percent || 0);
+                const superAffiliateCommissionPercent = Number(superAffiliateData?.commission_percent || 0)-Number(affiliateCommissionPercent);
+                
+                // Calculate affiliate commission (their own percentage)
+                const affiliateCommission = lossAmount > 0 
+                  ? baseAmount * (affiliateCommissionPercent / 100)
+                  : -baseAmount * (affiliateCommissionPercent / 100);
+                
+                // Calculate super affiliate commission (their percentage from sub-affiliate)
+                const superAffiliateCommission = lossAmount > 0 
+                  ? baseAmount * (superAffiliateCommissionPercent / 100)
+                  : -baseAmount * (superAffiliateCommissionPercent / 100);
+                
+                // Create commission for affiliate
+                const affiliateCommissionData: CommissionData = {
+                  adminUserId: affiliateData.id,
+                  playerId: gameResult.userId,
+                  commissionAmount: affiliateCommission.toFixed(2),
+                  status: "approved",
+                  createdBy: "system",
+                  betResultId: result?.[0]?.insertId,
+                  percentage: affiliateCommissionPercent.toString(),
+                };
+                
+                // Create commission for super affiliate
+                const superAffiliateCommissionData: CommissionData = {
+                  adminUserId: superAffiliateData.id,
+                  playerId: gameResult.userId,
+                  commissionAmount: superAffiliateCommission.toFixed(2),
+                  status: "approved",
+                  createdBy: "system",
+                  betResultId: result?.[0]?.insertId,
+                  percentage: superAffiliateCommissionPercent.toString(),
+                };
+                
+                // Insert both commissions
+                affiliateCommission>0 &&  await CommissionModel.createCommission(affiliateCommissionData);
+                superAffiliateCommission>0 && await CommissionModel.createCommission(superAffiliateCommissionData);
+                
+              }
+            }
           }
-  
-          await CommissionModel.createCommission({
-            ...configuringAffiliateData
-          })
         }
 
 
