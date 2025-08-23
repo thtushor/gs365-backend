@@ -1,5 +1,6 @@
 import { relations, sql } from "drizzle-orm";
 import {
+  boolean,
   datetime,
   int,
   mysqlEnum,
@@ -23,6 +24,7 @@ export const dropdownOptions = mysqlTable("dropdown_options", {
   status: mysqlEnum("status", ["active", "inactive"]).default("inactive"),
   created_by: varchar("created_by", { length: 200 }).notNull(),
   created_at: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
+  isMenu: boolean("is_menu").default(false),
 });
 
 export const dropdownOptionsRelations = relations(

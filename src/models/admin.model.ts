@@ -233,6 +233,7 @@ export const getDropdownById = async (id: number) => {
           imgUrl: opt.imgUrl,
           created_at: opt.created_at,
           created_by: opt.created_by,
+          isMenu: opt.isMenu,
         }))
       : undefined,
   };
@@ -270,6 +271,7 @@ export const getPaginatedDropdowns = async (page: number, pageSize: number) => {
               imgUrl: opt.imgUrl,
               created_at: opt.created_at,
               created_by: opt.created_by,
+              isMenu: opt.isMenu,
             }))
           : [],
       };
