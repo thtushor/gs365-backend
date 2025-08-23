@@ -11,8 +11,10 @@ import {
   getActiveVideoAdvertisement,
   getAllActiveProviderList,
   getAllExclusiveGamesSportsList,
+  getAllGamesByCategoryID,
   getAllPublicEvents,
   getGameList,
+  getMenuProviders,
   getProviderAndCategory,
   getProvidersByCategory,
   getPublicActiveBannerImages,
@@ -43,6 +45,8 @@ router.get("/category-wise-games", asyncHandler(getGameList));
 router.get("/category-wise-sports", asyncHandler(getSportList));
 router.get("/category-provider", asyncHandler(getSportsAndGames));
 router.get("/providers", asyncHandler(getAllActiveProviderList));
+router.get("/menu-providers", asyncHandler(getMenuProviders));
+router.get("/category-games", asyncHandler(getAllGamesByCategoryID));
 router.get("/public-events", asyncHandler(getAllPublicEvents));
 router.get(
   "/exclusive-games-sports",

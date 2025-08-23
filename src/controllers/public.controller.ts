@@ -17,6 +17,8 @@ import {
   getAllActiveProviders,
   getAllGamesOrSportsByProviderId,
   getExclusiveGamesSports,
+  getAllMenuProviders,
+  getAllGamesOrSportsByCategoryID,
 } from "../models/public.model";
 import { db } from "../db/connection";
 import {
@@ -37,7 +39,7 @@ import { desc, eq } from "drizzle-orm";
 
 export const getPublicPromotionList = async (req: Request, res: Response) => {
   try {
-    const { id, page = 1, pageSize = 10 } = req.query;
+    const { id, page = 1, pageSize = 500 } = req.query;
 
     const promotionId = id ? Number(id) : undefined;
 
@@ -678,6 +680,47 @@ export const getAllActiveProviderList = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Error fetching game and sports provider list:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Server error",
+    });
+  }
+};
+
+export const getMenuProviders = async (req: Request, res: Response) => {
+  try {
+    const result = await getAllMenuProviders();
+    return res.status(200).json({
+      status: true,
+      message: "Menu providers fetched successfully.",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Error fetching menu providers:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Server error",
+    });
+  }
+};
+
+export const getAllGamesByCategoryID = async (req: Request, res: Response) => {
+  try {
+    const { categoryId } = req.query;
+    if (!categoryId) {
+      return res.status(400).json({
+        status: false,
+        message: "Invalid category ID.",
+      });
+    }
+    const result = await getAllGamesOrSportsByCategoryID(Number(categoryId));
+    return res.status(200).json({
+      status: true,
+      message: "Games & Sports fetched successfully.",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Error fetching games & sports:", error);
     return res.status(500).json({
       status: false,
       message: "Server error",

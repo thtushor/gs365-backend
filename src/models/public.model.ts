@@ -704,7 +704,63 @@ export const getAllGamesOrSports = async (
 
   return [...gamesList, ...sportsList];
 };
+export const getAllGamesOrSportsByCategoryID = async (categoryId: number) => {
+  // --- EXCLUSIVE GAMES ---
+  const gamesList = await db
+    .select({
+      id: games.id,
+      name: games.name,
+      parentId: games.parentId,
+      status: games.status,
+      isFavorite: games.isFavorite,
+      isExclusive: games.isExclusive,
+      apiKey: games.apiKey,
+      licenseKey: games.licenseKey,
+      logo: games.gameLogo,
+      secretPin: games.secretPin,
+      url: games.gameUrl,
+      ggrPercent: games.ggrPercent,
+      categoryId: games.categoryId,
+      providerId: games.providerId,
+      createdBy: games.createdBy,
+      createdAt: games.createdAt,
+      categoryInfo: dropdownOptions,
+      providerInfo: game_providers,
+    })
+    .from(games)
+    .leftJoin(dropdownOptions, eq(games.categoryId, dropdownOptions.id))
+    .leftJoin(game_providers, eq(games.providerId, game_providers.id))
+    .where(and(eq(games.categoryId, categoryId), eq(games.status, "active")));
 
+  // --- EXCLUSIVE SPORTS ---
+  const sportsList = await db
+    .select({
+      id: sports.id,
+      name: sports.name,
+      parentId: sports.parentId,
+      status: sports.status,
+      isFavorite: sports.isFavorite,
+      isExclusive: sports.isExclusive,
+      apiKey: sports.apiKey,
+      licenseKey: sports.licenseKey,
+      logo: sports.sportLogo,
+      secretPin: sports.secretPin,
+      url: sports.sportUrl,
+      ggrPercent: sports.ggrPercent,
+      categoryId: sports.categoryId,
+      providerId: sports.providerId,
+      createdBy: sports.createdBy,
+      createdAt: sports.createdAt,
+      categoryInfo: dropdownOptions,
+      providerInfo: sports_providers,
+    })
+    .from(sports)
+    .leftJoin(dropdownOptions, eq(sports.categoryId, dropdownOptions.id))
+    .leftJoin(sports_providers, eq(sports.providerId, sports_providers.id))
+    .where(and(eq(sports.categoryId, categoryId), eq(sports.status, "active")));
+
+  return [...gamesList, ...sportsList];
+};
 export const getAllGamesOrSportsByProviderId = async (
   providerId: number,
   type: "games" | "sports"
@@ -810,6 +866,41 @@ export const getAllActiveProviders = async () => {
   };
 };
 
+export const getAllMenuProviders = async () => {
+  // --- Game Providers with active games and isMenu = true ---
+  const game_providers_list = await db
+    .select()
+    .from(game_providers)
+    .where(
+      and(eq(game_providers.isMenu, true), eq(game_providers.status, "active"))
+    );
+
+  // --- Sports Providers with active sports and isMenu = true ---
+  const sports_providers_list = await db
+    .select()
+    .from(sports_providers)
+    .where(
+      and(
+        eq(sports_providers.isMenu, true),
+        eq(sports_providers.status, "active")
+      )
+    );
+  const category_menu_list = await db
+    .select()
+    .from(dropdownOptions)
+    .where(
+      and(
+        eq(dropdownOptions.isMenu, true),
+        eq(dropdownOptions.status, "active")
+      )
+    );
+
+  return {
+    game_providers: game_providers_list,
+    sports_providers: sports_providers_list,
+    category_menu: category_menu_list,
+  };
+};
 export const getExclusiveGamesSports = async () => {
   // --- EXCLUSIVE GAMES ---
   const exclusiveGames = await db

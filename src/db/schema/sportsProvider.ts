@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   datetime,
   decimal,
   int,
@@ -39,5 +40,7 @@ export const sports_providers = mysqlTable("sports_providers", {
   telegram: varchar("telegram", { length: 200 }),
   country: varchar("country", { length: 200 }).notNull(),
   logo: text("logo").notNull(),
+  isMenu: boolean("is_menu").default(false),
+  icon: text("icon"),
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
 });

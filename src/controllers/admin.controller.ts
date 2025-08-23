@@ -862,7 +862,7 @@ export const getDropdownsList = async (req: Request, res: Response) => {
 };
 export const addDropdownOption = async (req: Request, res: Response) => {
   try {
-    const { dropdownId, title, status, imgUrl } = req.body;
+    const { dropdownId, title, status, imgUrl, isMenu } = req.body;
     const userData = (req as unknown as { user: DecodedUser | null })?.user;
 
     if (!dropdownId || !title) {
@@ -908,6 +908,7 @@ export const addDropdownOption = async (req: Request, res: Response) => {
       status: status || "inactive",
       created_by: userData?.username ?? "N/A",
       imgUrl: imgUrl,
+      isMenu: isMenu === "Yes" ? true : false,
     });
 
     // Fetch all options under the dropdown
@@ -2226,6 +2227,8 @@ export const addOrUpdateGameProvider = async (req: Request, res: Response) => {
       telegram,
       country,
       logo,
+      isMenu,
+      icon,
     } = req.body;
 
     const payload = {
@@ -2243,6 +2246,8 @@ export const addOrUpdateGameProvider = async (req: Request, res: Response) => {
       logo,
       createdBy: userData?.username ?? "N/A",
       parentName: "",
+      isMenu: isMenu || false,
+      icon: icon || null,
     };
 
     // Add parentName if parentId is provided
@@ -2519,6 +2524,8 @@ export const addOrUpdateSportsProvider = async (
       telegram,
       country,
       logo,
+      isMenu,
+      icon,
     } = req.body;
 
     const payload = {
@@ -2536,6 +2543,8 @@ export const addOrUpdateSportsProvider = async (
       logo,
       createdBy: userData?.username ?? "N/A",
       parentName: "",
+      isMenu: isMenu || false,
+      icon: icon || null,
     };
 
     // Add parentName if parentId is provided
