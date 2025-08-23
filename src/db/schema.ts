@@ -21,3 +21,4 @@ export * from "./schema/transactions";
 export * from "./schema/turnover";
 export * from "./schema/settings";
 export * from "./schema/betResults";
+export * from "./schema/commission";

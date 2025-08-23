@@ -7,6 +7,9 @@ import { transactions } from "../db/schema/transactions";
 import { BalanceModel } from "./balance.model";
 import { generateJWT, verifyJwt } from "../utils/jwt";
 import { dropdownOptions, turnover } from "../db/schema";
+import { CommissionData, CommissionModel } from "./commission.model";
+import { getUserById } from "./user.model";
+import { getAdminById } from "./admin.model";
 
 export interface GameWithProvider {
   id: number;
@@ -57,7 +60,7 @@ export interface BetResultUpdate {
   betStatus: "win" | "loss";
   winAmount?: number;
   lossAmount?: number;
-  betAmount:number;
+  betAmount: number;
   gameSessionId?: string;
   multiplier?: number;
   deviceType?: string;
@@ -101,19 +104,19 @@ export const GameModel = {
         categoryInfo: row.categoryInfo || null,
         provider: row.providerInfo
           ? {
-              id: row.providerInfo.id,
-              name: row.providerInfo.name,
-              logo: row.providerInfo.logo,
-              status: row.providerInfo.status || "inactive",
-              country: row.providerInfo.country,
-            }
+            id: row.providerInfo.id,
+            name: row.providerInfo.name,
+            logo: row.providerInfo.logo,
+            status: row.providerInfo.status || "inactive",
+            country: row.providerInfo.country,
+          }
           : {
-              id: 0,
-              name: "Unknown Provider",
-              logo: "",
-              status: "inactive",
-              country: "Unknown",
-            },
+            id: 0,
+            name: "Unknown Provider",
+            logo: "",
+            status: "inactive",
+            country: "Unknown",
+          },
       }));
     } catch (error) {
       console.error("Error fetching games with provider info:", error);
@@ -164,11 +167,10 @@ export const GameModel = {
       }
 
       // Generate session ID
-      const sessionId = `game_${request.userId}_${
-        request.gameId
-      }_${Date.now()}`;
+      const sessionId = `game_${request.userId}_${request.gameId
+        }_${Date.now()}`;
 
-      
+
 
       // Create bet result record
       const [betResult] = await db.insert(betResults).values({
@@ -196,7 +198,7 @@ export const GameModel = {
 
       // Use insertId from ResultSetHeader
       const betResultId = betResult.insertId;
-      
+
       if (!betResultId) throw new Error("Failed to create bet record");
 
       // Generate JWT token
@@ -303,8 +305,8 @@ export const GameModel = {
         .limit(1)
         .then((results) => results[0]);
 
-        
-        gameResult && await db.delete(betResults).where(and(eq(betResults.gameSessionId,update.gameSessionId), eq(betResults.betStatus,"pending")))
+
+      gameResult && await db.delete(betResults).where(and(eq(betResults.gameSessionId, update.gameSessionId), eq(betResults.betStatus, "pending")))
 
 
       if (!gameResult) {
@@ -358,7 +360,8 @@ export const GameModel = {
         console.log("Executing update query...");
         const result = await db
           .insert(betResults)
-          .values({...updateData,
+          .values({
+            ...updateData,
             betBalance: userBalance?.currentBalance,
             gameId: gameResult?.gameId,
             gameCategory: gameResult.gameCategory,
@@ -368,25 +371,69 @@ export const GameModel = {
             userId: gameResult.userId
           })
 
-        
-        let turnOverReduction = update.betAmount;
-        const updatedBalance = userBalance.currentBalance-Number(update.lossAmount||0)
+        const getPlayerData = await getUserById(gameResult.userId)
 
-        if(updatedBalance<=10){
-          await db.delete(turnover).where(eq(turnover.userId,gameResult.userId))
+        const affiliateData = getPlayerData.referred_by_admin_user ? await getAdminById(getPlayerData.referred_by_admin_user): undefined
+
+        const affiliateCommision = Number(affiliateData?.commission_percent||0);
+        if(affiliateCommision>0 &&  affiliateData?.role==="affiliate" || affiliateData?.role==="superAffiliate"){
+
+        const roleData = affiliateData?.role;
+        const lossAmount = Number(update?.lossAmount||0);
+        const winAmount = Number(update?.winAmount||0)
+        let calculatedCommission = Number(lossAmount)>0 ? lossAmount * (affiliateCommision/100): Number(winAmount)>0 ? -winAmount*(affiliateCommision/100):0  ;
+        let calculatedSuperAffiliateCommission = Number(lossAmount)>0 ? lossAmount * (affiliateCommision/100): Number(winAmount)>0 ? -winAmount*(affiliateCommision/100):0  ;;
+        const getReferedAdmin = affiliateData?.referred_by ? await getAdminById(affiliateData?.referred_by): undefined; 
+          
+        const configuringAffiliateData: CommissionData = {
+            adminUserId: affiliateData?.id,
+            playerId: gameResult?.userId,
+            commissionAmount: calculatedSuperAffiliateCommission?.toFixed(2),
+            status: "approved",
+            createdBy: "system",
+            betResultId: result?.[0]?.insertId,
+            percentage: (Number(affiliateData?.commission_percent||0))?.toString(),
+          }
+
+        const configuringSubAffiliateData: CommissionData = {
+            adminUserId: affiliateData?.id,
+            playerId: gameResult?.userId,
+            commissionAmount: calculatedCommission?.toFixed(2),
+            status: "approved",
+            createdBy: "system",
+            betResultId: result?.[0]?.insertId,
+            percentage: (Number(affiliateData?.commission_percent||0))?.toString(),
+          }
+
+          if(roleData==="affiliate" && getReferedAdmin?.role==="superAffiliate"){
+            
+          }
+  
+          await CommissionModel.createCommission({
+            ...configuringAffiliateData
+          })
+        }
+
+
+
+        let turnOverReduction = update.betAmount;
+        const updatedBalance = userBalance.currentBalance - Number(update.lossAmount || 0)
+
+        if (updatedBalance <= 10) {
+          await db.delete(turnover).where(eq(turnover.userId, gameResult.userId))
           return false;
         }
 
 
         const getActiveTurnOver = await db
-  .select()
-  .from(turnover)
-  .where(
-    and(
-      eq(turnover.userId, gameResult.userId),
-      gt(sql`CAST(${turnover.remainingTurnover} AS DECIMAL)`, 0)
-    )
-  );
+          .select()
+          .from(turnover)
+          .where(
+            and(
+              eq(turnover.userId, gameResult.userId),
+              gt(sql`CAST(${turnover.remainingTurnover} AS DECIMAL)`, 0)
+            )
+          );
 
         for (const item of getActiveTurnOver) {
           if (turnOverReduction > 0) {
@@ -397,7 +444,7 @@ export const GameModel = {
                   remainingTurnover: (
                     Number(item?.remainingTurnover) - Number(turnOverReduction)
                   ).toString(),
-                  status: (Number(item?.remainingTurnover) - Number(turnOverReduction))<=0  ? "completed":"active"
+                  status: (Number(item?.remainingTurnover) - Number(turnOverReduction)) <= 0 ? "completed" : "active"
                 })
                 .where(eq(turnover.id, item?.id));
               turnOverReduction = 0;
@@ -406,7 +453,7 @@ export const GameModel = {
                 .update(turnover)
                 .set({
                   remainingTurnover: Number(item?.remainingTurnover).toString(),
-                  status:"completed",
+                  status: "completed",
                 })
                 .where(eq(turnover.id, item?.id));
               turnOverReduction =
