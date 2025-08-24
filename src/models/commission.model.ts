@@ -1,5 +1,5 @@
 import { db } from "../db/connection";
-import { commission } from "../db/schema";
+import { adminUsers, betResults, commission, users } from "../db/schema";
 import { eq, and, desc, asc, like, sql } from "drizzle-orm";
 import { asyncHandler } from "../utils/asyncHandler";
 
@@ -29,7 +29,7 @@ export class CommissionModel {
     const [newCommission] = await db.insert(commission).values(data);
     return newCommission;
   };
-  
+
 
   // Get commission by ID
   static getCommissionById = async (id: number) => {
@@ -41,34 +41,67 @@ export class CommissionModel {
   };
 
   // Get all commissions with pagination
-  static getAllCommissions = async (page: number = 1, limit: number = 10, search?: string) => {
-    const offset = (page - 1) * limit;
-    
-    let whereClause = undefined;
-    if (search) {
-      whereClause = like(commission.notes, `%${search}%`);
+  static getAllCommissions = async (filter: {
+    search?: String;
+    playerId?: Number;
+    adminUserId?: Number;
+    page: Number;
+    pageSize: Number;
+  }) => {
+    const offset = (Number(filter.page) - 1) * Number(filter.pageSize);
+
+    let whereClause = [];
+    if (filter?.search) {
+      whereClause.push(like(adminUsers?.username, `%${filter?.search}%`));
+    }
+
+    if (filter?.adminUserId) {
+      whereClause.push(eq(commission.adminUserId,Number(filter?.adminUserId)));
+    }
+
+
+    if (filter?.playerId) {
+      whereClause.push(eq(commission.playerId,Number(filter?.playerId)));
     }
 
     const results = await db
-      .select()
+      .select({
+        id: commission.id,
+        betResultId: commission?.betResultId,
+        playerId: commission?.playerId,
+        adminUserId: commission?.adminUserId,
+        commissionAmount: commission?.commissionAmount,
+        percentage: commission?.percentage,
+        status: commission?.status,
+        notes: commission?.notes,
+        createdBy: commission?.createdBy,
+        updatedBy: commission?.updatedBy,
+        createdAt: commission?.createdAt,
+        user: users,
+        adminUser: adminUsers,
+        betResults: betResults
+      })
       .from(commission)
-      .where(whereClause)
+      .leftJoin(users, eq(users.id, commission?.playerId))
+      .leftJoin(adminUsers, eq(adminUsers.id, commission?.adminUserId))
+      .leftJoin(betResults, eq(betResults?.id, commission?.betResultId))
+      .where(and(...whereClause))
       .orderBy(desc(commission.createdAt))
-      .limit(limit)
+      .limit(Number(filter?.pageSize))
       .offset(offset);
 
     const totalCount = await db
       .select({ count: sql<number>`count(*)` })
       .from(commission)
-      .where(whereClause);
+      .where(and(...whereClause));
 
     return {
       data: results,
       pagination: {
-        page,
-        limit,
+        page: filter?.page,
+        pageSize: filter?.pageSize,
         total: totalCount[0]?.count || 0,
-        totalPages: Math.ceil((totalCount[0]?.count || 0) / limit),
+        totalPages: Math.ceil((totalCount[0]?.count || 0) / Number(filter?.pageSize)),
       },
     };
   };
@@ -196,7 +229,7 @@ export class CommissionModel {
         rejectedCount: sql<number>`sum(case when status = 'rejected' then 1 else 0 end)`,
       })
       .from(commission);
-    
+
     return stats[0];
   };
 
@@ -213,7 +246,7 @@ export class CommissionModel {
       })
       .from(commission)
       .where(eq(commission.adminUserId, adminUserId));
-    
+
     return stats[0];
   };
 }

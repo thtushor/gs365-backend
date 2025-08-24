@@ -49,10 +49,16 @@ export class CommissionController {
     const limit = parseInt(req.query.limit as string) || 10;
     const search = req.query.search as string;
 
-    const result = await CommissionModel.getAllCommissions(page, limit, search);
+    const result = await CommissionModel.getAllCommissions({
+      search,
+      adminUserId: Number(req?.query?.adminUserId),
+      playerId: Number(req?.query?.playerId),
+      page: Number(page),
+      pageSize: Number(limit)
+    });
 
     res.status(200).json({
-      success: true,
+      status: true,
       data: result.data,
       pagination: result.pagination,
     });
