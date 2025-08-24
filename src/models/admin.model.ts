@@ -1027,3 +1027,29 @@ export async function getSportDetailsById(id: number) {
     providerInfo: sport.providerInfo || null,
   };
 }
+export const getAllMenuProviders = async () => {
+  // --- Game Providers with active games and isMenu = true ---
+  const game_providers_list = await db
+    .select()
+    .from(game_providers)
+    .where(and(eq(game_providers.isMenu, true)))
+    .orderBy(game_providers.menuPriority);
+
+  // --- Sports Providers with active sports and isMenu = true ---
+  const sports_providers_list = await db
+    .select()
+    .from(sports_providers)
+    .where(and(eq(sports_providers.isMenu, true)))
+    .orderBy(sports_providers.menuPriority);
+  const category_menu_list = await db
+    .select()
+    .from(dropdownOptions)
+    .where(and(eq(dropdownOptions.isMenu, true)))
+    .orderBy(dropdownOptions.menuPriority);
+
+  return {
+    game_providers: game_providers_list,
+    sports_providers: sports_providers_list,
+    category_menu: category_menu_list,
+  };
+};

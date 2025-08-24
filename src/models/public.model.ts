@@ -873,7 +873,8 @@ export const getAllMenuProviders = async () => {
     .from(game_providers)
     .where(
       and(eq(game_providers.isMenu, true), eq(game_providers.status, "active"))
-    );
+    )
+    .orderBy(game_providers.menuPriority);
 
   // --- Sports Providers with active sports and isMenu = true ---
   const sports_providers_list = await db
@@ -884,7 +885,8 @@ export const getAllMenuProviders = async () => {
         eq(sports_providers.isMenu, true),
         eq(sports_providers.status, "active")
       )
-    );
+    )
+    .orderBy(sports_providers.menuPriority);
   const category_menu_list = await db
     .select()
     .from(dropdownOptions)
@@ -893,7 +895,8 @@ export const getAllMenuProviders = async () => {
         eq(dropdownOptions.isMenu, true),
         eq(dropdownOptions.status, "active")
       )
-    );
+    )
+    .orderBy(dropdownOptions.menuPriority);
 
   return {
     game_providers: game_providers_list,

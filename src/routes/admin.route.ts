@@ -14,7 +14,7 @@ import {
   deleteAdmin,
   getAgents,
   getAffiliates,
-  addDropdownOption,
+  addOrUpdateDropdownOption,
   getDropdownsList,
   updateDropdownOptionStatus,
   getPromotionsList,
@@ -55,6 +55,9 @@ import {
   getSportList,
   createUpdateEvent,
   getAllEvents,
+  deleteDropdownOption,
+  getMenuProviders,
+  updateMenuPriority,
 } from "../controllers/admin.controller";
 
 const router = Router();
@@ -85,7 +88,12 @@ router.get(
 );
 
 // configuration
-router.post("/create-dropdowns", verifyToken, asyncHandler(addDropdownOption));
+router.post(
+  "/create-dropdowns",
+  verifyToken,
+  asyncHandler(addOrUpdateDropdownOption)
+);
+router.post("/dropdown/:id", verifyToken, asyncHandler(deleteDropdownOption));
 
 router.post(
   "/update-dropdown-option-status/:id",
@@ -233,4 +241,11 @@ router.post(
 );
 router.post("/add-update-sport", verifyToken, asyncHandler(addOrUpdateSport));
 router.get("/sports", verifyToken, asyncHandler(getSportList));
+
+router.get("/menu-list", verifyToken, asyncHandler(getMenuProviders));
+router.post(
+  "/update-menu-priority",
+  verifyToken,
+  asyncHandler(updateMenuPriority)
+);
 export default router;
