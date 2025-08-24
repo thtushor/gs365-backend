@@ -41,6 +41,7 @@ export const game_providers = mysqlTable("game_providers", {
   country: varchar("country", { length: 200 }).notNull(),
   logo: text("logo").notNull(),
   isMenu: boolean("is_menu").default(false),
+  menuPriority: int("menu_priority").default(0),
   icon: text("icon"),
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
 });

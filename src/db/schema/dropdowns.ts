@@ -25,6 +25,7 @@ export const dropdownOptions = mysqlTable("dropdown_options", {
   created_by: varchar("created_by", { length: 200 }).notNull(),
   created_at: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
   isMenu: boolean("is_menu").default(false),
+  menuPriority: int("menu_priority").default(0),
 });
 
 export const dropdownOptionsRelations = relations(

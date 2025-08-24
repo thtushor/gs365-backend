@@ -40,6 +40,7 @@ import {
   getPaginatedSportList,
   getGameSubProviderByGameProviderId,
   getSportSubProviderBySportProviderId,
+  getAllMenuProviders,
 } from "../models/admin.model";
 import { db } from "../db/connection";
 import {
@@ -60,7 +61,22 @@ import {
   video_advertisement,
   website_popups,
 } from "../db/schema";
-import { and, count, desc, eq, ilike, inArray, ne, or, sql } from "drizzle-orm";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  gt,
+  gte,
+  ilike,
+  inArray,
+  is,
+  lt,
+  lte,
+  ne,
+  or,
+  sql,
+} from "drizzle-orm";
 import { generateJwtToken, verifyJwt } from "../utils/jwt";
 import { getUsersWithFilters, getUserProfileById } from "../models/user.model";
 import * as UAParser from "ua-parser-js";
@@ -860,30 +876,93 @@ export const getDropdownsList = async (req: Request, res: Response) => {
     });
   }
 };
-export const addDropdownOption = async (req: Request, res: Response) => {
+export const addOrUpdateDropdownOption = async (
+  req: Request,
+  res: Response
+) => {
   try {
-    const { dropdownId, title, status, imgUrl, isMenu } = req.body;
+    const { id, dropdownId, title, status, imgUrl, isMenu } = req.body;
     const userData = (req as unknown as { user: DecodedUser | null })?.user;
 
     if (!dropdownId || !title) {
       return res.status(400).json({
         status: false,
-        message: "Dropdown name and options title are required.",
+        message: "Dropdown ID and option title are required.",
       });
     }
 
-    // Lookup dropdown
+    // Check if dropdown exists
     const [dropdown] = await db
       .select()
       .from(dropdowns)
       .where(eq(dropdowns.id, dropdownId));
+
     if (!dropdown) {
       return res
         .status(404)
         .json({ status: false, message: "Dropdown not found." });
     }
 
-    // Case-insensitive duplicate check
+    // If ID is provided, attempt update
+    if (id) {
+      // Check if the option exists
+      const [option] = await db
+        .select()
+        .from(dropdownOptions)
+        .where(eq(dropdownOptions.id, id));
+
+      if (!option) {
+        return res
+          .status(404)
+          .json({ status: false, message: "Option not found." });
+      }
+
+      // Case-insensitive duplicate check (for other options)
+      const [duplicate] = await db
+        .select()
+        .from(dropdownOptions)
+        .where(
+          and(
+            eq(dropdownOptions.dropdown_id, dropdownId),
+            sql`LOWER(${dropdownOptions.title}) = ${title.toLowerCase()}`,
+            sql`${dropdownOptions.id} != ${id}`
+          )
+        );
+
+      if (duplicate) {
+        return res.status(409).json({
+          status: false,
+          message: "Another option with this title already exists.",
+        });
+      }
+
+      // Perform update
+      await db
+        .update(dropdownOptions)
+        .set({
+          title,
+          status: status || option.status,
+          imgUrl: imgUrl ?? option.imgUrl,
+          isMenu: isMenu === "Yes" ? true : false,
+        })
+        .where(eq(dropdownOptions.id, id));
+
+      const updatedOption = {
+        ...option,
+        title,
+        status: status || option.status,
+        imgUrl: imgUrl ?? option.imgUrl,
+        isMenu: isMenu === "Yes" ? true : false,
+      };
+
+      return res.status(200).json({
+        status: true,
+        message: "Option updated successfully.",
+        data: updatedOption,
+      });
+    }
+
+    // Insert logic if ID not provided
     const [existingOption] = await db
       .select()
       .from(dropdownOptions)
@@ -897,11 +976,10 @@ export const addDropdownOption = async (req: Request, res: Response) => {
     if (existingOption) {
       return res.status(409).json({
         status: false,
-        message: "This option title already exist.",
+        message: "This option title already exists.",
       });
     }
 
-    // Insert one option
     await db.insert(dropdownOptions).values({
       title,
       dropdown_id: dropdownId,
@@ -911,13 +989,11 @@ export const addDropdownOption = async (req: Request, res: Response) => {
       isMenu: isMenu === "Yes" ? true : false,
     });
 
-    // Fetch all options under the dropdown
     const allOptions = await db
       .select()
       .from(dropdownOptions)
       .where(eq(dropdownOptions.dropdown_id, dropdownId));
 
-    // Build response
     const response = {
       dropdown_id: dropdown.id,
       name: dropdown.name,
@@ -929,6 +1005,7 @@ export const addDropdownOption = async (req: Request, res: Response) => {
         created_at: opt.created_at,
         created_by: opt.created_by,
         imgUrl: opt.imgUrl,
+        isMenu: opt.isMenu,
       })),
     };
 
@@ -938,11 +1015,40 @@ export const addDropdownOption = async (req: Request, res: Response) => {
       data: response,
     });
   } catch (error) {
-    console.error("Error adding dropdown option:", error);
+    console.error("Error adding/updating dropdown option:", error);
     return res.status(500).json({ status: false, message: "Server error." });
   }
 };
 
+export const deleteDropdownOption = async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+
+  if (isNaN(id)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid dropdown option id",
+    });
+  }
+
+  try {
+    const result = await db
+      .delete(dropdownOptions)
+      .where(eq(dropdownOptions.id, id));
+
+    return res.status(200).json({
+      success: true,
+      message: "Dropdown option deleted successfully",
+      result,
+    });
+  } catch (error) {
+    console.error("Error deleting dropdown option:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete dropdown option",
+      error,
+    });
+  }
+};
 export const updateDropdownOptionStatus = async (
   req: Request,
   res: Response
@@ -2796,5 +2902,125 @@ export const getSportList = async (req: Request, res: Response) => {
       status: false,
       message: "Server error",
     });
+  }
+};
+
+export const getMenuProviders = async (req: Request, res: Response) => {
+  try {
+    const result = await getAllMenuProviders();
+    return res.status(200).json({
+      status: true,
+      message: "Menu providers fetched successfully.",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Error fetching menu providers:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Server error",
+    });
+  }
+};
+export const updateMenuPriority = async (req: Request, res: Response) => {
+  try {
+    const {
+      id,
+      type,
+      currentPosition,
+      updatedPosition,
+      updatedStatus = false,
+    } = req.body;
+
+    let table;
+    if (type === "game") table = game_providers;
+    else if (type === "sports") table = sports_providers;
+    else if (type === "category") table = dropdownOptions;
+    else {
+      return res.status(400).json({ status: false, message: "Invalid type." });
+    }
+
+    if (updatedStatus) {
+      if (id) {
+        const validStatus = updatedStatus === "active" ? true : false;
+        const payload = { isMenu: validStatus };
+        await updateGameProvider(Number(id), payload);
+        await updateSportsProvider(Number(id), payload);
+        // Update status
+        await db
+          .update(dropdownOptions)
+          .set(payload)
+          .where(eq(dropdownOptions.id, Number(id)));
+        return res.status(200).json({
+          status: true,
+          message: "Menu status updated successfully",
+          data: payload,
+        });
+      } else {
+        return res.status(400).json({
+          status: false,
+          message: "ID is required for status update.",
+        });
+      }
+    }
+
+    if (!updatedPosition) {
+      return res.status(400).json({
+        status: false,
+        message: "Updated position is required.",
+      });
+    }
+
+    // Function to swap menuPriority if it exists
+    const swapMenuPriorityIfExists = async (
+      table: any,
+      updatedPosition: number,
+      currentPosition: number
+    ) => {
+      const existingItem = await db
+        .select()
+        .from(table)
+        .where(eq(table.menuPriority, updatedPosition))
+        .execute();
+
+      if (existingItem.length > 0) {
+        await db
+          .update(table)
+          .set({ menuPriority: currentPosition })
+          .where(eq(table.id, existingItem[0].id));
+      }
+    };
+
+    // Check all 3 tables for the updatedPosition
+    if (currentPosition !== 0) {
+      await swapMenuPriorityIfExists(
+        game_providers,
+        updatedPosition,
+        currentPosition
+      );
+      await swapMenuPriorityIfExists(
+        sports_providers,
+        updatedPosition,
+        currentPosition
+      );
+      await swapMenuPriorityIfExists(
+        dropdownOptions,
+        updatedPosition,
+        currentPosition
+      );
+    }
+
+    // Update the menu being moved
+    await db
+      .update(table)
+      .set({ menuPriority: updatedPosition })
+      .where(eq(table.id, id));
+
+    return res.status(200).json({
+      status: true,
+      message: "Menu priority updated successfully",
+    });
+  } catch (error) {
+    console.error("Error updating menu priority:", error);
+    return res.status(500).json({ status: false, message: "Server error" });
   }
 };
