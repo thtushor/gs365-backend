@@ -79,6 +79,7 @@ export const getAdminById = async (id: number) => {
   if (!admin) return null;
 
   let currencyInfo = null;
+  let referDetails = null;
 
   // If admin has a currencyId, fetch the currency info
   if (admin?.currency) {
@@ -91,10 +92,22 @@ export const getAdminById = async (id: number) => {
       currencyInfo = currencyData;
     }
   }
+  // If admin has a referred_by field, fetch the refer details
+  if (admin?.referred_by) {
+    const [referData] = await db
+      .select()
+      .from(adminUsers)
+      .where(eq(adminUsers.id, admin.referred_by));
+
+    if (referData) {
+      referDetails = referData;
+    }
+  }
 
   return {
     ...admin,
     currencyInfo: currencyInfo,
+    referDetails: referDetails,
   };
 };
 export type AdminRole =
@@ -180,6 +193,20 @@ export const getAdminsWithFilters = async (filters: AdminFilters) => {
       total,
     },
   };
+};
+
+export const getAdminsDetailsByReferCode = async (refererCode: string) => {
+  try {
+    const [data] = await db
+      .select()
+      .from(adminUsers)
+      .where(eq(adminUsers.refCode, refererCode));
+
+    return data;
+  } catch (error) {
+    console.error("Error fetching admin details by refer code:", error);
+    throw new Error("Failed to fetch admin details");
+  }
 };
 
 export const updateAdmin = async (

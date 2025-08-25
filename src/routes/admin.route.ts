@@ -58,6 +58,7 @@ import {
   deleteDropdownOption,
   getMenuProviders,
   updateMenuPriority,
+  getDetailsByReferer,
 } from "../controllers/admin.controller";
 
 const router = Router();
@@ -73,6 +74,11 @@ router.get("/profile", verifyToken, asyncHandler(adminProfile));
 router.get("/players", verifyToken, asyncHandler(getPlayers));
 router.get("/players/:id/profile", verifyToken, asyncHandler(getUserProfile));
 router.get("/admins", verifyToken, asyncHandler(getAdmins));
+router.get(
+  "/details-by-referer/:refererCode",
+  verifyToken,
+  asyncHandler(getDetailsByReferer)
+);
 router.get("/agents", verifyToken, asyncHandler(getAgents));
 
 router.get("/affiliates", verifyToken, asyncHandler(getAffiliates));

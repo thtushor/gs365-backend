@@ -41,6 +41,7 @@ import {
   getGameSubProviderByGameProviderId,
   getSportSubProviderBySportProviderId,
   getAllMenuProviders,
+  getAdminsDetailsByReferCode,
 } from "../models/admin.model";
 import { db } from "../db/connection";
 import {
@@ -520,6 +521,31 @@ export const getAdmins = async (req: Request, res: Response) => {
     res
       .status(500)
       .json({ status: false, message: "Failed to fetch admins", error });
+  }
+};
+export const getDetailsByReferer = async (req: Request, res: Response) => {
+  try {
+    const { refererCode } = req.params;
+    const result = await getAdminsDetailsByReferCode(refererCode);
+    if (!result) {
+      return res.status(404).json({
+        status: false,
+        data: null,
+        message: "Invalid refer code or user not found.",
+      });
+    }
+
+    return res.status(200).json({
+      status: true,
+      data: result,
+      message: "Referred by user data fetched successfully.",
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: "Failed to fetch referred by user data",
+      error,
+    });
   }
 };
 

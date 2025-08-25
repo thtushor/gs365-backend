@@ -30,6 +30,31 @@ export class CommissionModel {
     return newCommission;
   };
 
+  static getTotalCommissionWinLossByAffiliate = async (affiliateId: number) => {
+    const [result] = await db
+      .select({
+        totalWinCommission: sql<number>`
+        sum(case 
+          when bet_results.bet_status = 'win' then commission.commission_amount
+          else 0
+        end)
+      `,
+        totalLossCommission: sql<number>`
+        sum(case 
+          when bet_results.bet_status = 'loss' then commission.commission_amount
+          else 0
+        end)
+      `,
+      })
+      .from(commission)
+      .leftJoin(betResults, eq(betResults.id, commission.betResultId))
+      .where(eq(commission.adminUserId, affiliateId));
+
+    return {
+      totalLossCommission: result?.totalWinCommission || 0,
+      totalWinCommission: result?.totalLossCommission || 0,
+    };
+  };
 
   // Get commission by ID
   static getCommissionById = async (id: number) => {
@@ -56,12 +81,11 @@ export class CommissionModel {
     }
 
     if (filter?.adminUserId) {
-      whereClause.push(eq(commission.adminUserId,Number(filter?.adminUserId)));
+      whereClause.push(eq(commission.adminUserId, Number(filter?.adminUserId)));
     }
 
-
     if (filter?.playerId) {
-      whereClause.push(eq(commission.playerId,Number(filter?.playerId)));
+      whereClause.push(eq(commission.playerId, Number(filter?.playerId)));
     }
 
     const results = await db
@@ -79,7 +103,7 @@ export class CommissionModel {
         createdAt: commission?.createdAt,
         user: users,
         adminUser: adminUsers,
-        betResults: betResults
+        betResults: betResults,
       })
       .from(commission)
       .leftJoin(users, eq(users.id, commission?.playerId))
@@ -101,13 +125,19 @@ export class CommissionModel {
         page: filter?.page,
         pageSize: filter?.pageSize,
         total: totalCount[0]?.count || 0,
-        totalPages: Math.ceil((totalCount[0]?.count || 0) / Number(filter?.pageSize)),
+        totalPages: Math.ceil(
+          (totalCount[0]?.count || 0) / Number(filter?.pageSize)
+        ),
       },
     };
   };
 
   // Get commissions by admin user ID
-  static getCommissionsByAdminUser = async (adminUserId: number, page: number = 1, limit: number = 10) => {
+  static getCommissionsByAdminUser = async (
+    adminUserId: number,
+    page: number = 1,
+    limit: number = 10
+  ) => {
     const offset = (page - 1) * limit;
 
     const results = await db
@@ -135,7 +165,11 @@ export class CommissionModel {
   };
 
   // Get commissions by player ID
-  static getCommissionsByPlayer = async (playerId: number, page: number = 1, limit: number = 10) => {
+  static getCommissionsByPlayer = async (
+    playerId: number,
+    page: number = 1,
+    limit: number = 10
+  ) => {
     const offset = (page - 1) * limit;
 
     const results = await db
@@ -173,7 +207,11 @@ export class CommissionModel {
   };
 
   // Get commissions by status
-  static getCommissionsByStatus = async (status: string, page: number = 1, limit: number = 10) => {
+  static getCommissionsByStatus = async (
+    status: string,
+    page: number = 1,
+    limit: number = 10
+  ) => {
     const offset = (page - 1) * limit;
 
     const results = await db

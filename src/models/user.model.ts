@@ -38,7 +38,7 @@ export const createUser = async (data: {
   createdBy?: number;
   referred_by?: number;
   referred_by_admin_user?: number;
-  status: "active"|"inactive";
+  status: "active" | "inactive";
 }) => {
   // const hashedPassword = await bcrypt.hash(data.password, 10);
   const [user] = await db.insert(users).values({
@@ -61,14 +61,13 @@ export const findUserByReferCode = async (refer_code: string) => {
 };
 
 export const getUserById = async (id: number) => {
-  const [user] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, id));
+  const [user] = await db.select().from(users).where(eq(users.id, id));
   return user;
 };
 
-export const getUserDetailsById = async (id: number): Promise<UserWithDetails | null> => {
+export const getUserDetailsById = async (
+  id: number
+): Promise<UserWithDetails | null> => {
   try {
     const [user] = await db
       .select({
@@ -96,7 +95,10 @@ export const getUserDetailsById = async (id: number): Promise<UserWithDetails | 
       .from(users)
       .leftJoin(currencies, eq(users.currency_id, currencies.id))
       .leftJoin(adminUsers, eq(users.referred_by_admin_user, adminUsers.id))
-      .leftJoin(sql`${users} as user_referrer`, eq(users.referred_by, sql`user_referrer.id`))
+      .leftJoin(
+        sql`${users} as user_referrer`,
+        eq(users.referred_by, sql`user_referrer.id`)
+      )
       .where(eq(users.id, id));
 
     if (!user) return null;
@@ -112,7 +114,8 @@ export const getUserDetailsById = async (id: number): Promise<UserWithDetails | 
     const pendingWithdrawals = Number(balance.pendingWithdrawals);
 
     // Calculate current balance: deposits + wins - withdrawals - losses
-    const totalBalance = totalDeposits + totalWins - totalWithdrawals - totalLosses;
+    const totalBalance =
+      totalDeposits + totalWins - totalWithdrawals - totalLosses;
 
     // Determine affiliate and agent info based on referrer role
     let affiliateName: string | null = null;
@@ -121,10 +124,16 @@ export const getUserDetailsById = async (id: number): Promise<UserWithDetails | 
     let agentRole: string | null = null;
 
     if (user.referrerRole) {
-      if (user.referrerRole === 'superAffiliate' || user.referrerRole === 'affiliate') {
+      if (
+        user.referrerRole === "superAffiliate" ||
+        user.referrerRole === "affiliate"
+      ) {
         affiliateName = user.referrerName;
         affiliateRole = user.referrerRole;
-      } else if (user.referrerRole === 'superAgent' || user.referrerRole === 'agent') {
+      } else if (
+        user.referrerRole === "superAgent" ||
+        user.referrerRole === "agent"
+      ) {
         agentName = user.referrerName;
         agentRole = user.referrerRole;
       }
@@ -150,11 +159,16 @@ export const getUserDetailsById = async (id: number): Promise<UserWithDetails | 
   }
 };
 
-export const getUsersByReferrerType = async (referrerType: 'affiliate' | 'agent', page = 1, pageSize = 10) => {
+export const getUsersByReferrerType = async (
+  referrerType: "affiliate" | "agent",
+  page = 1,
+  pageSize = 10
+) => {
   try {
-    const roleFilter = referrerType === 'affiliate' 
-      ? sql`${adminUsers.role} IN ('superAffiliate', 'affiliate')`
-      : sql`${adminUsers.role} IN ('agent', 'superAgent')`;
+    const roleFilter =
+      referrerType === "affiliate"
+        ? sql`${adminUsers.role} IN ('superAffiliate', 'affiliate')`
+        : sql`${adminUsers.role} IN ('agent', 'superAgent')`;
 
     const whereClause = and(
       sql`${users.referred_by_admin_user} IS NOT NULL`,
@@ -189,7 +203,7 @@ export const getUsersByReferrerType = async (referrerType: 'affiliate' | 'agent'
       .offset((page - 1) * pageSize);
 
     const totalPages = Math.ceil(total / pageSize);
-    
+
     return {
       total,
       data,
@@ -216,7 +230,7 @@ export interface UserFilters {
   pageSize?: number;
   referred_by?: number;
   referred_by_admin_user?: number;
-  userType?: 'all' | 'affiliate' | 'agent' | 'player';
+  userType?: "all" | "affiliate" | "agent" | "player";
   currencyId?: number;
   dateFrom?: string;
   dateTo?: string;
@@ -268,7 +282,7 @@ export const getUsersWithFilters = async (filters: UserFilters) => {
     createdBy,
     referred_by,
     referred_by_admin_user,
-    userType = 'all',
+    userType = "all",
     currencyId,
     dateFrom,
     dateTo,
@@ -312,16 +326,18 @@ export const getUsersWithFilters = async (filters: UserFilters) => {
   }
 
   // Filter by user type (affiliate, agent, or player)
-  if (filters.userType && filters.userType !== 'all') {
-    if (filters.userType === 'affiliate') {
+  if (filters.userType && filters.userType !== "all") {
+    if (filters.userType === "affiliate") {
       // Users referred by superAffiliate or affiliate
       whereClauses.push(sql`${users.referred_by_admin_user} IS NOT NULL`);
-      whereClauses.push(sql`${adminUsers.role} IN ('superAffiliate', 'affiliate')`);
-    } else if (filters.userType === 'agent') {
+      whereClauses.push(
+        sql`${adminUsers.role} IN ('superAffiliate', 'affiliate')`
+      );
+    } else if (filters.userType === "agent") {
       // Users referred by agent or superAgent
       whereClauses.push(sql`${users.referred_by_admin_user} IS NOT NULL`);
       whereClauses.push(sql`${adminUsers.role} IN ('agent', 'superAgent')`);
-    } else if (filters.userType === 'player') {
+    } else if (filters.userType === "player") {
       // Users with no referrer (direct players)
       whereClauses.push(sql`${users.referred_by_admin_user} IS NULL`);
     }
@@ -363,24 +379,27 @@ export const getUsersWithFilters = async (filters: UserFilters) => {
     .from(users)
     .leftJoin(currencies, eq(users.currency_id, currencies.id))
     .leftJoin(adminUsers, eq(users.referred_by_admin_user, adminUsers.id))
-    .leftJoin(sql`${users} as user_referrer`, eq(users.referred_by, sql`user_referrer.id`))
+    .leftJoin(
+      sql`${users} as user_referrer`,
+      eq(users.referred_by, sql`user_referrer.id`)
+    )
     .where(where)
     .limit(pageSize)
     .offset((page - 1) * pageSize);
 
   // Get all user IDs for batch balance calculation
-  const userIds = data.map(user => user.id);
-  
+  const userIds = data.map((user) => user.id);
+
   // Get balance information for all users using BalanceModel
   let balanceData: any[] = [];
   if (userIds.length > 0) {
     // Get balances for all users
-    const balancePromises = userIds.map(userId => 
+    const balancePromises = userIds.map((userId) =>
       BalanceModel.calculatePlayerBalance(userId)
     );
-    
+
     const balanceResults = await Promise.all(balancePromises);
-    
+
     // Transform the balance data to match the expected structure
     balanceData = balanceResults.map((balance, index) => ({
       user_id: userIds[index],
@@ -395,7 +414,7 @@ export const getUsersWithFilters = async (filters: UserFilters) => {
 
   // Create a map for quick balance lookup
   const balanceMap = new Map(
-    balanceData.map(balance => [balance.user_id, balance])
+    balanceData.map((balance) => [balance.user_id, balance])
   );
 
   // Calculate balance and transaction data for each user
@@ -418,7 +437,8 @@ export const getUsersWithFilters = async (filters: UserFilters) => {
     const pendingWithdrawals = Number(balance.pendingWithdrawals);
 
     // Calculate current balance: deposits + wins - withdrawals - losses
-    const totalBalance = totalDeposits + totalWins - totalWithdrawals - totalLosses;
+    const totalBalance =
+      totalDeposits + totalWins - totalWithdrawals - totalLosses;
 
     // Determine affiliate and agent info based on referrer role
     let affiliateName: string | null = null;
@@ -427,10 +447,16 @@ export const getUsersWithFilters = async (filters: UserFilters) => {
     let agentRole: string | null = null;
 
     if (user.referrerRole) {
-      if (user.referrerRole === 'superAffiliate' || user.referrerRole === 'affiliate') {
+      if (
+        user.referrerRole === "superAffiliate" ||
+        user.referrerRole === "affiliate"
+      ) {
         affiliateName = user.referrerName;
         affiliateRole = user.referrerRole;
-      } else if (user.referrerRole === 'superAgent' || user.referrerRole === 'agent') {
+      } else if (
+        user.referrerRole === "superAgent" ||
+        user.referrerRole === "agent"
+      ) {
         agentName = user.referrerName;
         agentRole = user.referrerRole;
       }
@@ -453,7 +479,7 @@ export const getUsersWithFilters = async (filters: UserFilters) => {
   });
 
   const totalPages = Math.ceil(total / pageSize);
-  
+
   return {
     total,
     data: usersWithDetails,
@@ -523,6 +549,7 @@ export const getUserProfileById = async (id: number): Promise<any> => {
         adminReferrerRole: sql<string>`admin_referrer.role`,
         adminReferrerPhone: sql<string>`admin_referrer.phone`,
         adminReferrerEmail: sql<string>`admin_referrer.email`,
+        adminReferrerCommission: sql<string>`admin_referrer.commission_percent`,
         // User referrer info (from referred_by column)
         userReferrerName: sql<string>`user_referrer.fullname`,
         userReferrerUsername: sql<string>`user_referrer.username`,
@@ -535,17 +562,24 @@ export const getUserProfileById = async (id: number): Promise<any> => {
       })
       .from(users)
       .leftJoin(currencies, eq(users.currency_id, currencies.id))
-      .leftJoin(sql`${adminUsers} as admin_referrer`, eq(users.referred_by_admin_user, sql`admin_referrer.id`))
-      .leftJoin(sql`${users} as user_referrer`, eq(users.referred_by, sql`user_referrer.id`))
-      .leftJoin(sql`${adminUsers} as created_by_user`, eq(users.created_by, sql`created_by_user.id`))
+      .leftJoin(
+        sql`${adminUsers} as admin_referrer`,
+        eq(users.referred_by_admin_user, sql`admin_referrer.id`)
+      )
+      .leftJoin(
+        sql`${users} as user_referrer`,
+        eq(users.referred_by, sql`user_referrer.id`)
+      )
+      .leftJoin(
+        sql`${adminUsers} as created_by_user`,
+        eq(users.created_by, sql`created_by_user.id`)
+      )
       .where(eq(users.id, id));
 
     if (!user) return null;
 
     // Get balance information using BalanceModel
     const balance = await BalanceModel.calculatePlayerBalance(user.id);
-
-   
 
     // Get bet results summary
     const betResultsSummary = await db
@@ -598,24 +632,25 @@ export const getUserProfileById = async (id: number): Promise<any> => {
       .limit(10);
 
     // Determine user type based on referrers
-    let userType = 'player';
+    let userType = "player";
     let referrerType = null;
     let referrerDetails = null;
 
     if (user.adminReferrerRole) {
-      if (['superAffiliate', 'affiliate'].includes(user.adminReferrerRole)) {
-        userType = 'affiliate_user';
-        referrerType = 'affiliate';
+      if (["superAffiliate", "affiliate"].includes(user.adminReferrerRole)) {
+        userType = "affiliate_user";
+        referrerType = "affiliate";
         referrerDetails = {
           name: user.adminReferrerName,
           username: user.adminReferrerUsername,
           role: user.adminReferrerRole,
           phone: user.adminReferrerPhone,
           email: user.adminReferrerEmail,
+          commission: user.adminReferrerCommission,
         };
-      } else if (['superAgent', 'agent'].includes(user.adminReferrerRole)) {
-        userType = 'agent_user';
-        referrerType = 'agent';
+      } else if (["superAgent", "agent"].includes(user.adminReferrerRole)) {
+        userType = "agent_user";
+        referrerType = "agent";
         referrerDetails = {
           name: user.adminReferrerName,
           username: user.adminReferrerUsername,
@@ -625,8 +660,8 @@ export const getUserProfileById = async (id: number): Promise<any> => {
         };
       }
     } else if (user.userReferrerName) {
-      userType = 'referred_player';
-      referrerType = 'player';
+      userType = "referred_player";
+      referrerType = "player";
       referrerDetails = {
         name: user.userReferrerName,
         username: user.userReferrerUsername,
@@ -687,12 +722,21 @@ export const getUserProfileById = async (id: number): Promise<any> => {
       // Transaction summary
       transactionSummary: {
         totalTransactions: Number(recentTransactions.length || 0),
-        totalDepositTransactions: Number(recentTransactions.filter(t => t.type === 'deposit').length || 0),
-        totalWithdrawTransactions: Number(recentTransactions.filter(t => t.type === 'withdraw').length || 0),
-        totalWinTransactions: Number(recentTransactions.filter(t => t.type === 'win').length || 0),
-        totalLossTransactions: Number(recentTransactions.filter(t => t.type === 'loss').length || 0),
+        totalDepositTransactions: Number(
+          recentTransactions.filter((t) => t.type === "deposit").length || 0
+        ),
+        totalWithdrawTransactions: Number(
+          recentTransactions.filter((t) => t.type === "withdraw").length || 0
+        ),
+        totalWinTransactions: Number(
+          recentTransactions.filter((t) => t.type === "win").length || 0
+        ),
+        totalLossTransactions: Number(
+          recentTransactions.filter((t) => t.type === "loss").length || 0
+        ),
         lastTransactionDate: recentTransactions[0]?.createdAt,
-        firstTransactionDate: recentTransactions[recentTransactions.length - 1]?.createdAt,
+        firstTransactionDate:
+          recentTransactions[recentTransactions.length - 1]?.createdAt,
       },
 
       // Bet results summary
@@ -704,9 +748,14 @@ export const getUserProfileById = async (id: number): Promise<any> => {
         totalBetAmount: Number(betResultsSummary[0]?.totalBetAmount || 0),
         totalWinAmount: Number(betResultsSummary[0]?.totalWinAmount || 0),
         totalLossAmount: Number(betResultsSummary[0]?.totalLossAmount || 0),
-        winRate: betResultsSummary[0]?.totalBets > 0 
-          ? ((Number(betResultsSummary[0]?.totalWins || 0) / Number(betResultsSummary[0]?.totalBets || 1)) * 100).toFixed(2)
-          : '0.00',
+        winRate:
+          betResultsSummary[0]?.totalBets > 0
+            ? (
+                (Number(betResultsSummary[0]?.totalWins || 0) /
+                  Number(betResultsSummary[0]?.totalBets || 1)) *
+                100
+              ).toFixed(2)
+            : "0.00",
         lastBetDate: betResultsSummary[0]?.lastBetDate,
         firstBetDate: betResultsSummary[0]?.firstBetDate,
       },
