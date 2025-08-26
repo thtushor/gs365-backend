@@ -1293,7 +1293,7 @@ export const BetResultModel = {
 
   // NEW: Get comprehensive game-wise statistics
   async getGameWiseStats(filters: GameWiseStatsFilters): Promise<{
-    data: GameWiseStatsData[];
+    data: any[];
     total: number;
     summary: {
       totalGames: number;
@@ -1304,6 +1304,12 @@ export const BetResultModel = {
       totalPendingBets: number;
       totalPlayersPlayed: number;
       overallWinRate: number;
+    };
+    pagination: {
+      page: number;
+      pageSize: number;
+      total: number;
+      totalPages: number;
     };
   }> {
     try {
@@ -1398,12 +1404,15 @@ export const BetResultModel = {
         .select({
           // Game details
           gameId: betResults.gameId,
-          gameName: games.name,
-          gameLogo: games.gameLogo,
-          gameUrl: games.gameUrl,
-          gameStatus: games.status,
-          categoryId: games.categoryId,
-          providerId: games.providerId,
+          // gameName: games.name,
+          // gameLogo: games.gameLogo,
+          // gameUrl: games.gameUrl,
+          // gameStatus: games.status,
+          // categoryId: games.categoryId,
+          // providerId: games.providerId,
+          game: games,
+          provider: game_providers,
+          user: users,
 
           // Statistics
           totalBets: sql<number>`COUNT(*)`,
@@ -1428,6 +1437,7 @@ export const BetResultModel = {
           providerCountry: game_providers.country,
         })
         .from(betResults)
+        .leftJoin(users,eq(betResults.userId,users.id))
         .leftJoin(games, eq(betResults.gameId, games.id))
         .leftJoin(dropdownOptions, eq(games.categoryId, dropdownOptions.id))
         .leftJoin(game_providers, eq(games.providerId, game_providers.id))
@@ -1473,7 +1483,7 @@ export const BetResultModel = {
       );
 
       // Transform results to include calculated fields
-      const gameStats: GameWiseStatsData[] = results.map((row) => {
+      const gameStats: any[] = results.map((row) => {
         const totalBets = row.totalBets || 0;
         const totalBetAmount = Number(row.totalBetAmount) || 0;
         const totalWinAmount = Number(row.totalWinAmount) || 0;
@@ -1489,19 +1499,8 @@ export const BetResultModel = {
         const timeStats = timeBasedStats.find(ts => ts.gameId === row.gameId);
 
         return {
+          ...row,
           gameId: row.gameId,
-          gameName: row.gameName || "Unknown Game",
-          gameLogo: row.gameLogo || "",
-          gameUrl: row.gameUrl || "",
-          gameStatus: row.gameStatus || "unknown",
-          categoryId: row.categoryId,
-          categoryTitle: row.categoryTitle,
-          categoryImgUrl: row.categoryImgUrl,
-          providerId: row.providerId,
-          providerName: row.providerName || "Unknown Provider",
-          providerLogo: row.providerLogo || "",
-          providerCountry: row.providerCountry || "Unknown",
-          
           // Statistics
           totalBets,
           totalBetAmount: Math.round(totalBetAmount * 100) / 100,
@@ -1537,10 +1536,23 @@ export const BetResultModel = {
         overallWinRate: gameStats.length > 0 ? Math.round(gameStats.reduce((sum, game) => sum + game.winRate, 0) / gameStats.length * 100) / 100 : 0,
       };
 
+      // Calculate pagination
+      const currentOffset = filters.offset || 0;
+      const currentLimit = filters.limit || 50;
+      const page = Math.floor(currentOffset / currentLimit) + 1;
+      const pageSize = currentLimit;
+      const totalPages = Math.ceil(total / currentLimit);
+
       return {
         data: gameStats,
         total,
         summary,
+        pagination: {
+          page,
+          pageSize,
+          total,
+          totalPages,
+        },
       };
     } catch (error) {
       console.error("Error fetching game-wise statistics:", error);

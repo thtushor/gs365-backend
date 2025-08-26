@@ -73,17 +73,12 @@ export const getGameWiseStats = asyncHandler(async (req: Request, res: Response)
 
     console.log("✅ Game-wise statistics fetched successfully");
 
-    res.status(200).json({
-      success: true,
-      message: "Game-wise statistics retrieved successfully",
-      data: result.data,
-      summary: result.summary,
-      pagination: {
-        total: result.total,
-        limit: filters.limit,
-        offset: filters.offset,
-        hasMore: result.total > filters.offset + filters.limit,
-      },
+         res.status(200).json({
+       success: true,
+       message: "Game-wise statistics retrieved successfully",
+       data: result.data,
+       summary: result.summary,
+       pagination: result.pagination,
       filters: {
         dateFrom: filters.dateFrom,
         dateTo: filters.dateTo,

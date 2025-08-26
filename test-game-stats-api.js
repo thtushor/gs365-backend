@@ -32,16 +32,17 @@ async function testGameStatsAPI() {
       const data2 = await response2.json();
       
       if (data2.success) {
-        console.log(`   ✅ Successfully fetched ${data2.data.length} games`);
-        console.log(`   📊 Summary: ${data2.summary.totalGames} total games, ${data2.summary.totalBets} total bets`);
-        
-        if (data2.data.length > 0) {
-          const firstGame = data2.data[0];
-          console.log(`   🎮 First game: ${firstGame.gameName}`);
-          console.log(`   💰 Total bet amount: ${firstGame.totalBetAmount}`);
-          console.log(`   🏆 Win rate: ${firstGame.winRate}%`);
-          console.log(`   👥 Players played: ${firstGame.totalPlayersPlayed}`);
-        }
+                 console.log(`   ✅ Successfully fetched ${data2.data.length} games`);
+         console.log(`   📊 Summary: ${data2.summary.totalGames} total games, ${data2.summary.totalBets} total bets`);
+         console.log(`   📄 Pagination: Page ${data2.pagination.page} of ${data2.pagination.totalPages} (${data2.pagination.total} total games)`);
+         
+         if (data2.data.length > 0) {
+           const firstGame = data2.data[0];
+           console.log(`   🎮 First game: ${firstGame.gameName}`);
+           console.log(`   💰 Total bet amount: ${firstGame.totalBetAmount}`);
+           console.log(`   🏆 Win rate: ${firstGame.winRate}%`);
+           console.log(`   👥 Players played: ${firstGame.totalPlayersPlayed}`);
+         }
       } else {
         console.log(`   ❌ Failed: ${data2.message}`);
       }

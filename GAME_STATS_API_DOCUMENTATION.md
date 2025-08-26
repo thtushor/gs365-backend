@@ -106,12 +106,12 @@ Content-Type: application/json
     "totalPlayersPlayed": 2500,
     "overallWinRate": 58.5
   },
-  "pagination": {
-    "total": 25,
-    "limit": 50,
-    "offset": 0,
-    "hasMore": false
-  },
+     "pagination": {
+     "page": 1,
+     "pageSize": 50,
+     "total": 25,
+     "totalPages": 1
+   },
   "filters": {
     "dateFrom": null,
     "dateTo": null,
@@ -192,6 +192,15 @@ Content-Type: application/json
 | `winRate` | Win rate percentage | `(totalWinAmount / (totalBets - totalPendingBets)) * 100` |
 | `averageBetAmount` | Average bet per game | `totalBetAmount / totalBets` |
 | `totalProfit` | Net profit/loss | `totalWinAmount - totalLossAmount` |
+
+### Pagination Information
+
+| Field | Description |
+|-------|-------------|
+| `page` | Current page number (1-based) |
+| `pageSize` | Number of items per page |
+| `total` | Total number of items available |
+| `totalPages` | Total number of pages |
 
 ### Time-based Player Metrics
 
