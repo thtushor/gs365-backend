@@ -62,7 +62,7 @@ export const getCurrentSettings = async (req: Request, res: Response) => {
 
 export const createSettings = async (req: Request, res: Response) => {
   try {
-    const { defaultTurnover } = req.body;
+    const { defaultTurnover,adminBalance } = req.body;
 
     if (defaultTurnover === undefined || defaultTurnover === null) {
       return res
@@ -72,6 +72,7 @@ export const createSettings = async (req: Request, res: Response) => {
 
     const result = await SettingsModel.create({
       defaultTurnover: Number(defaultTurnover),
+      adminBalance: Number(adminBalance).toString()
     });
 
     return res.status(201).json({
