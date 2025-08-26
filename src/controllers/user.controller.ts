@@ -20,6 +20,7 @@ import { generateUniqueRefCode } from "../utils/refCode";
 import { findUserByReferCode } from "../models/user.model";
 import { findAdminByRefCode } from "../models/admin.model";
 import { generateJwtToken, JwtPayload, verifyJwt } from "../utils/jwt";
+import { createUserLoginHistory } from "../models/userLoginHistory.model";
 
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
@@ -292,6 +293,23 @@ export const loginUser = async (req: Request, res: Response) => {
         lastLogin: new Date(),
       })
       .where(eq(users.id, user.id));
+
+    // Record login history
+    try {
+      await createUserLoginHistory({
+        userId: user.id,
+        ipAddress: ip_address,
+        userAgent: userAgent,
+        deviceType: device_type,
+        deviceName: device_name,
+        osVersion: os_version,
+        browser: browser,
+        browserVersion: browser_version,
+      });
+    } catch (historyError) {
+      console.error("Failed to record login history:", historyError);
+      // Don't fail the login if history recording fails
+    }
 
     return res.json({
       status: true,
