@@ -1,9 +1,10 @@
-import { mysqlTable, int, datetime } from "drizzle-orm/mysql-core";
+import { mysqlTable, int, datetime, decimal } from "drizzle-orm/mysql-core";
 import { sql } from "drizzle-orm";
 
 export const settings = mysqlTable("settings", {
   id: int("id").primaryKey().autoincrement(),
   defaultTurnover: int("default_turnover").notNull(),
+  adminBalance: decimal("adminBalance").notNull(),
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updated_at").default(
     sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`
