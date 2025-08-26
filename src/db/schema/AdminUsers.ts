@@ -23,6 +23,10 @@ export const adminUsers = mysqlTable("admin_users", {
   country: varchar("country", { length: 255 }),
   city: varchar("city", { length: 255 }),
   street: varchar("street", { length: 255 }),
+  remainingBalance: decimal("remaining_balance", {
+    precision: 20,
+    scale: 2,
+  }).$type<number>(),
 
   minTrx: decimal("minimum_trx"),
   maxTrx: decimal("maximum_trx"),

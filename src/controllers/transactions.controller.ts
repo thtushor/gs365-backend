@@ -9,7 +9,13 @@ import { games } from "../db/schema/games";
 import { currencies } from "../db/schema/currency";
 import { eq, and, like, asc, desc, sql, inArray } from "drizzle-orm";
 import { generateUniqueTransactionId } from "../utils/refCode";
-import { paymentGateway, paymentGatewayProvider, paymentGatewayProviderAccount } from "../db/schema";
+import {
+  adminUsers,
+  commission,
+  paymentGateway,
+  paymentGatewayProvider,
+  paymentGatewayProviderAccount,
+} from "../db/schema";
 
 type CreateDepositBody = {
   userId: number;
@@ -69,12 +75,31 @@ export const createDeposit = async (req: Request, res: Response) => {
         (settingsRow as any)?.defaultTurnover ?? 1
       );
 
-      const [gateWayBonus] = paymentGatewayProviderAccountId  ? await tx.select({
-        bonus: paymentGateway.bonus
-      }).from(paymentGatewayProviderAccount)
-      .leftJoin(paymentGatewayProvider,eq(paymentGatewayProvider.id,paymentGatewayProviderAccount.paymentGatewayProviderId))
-      .leftJoin(paymentGateway,eq(paymentGateway.id,paymentGatewayProvider.gatewayId))
-      .where(eq(paymentGatewayProviderAccount.id,paymentGatewayProviderAccountId)).limit(1):[]
+      const [gateWayBonus] = paymentGatewayProviderAccountId
+        ? await tx
+            .select({
+              bonus: paymentGateway.bonus,
+            })
+            .from(paymentGatewayProviderAccount)
+            .leftJoin(
+              paymentGatewayProvider,
+              eq(
+                paymentGatewayProvider.id,
+                paymentGatewayProviderAccount.paymentGatewayProviderId
+              )
+            )
+            .leftJoin(
+              paymentGateway,
+              eq(paymentGateway.id, paymentGatewayProvider.gatewayId)
+            )
+            .where(
+              eq(
+                paymentGatewayProviderAccount.id,
+                paymentGatewayProviderAccountId
+              )
+            )
+            .limit(1)
+        : [];
 
       // Create transaction
       const [createdTxn] = await tx.insert(transactions).values({
@@ -128,7 +153,7 @@ export const createDeposit = async (req: Request, res: Response) => {
         } as any);
       }
 
-      if(Number(gateWayBonus?.bonus||0)>0){
+      if (Number(gateWayBonus?.bonus || 0) > 0) {
         const bonusPercentage = Number(gateWayBonus?.bonus || 0);
         const bonusAmount = (baseAmount * bonusPercentage) / 100;
         const promoBase = bonusAmount;
@@ -161,6 +186,144 @@ export const createDeposit = async (req: Request, res: Response) => {
   }
 };
 
+export const createAffiliateWithdraw = async (req: Request, res: Response) => {
+  try {
+    const {
+      affiliateId,
+      amount,
+      currencyId,
+      withdrawMethod, // "bank" or "wallet"
+      notes,
+      attachment,
+      // Bank fields
+      accountNumber,
+      accountHolderName,
+      bankName,
+      branchName,
+      branchAddress,
+      swiftCode,
+      iban,
+      // Wallet fields
+      walletAddress,
+      network,
+      remainingBalance,
+    } = req.body as {
+      affiliateId: number;
+      amount: number;
+      currencyId: number;
+      remainingBalance: number;
+      withdrawMethod: "bank" | "wallet";
+      notes?: string;
+      attachment?: string;
+      accountNumber?: string;
+      accountHolderName?: string;
+      bankName?: string;
+      branchName?: string;
+      branchAddress?: string;
+      swiftCode?: string;
+      iban?: string;
+      walletAddress?: string;
+      network?: string;
+    };
+
+    // ✅ Validate basic fields
+    if (
+      !affiliateId ||
+      !amount ||
+      !currencyId ||
+      !withdrawMethod ||
+      !remainingBalance
+    ) {
+      return res.status(400).json({
+        status: false,
+        message:
+          "affiliateId, amount, currencyId, withdrawMethod, are required",
+      });
+    }
+    if (typeof remainingBalance !== "number" || remainingBalance < 0) {
+      return res.status(400).json({
+        status: false,
+        message: "remainingBalance is not valid",
+      });
+    }
+
+    // ✅ Validate method-specific fields
+    if (withdrawMethod === "bank") {
+      if (!accountNumber || !accountHolderName || !bankName) {
+        return res.status(400).json({
+          status: false,
+          message:
+            "For bank withdrawal, accountNumber, accountHolderName, and bankName are required",
+        });
+      }
+    } else if (withdrawMethod === "wallet") {
+      if (!walletAddress || !network) {
+        return res.status(400).json({
+          status: false,
+          message:
+            "For wallet withdrawal, walletAddress and network are required",
+        });
+      }
+    }
+
+    const customTransactionId = await generateUniqueTransactionId();
+
+    const result = await db.transaction(async (tx) => {
+      await tx
+        .update(commission)
+        .set({ status: "paid" })
+        .where(
+          and(
+            eq(commission.adminUserId, Number(affiliateId)),
+            eq(commission.status, "approved")
+          )
+        );
+
+      await tx.update(adminUsers).set({
+        remainingBalance: remainingBalance,
+      });
+
+      const [createdTxn] = await tx.insert(transactions).values({
+        affiliateId: Number(affiliateId),
+        type: "withdraw" as any,
+        amount: Number(amount),
+        currencyId: Number(currencyId),
+        status: "pending" as any,
+        customTransactionId,
+        notes: notes ?? null,
+        attachment: attachment ?? null,
+        withdrawMethod,
+        accountNumber: accountNumber ?? null,
+        accountHolderName: accountHolderName ?? null,
+        bankName: bankName ?? null,
+        branchName: branchName ?? null,
+        branchAddress: branchAddress ?? null,
+        swiftCode: swiftCode ?? null,
+        iban: iban ?? null,
+        walletAddress: walletAddress ?? null,
+        network: network ?? null,
+      } as any);
+
+      const transactionId =
+        (createdTxn as any).insertId ?? (createdTxn as any)?.id;
+
+      return { transactionId, customTransactionId };
+    });
+
+    return res.status(201).json({
+      status: true,
+      message: "Withdrawal request created successfully",
+      data: result,
+    });
+  } catch (err) {
+    console.error("createAffiliateWithdraw error", err);
+    return res.status(500).json({
+      status: false,
+      message: "Internal Server Error",
+      errors: err,
+    });
+  }
+};
 export const getTransactions = async (req: Request, res: Response) => {
   try {
     const {
@@ -173,6 +336,7 @@ export const getTransactions = async (req: Request, res: Response) => {
       sortBy = "createdAt",
       sortOrder = "desc",
       userId,
+      affiliateId,
     } = req.query as Record<string, string | undefined>;
 
     const currentPage = Math.max(Number(page) || 1, 1);
@@ -182,9 +346,7 @@ export const getTransactions = async (req: Request, res: Response) => {
     const validTypes = ["deposit", "withdraw"] as const;
     const validStatuses = ["approved", "pending", "rejected"] as const;
 
-    const whereClauses: any[] = [
-      inArray(transactions.type, validTypes),
-    ];
+    const whereClauses: any[] = [inArray(transactions.type, validTypes)];
     if (type && (validTypes as readonly string[]).includes(type)) {
       whereClauses.push(eq(transactions.type, type as any));
     }
@@ -194,11 +356,16 @@ export const getTransactions = async (req: Request, res: Response) => {
     if (userId && !Number.isNaN(Number(userId))) {
       whereClauses.push(eq(transactions.userId, Number(userId)));
     }
+    if (affiliateId && !Number.isNaN(Number(affiliateId))) {
+      whereClauses.push(eq(transactions.affiliateId, Number(affiliateId)));
+    }
     if (search && search.trim()) {
       whereClauses.push(like(transactions.customTransactionId, `%${search}%`));
     }
 
-    const whereExpr = whereClauses.length ? (and as any)(...whereClauses) : undefined;
+    const whereExpr = whereClauses.length
+      ? (and as any)(...whereClauses)
+      : undefined;
 
     const sortableColumns: Record<string, any> = {
       createdAt: transactions.createdAt,
@@ -208,9 +375,11 @@ export const getTransactions = async (req: Request, res: Response) => {
       type: transactions.type,
     };
     const orderColumn = sortableColumns[sortBy] ?? transactions.createdAt;
-    const orderExpr = (String(sortOrder).toLowerCase() === "asc"
-      ? asc(orderColumn)
-      : desc(orderColumn)) as any;
+    const orderExpr = (
+      String(sortOrder).toLowerCase() === "asc"
+        ? asc(orderColumn)
+        : desc(orderColumn)
+    ) as any;
 
     const total = await db
       .select({ count: sql`COUNT(*)` })
@@ -223,6 +392,7 @@ export const getTransactions = async (req: Request, res: Response) => {
         // Transaction fields
         id: transactions.id,
         userId: transactions.userId,
+        affiliateId: transactions.affiliateId,
         type: transactions.type,
         amount: transactions.amount,
         currencyId: transactions.currencyId,
@@ -233,7 +403,8 @@ export const getTransactions = async (req: Request, res: Response) => {
         givenTransactionId: transactions.givenTransactionId,
         attachment: transactions.attachment,
         notes: transactions.notes,
-        paymentGatewayProviderAccountId: transactions.paymentGatewayProviderAccountId,
+        paymentGatewayProviderAccountId:
+          transactions.paymentGatewayProviderAccountId,
         accountNumber: transactions.accountNumber,
         accountHolderName: transactions.accountHolderName,
         bankName: transactions.bankName,
@@ -247,7 +418,7 @@ export const getTransactions = async (req: Request, res: Response) => {
         processedAt: transactions.processedAt,
         createdAt: transactions.createdAt,
         updatedAt: transactions.updatedAt,
-        
+
         // User fields
         userUsername: users.username,
         userFullname: users.fullname,
@@ -256,13 +427,21 @@ export const getTransactions = async (req: Request, res: Response) => {
         userStatus: users.status,
         userIsVerified: users.isVerified,
         userCreatedAt: users.created_at,
-        
+
+        // affiliate
+        affiliateUsername: adminUsers.username,
+        affiliateName: adminUsers.fullname,
+        affiliatePhone: adminUsers.phone,
+        affiliateEmail: adminUsers.email,
+        affiliateStatus: adminUsers.status,
+        affiliateRegisterDate: adminUsers.created_at,
+
         // Game fields
         gameName: games.name,
         gameStatus: games.status,
         gameLogo: games.gameLogo,
         gameUrl: games.gameUrl,
-        
+
         // Currency fields
         currencyCode: currencies.code,
         currencyName: currencies.name,
@@ -270,6 +449,7 @@ export const getTransactions = async (req: Request, res: Response) => {
       })
       .from(transactions)
       .leftJoin(users, eq(transactions.userId, users.id))
+      .leftJoin(adminUsers, eq(transactions.affiliateId, adminUsers.id))
       .leftJoin(games, eq(transactions.gameId, games.id))
       .leftJoin(currencies, eq(transactions.currencyId, currencies.id))
       .where(whereExpr as any)
@@ -301,20 +481,28 @@ export const updateTransactionStatus = async (req: Request, res: Response) => {
     const { status, notes } = req.body as { status?: string; notes?: string };
 
     if (Number.isNaN(id)) {
-      return res.status(400).json({ status: false, message: "Invalid transaction id" });
+      return res
+        .status(400)
+        .json({ status: false, message: "Invalid transaction id" });
     }
 
     const validStatuses = ["approved", "pending", "rejected"] as const;
     if (!status || !(validStatuses as readonly string[]).includes(status)) {
       return res.status(400).json({
         status: false,
-        message: "Invalid or missing status. Allowed: approved, pending, rejected",
+        message:
+          "Invalid or missing status. Allowed: approved, pending, rejected",
       });
     }
 
-    const [existing] = await db.select().from(transactions).where(eq(transactions.id, id));
+    const [existing] = await db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.id, id));
     if (!existing) {
-      return res.status(404).json({ status: false, message: "Transaction not found" });
+      return res
+        .status(404)
+        .json({ status: false, message: "Transaction not found" });
     }
 
     const processedBy = (req as any)?.user?.id ?? null;
@@ -325,9 +513,15 @@ export const updateTransactionStatus = async (req: Request, res: Response) => {
     if (processedBy) updatePayload.processedBy = Number(processedBy);
     if (typeof notes === "string") updatePayload.notes = notes;
 
-    await db.update(transactions).set(updatePayload).where(eq(transactions.id, id));
+    await db
+      .update(transactions)
+      .set(updatePayload)
+      .where(eq(transactions.id, id));
 
-    const [updated] = await db.select().from(transactions).where(eq(transactions.id, id));
+    const [updated] = await db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.id, id));
 
     return res.status(200).json({
       status: true,

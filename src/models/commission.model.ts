@@ -34,16 +34,22 @@ export class CommissionModel {
     const [result] = await db
       .select({
         totalWinCommission: sql<number>`
-        sum(case 
-          when bet_results.bet_status = 'win' then commission.commission_amount
-          else 0
-        end)
+        SUM(
+          CASE 
+            WHEN bet_results.bet_status = 'win' AND commission.status = 'approved' 
+            THEN commission.commission_amount
+            ELSE 0
+          END
+        )
       `,
         totalLossCommission: sql<number>`
-        sum(case 
-          when bet_results.bet_status = 'loss' then commission.commission_amount
-          else 0
-        end)
+        SUM(
+          CASE 
+            WHEN bet_results.bet_status = 'loss' AND commission.status = 'approved' 
+            THEN commission.commission_amount
+            ELSE 0
+          END
+        )
       `,
       })
       .from(commission)
@@ -51,8 +57,8 @@ export class CommissionModel {
       .where(eq(commission.adminUserId, affiliateId));
 
     return {
-      totalLossCommission: result?.totalWinCommission || 0,
-      totalWinCommission: result?.totalLossCommission || 0,
+      totalWinCommission: Number(result?.totalWinCommission || 0),
+      totalLossCommission: Number(result?.totalLossCommission || 0),
     };
   };
 

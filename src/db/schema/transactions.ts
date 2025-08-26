@@ -13,6 +13,7 @@ import { paymentGatewayProviderAccount } from "./paymentGatewayProviderAccount";
 import { currencies } from "./currency";
 import { promotions } from "./promotions";
 import { games } from "./games";
+import { adminUsers } from "./AdminUsers";
 
 export const TransactionStatus = mysqlEnum("transaction_status", [
   "approved",
@@ -29,9 +30,10 @@ export const TransactionType = mysqlEnum("transaction_type", [
 
 export const transactions = mysqlTable("transactions", {
   id: int("id").primaryKey().autoincrement(),
-  userId: int("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
+  userId: int("user_id").references(() => users.id, { onDelete: "cascade" }),
+  affiliateId: int("affiliate_id").references(() => adminUsers.id, {
+    onDelete: "cascade",
+  }),
   type: TransactionType.notNull(),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   currencyId: int("currency_id")
@@ -40,11 +42,14 @@ export const transactions = mysqlTable("transactions", {
   promotionId: int("promotion_id").references(() => promotions.id, {
     onDelete: "cascade",
   }),
-  gameId: int("game_id").references(() => {
-    return games.id;
-  }, {
-    onDelete: "cascade",
-  }),
+  gameId: int("game_id").references(
+    () => {
+      return games.id;
+    },
+    {
+      onDelete: "cascade",
+    }
+  ),
   status: TransactionStatus.default("pending"),
   customTransactionId: varchar("custom_transaction_id", {
     length: 100,
@@ -81,6 +86,10 @@ export const transactionsRelations = relations(transactions, ({ one }) => ({
   user: one(users, {
     fields: [transactions.userId],
     references: [users.id],
+  }),
+  affiliate: one(adminUsers, {
+    fields: [transactions.affiliateId],
+    references: [adminUsers.id],
   }),
   currency: one(currencies, {
     fields: [transactions.currencyId],
