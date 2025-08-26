@@ -96,6 +96,58 @@ export interface DashboardStatsFilters {
   userId?: number;
 }
 
+// NEW: Game-wise statistics interface
+export interface GameWiseStatsFilters {
+  dateFrom?: Date;
+  dateTo?: Date;
+  gameId?: number;
+  gameName?: string;
+  providerId?: number;
+  categoryId?: number;
+  userId?:number;
+  status?: string;
+  limit?: number;
+  offset?: number;
+  sortBy?: "totalBets" | "totalBetAmount" | "totalWinAmount" | "totalLossAmount" | "totalPlayers" | "winRate";
+  sortOrder?: "asc" | "desc";
+}
+
+export interface GameWiseStatsData {
+  gameId: number;
+  gameName: string;
+  gameLogo: string;
+  gameUrl: string;
+  gameStatus: string;
+  categoryId?: number|null;
+  categoryTitle?: string|null;
+  categoryImgUrl?: string|null;
+  providerId?: number|null;
+  providerName?: string;
+  providerLogo?: string;
+  providerCountry?: string;
+  
+  // Statistics
+  totalBets: number;
+  totalBetAmount: number;
+  totalWinAmount: number;
+  totalLossAmount: number;
+  totalPendingBets: number;
+  totalPlayersPlayed: number;
+  winRate: number;
+  averageBetAmount: number;
+  totalProfit: number;
+  
+  // Recent activity
+  lastBetPlaced?: Date;
+  lastWinAmount?: number;
+  lastLossAmount?: number;
+  
+  // Player distribution
+  uniquePlayersToday?: number;
+  uniquePlayersThisWeek?: number;
+  uniquePlayersThisMonth?: number;
+}
+
 export interface BetResultWithDetails {
   id: number;
   userId: number;
@@ -1148,7 +1200,7 @@ export const BetResultModel = {
         .from(betResults)
         .where(whereClause)
         .groupBy(betResults.userId)
-        .orderBy(desc(sql`total_win_amount`))
+        .orderBy(desc(sql<number>`COALESCE(SUM(CASE WHEN ${betResults.betStatus} = 'win' THEN ${betResults.winAmount} ELSE 0 END), 0)`))
         .limit(5);
 
       // Recent activity (last 10 bets)
@@ -1179,7 +1231,7 @@ export const BetResultModel = {
         .from(betResults)
         .where(whereClause)
         .groupBy(betResults.gameId, betResults.gameName)
-        .orderBy(desc(sql`total_bets`))
+        .orderBy(desc(sql<number>`COUNT(*)`))
         .limit(10);
 
       const totalBets = stats.totalBets || 0;
@@ -1235,6 +1287,263 @@ export const BetResultModel = {
       };
     } catch (error) {
       console.error("Error fetching dashboard stats:", error);
+      throw error;
+    }
+  },
+
+  // NEW: Get comprehensive game-wise statistics
+  async getGameWiseStats(filters: GameWiseStatsFilters): Promise<{
+    data: GameWiseStatsData[];
+    total: number;
+    summary: {
+      totalGames: number;
+      totalBets: number;
+      totalBetAmount: number;
+      totalWinAmount: number;
+      totalLossAmount: number;
+      totalPendingBets: number;
+      totalPlayersPlayed: number;
+      overallWinRate: number;
+    };
+  }> {
+    try {
+      const {
+        dateFrom,
+        dateTo,
+        gameId,
+        gameName,
+        userId,
+        providerId,
+        categoryId,
+        status,
+        limit = 50,
+        offset = 0,
+        sortBy = "totalBets",
+        sortOrder = "desc",
+      } = filters;
+
+      // Build where conditions
+      const whereConditions = [];
+
+      if (dateFrom) {
+        whereConditions.push(gte(betResults.createdAt, dateFrom));
+      }
+
+      if (dateTo) {
+        whereConditions.push(lte(betResults.createdAt, dateTo));
+      }
+
+      if (gameId) {
+        whereConditions.push(eq(betResults.gameId, gameId));
+      }
+
+      if(userId){
+        whereConditions.push(eq(betResults.userId,userId))
+      }
+
+      if(providerId){
+        whereConditions.push(eq(games.providerId,providerId))
+      }
+
+      if (gameName) {
+        whereConditions.push(like(games.name, `%${gameName}%`));
+      }
+
+      if (status) {
+        whereConditions.push(eq(games.status, status as "active"|"inactive"));
+      }
+
+      const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
+
+      // Get total count for pagination
+      const countQuery = db
+        .select({ count: sql<number>`COUNT(DISTINCT ${betResults.gameId})` })
+        .from(betResults)
+        .leftJoin(games, eq(betResults.gameId, games.id));
+
+      if (whereClause) {
+        countQuery.where(whereClause);
+      }
+
+      const totalResult = await countQuery;
+      const total = totalResult[0]?.count || 0;
+
+      // Build order-by expression based on sortBy parameter
+      let orderByExpr: any;
+      switch (sortBy) {
+        case "totalBets":
+          orderByExpr = sql`COUNT(*)`;
+          break;
+        case "totalBetAmount":
+          orderByExpr = sql`COALESCE(SUM(${betResults.betAmount}), 0)`;
+          break;
+        case "totalWinAmount":
+          orderByExpr = sql`COALESCE(SUM(${betResults.winAmount}), 0)`;
+          break;
+        case "totalLossAmount":
+          orderByExpr = sql`COALESCE(SUM(${betResults.lossAmount}), 0)`;
+          break;
+        case "totalPlayers":
+          orderByExpr = sql`COUNT(DISTINCT ${betResults.userId})`;
+          break;
+        case "winRate":
+          orderByExpr = sql`(COUNT(CASE WHEN ${betResults.betStatus} = 'win' THEN 1 END) / NULLIF(COUNT(*), 0))`;
+          break;
+        default:
+          orderByExpr = sql`COUNT(*)`;
+      }
+
+      // Main query for game-wise statistics
+      const results = await db
+        .select({
+          // Game details
+          gameId: betResults.gameId,
+          gameName: games.name,
+          gameLogo: games.gameLogo,
+          gameUrl: games.gameUrl,
+          gameStatus: games.status,
+          categoryId: games.categoryId,
+          providerId: games.providerId,
+
+          // Statistics
+          totalBets: sql<number>`COUNT(*)`,
+          totalBetAmount: sql<number>`COALESCE(SUM(${betResults.betAmount}), 0)`,
+          totalWinAmount: sql<number>`COALESCE(SUM(${betResults.winAmount}), 0)`,
+          totalLossAmount: sql<number>`COALESCE(SUM(${betResults.lossAmount}), 0)`,
+          totalPendingBets: sql<number>`COUNT(CASE WHEN ${betResults.betStatus} = 'pending' THEN 1 END)`,
+          totalPlayersPlayed: sql<number>`COUNT(DISTINCT ${betResults.userId})`,
+          
+          // Recent activity
+          lastBetPlaced: sql<Date>`MAX(${betResults.createdAt})`,
+          lastWinAmount: sql<number>`MAX(CASE WHEN ${betResults.betStatus} = 'win' THEN ${betResults.winAmount} ELSE 0 END)`,
+          lastLossAmount: sql<number>`MAX(CASE WHEN ${betResults.betStatus} = 'loss' THEN ${betResults.lossAmount} ELSE 0 END)`,
+
+          // Category details
+          categoryTitle: dropdownOptions.title,
+          categoryImgUrl: dropdownOptions.imgUrl,
+
+          // Provider details
+          providerName: game_providers.name,
+          providerLogo: game_providers.logo,
+          providerCountry: game_providers.country,
+        })
+        .from(betResults)
+        .leftJoin(games, eq(betResults.gameId, games.id))
+        .leftJoin(dropdownOptions, eq(games.categoryId, dropdownOptions.id))
+        .leftJoin(game_providers, eq(games.providerId, game_providers.id))
+        .where(whereClause)
+        .groupBy(betResults.gameId, games.id, dropdownOptions.title, dropdownOptions.imgUrl, game_providers.name, game_providers.logo, game_providers.country)
+        .orderBy(sortOrder === "desc" ? desc(orderByExpr) : asc(orderByExpr))
+        .limit(limit)
+        .offset(offset);
+
+      // Get additional time-based player statistics for each game
+      const gameIds = results.map(r => r.gameId);
+      const timeBasedStats = await Promise.all(
+        gameIds.map(async (gameId) => {
+          const today = new Date();
+          const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+          const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+          const [todayStats] = await db
+            .select({ count: sql<number>`COUNT(DISTINCT ${betResults.userId})` })
+            .from(betResults)
+            .where(and(eq(betResults.gameId, gameId), gte(betResults.createdAt, today)))
+            .limit(1);
+
+          const [weekStats] = await db
+            .select({ count: sql<number>`COUNT(DISTINCT ${betResults.userId})` })
+            .from(betResults)
+            .where(and(eq(betResults.gameId, gameId), gte(betResults.createdAt, weekAgo)))
+            .limit(1);
+
+          const [monthStats] = await db
+            .select({ count: sql<number>`COUNT(DISTINCT ${betResults.userId})` })
+            .from(betResults)
+            .where(and(eq(betResults.gameId, gameId), gte(betResults.createdAt, monthAgo)))
+            .limit(1);
+
+          return {
+            gameId,
+            uniquePlayersToday: todayStats?.count || 0,
+            uniquePlayersThisWeek: weekStats?.count || 0,
+            uniquePlayersThisMonth: monthStats?.count || 0,
+          };
+        })
+      );
+
+      // Transform results to include calculated fields
+      const gameStats: GameWiseStatsData[] = results.map((row) => {
+        const totalBets = row.totalBets || 0;
+        const totalBetAmount = Number(row.totalBetAmount) || 0;
+        const totalWinAmount = Number(row.totalWinAmount) || 0;
+        const totalLossAmount = Number(row.totalLossAmount) || 0;
+        const totalPendingBets = row.totalPendingBets || 0;
+        const totalPlayersPlayed = row.totalPlayersPlayed || 0;
+        
+        const winRate = totalBets > 0 ? (totalBets - totalPendingBets > 0 ? (totalWinAmount / (totalBets - totalPendingBets)) * 100 : 0) : 0;
+        const averageBetAmount = totalBets > 0 ? totalBetAmount / totalBets : 0;
+        const totalProfit = totalWinAmount - totalLossAmount;
+
+        // Find time-based stats for this game
+        const timeStats = timeBasedStats.find(ts => ts.gameId === row.gameId);
+
+        return {
+          gameId: row.gameId,
+          gameName: row.gameName || "Unknown Game",
+          gameLogo: row.gameLogo || "",
+          gameUrl: row.gameUrl || "",
+          gameStatus: row.gameStatus || "unknown",
+          categoryId: row.categoryId,
+          categoryTitle: row.categoryTitle,
+          categoryImgUrl: row.categoryImgUrl,
+          providerId: row.providerId,
+          providerName: row.providerName || "Unknown Provider",
+          providerLogo: row.providerLogo || "",
+          providerCountry: row.providerCountry || "Unknown",
+          
+          // Statistics
+          totalBets,
+          totalBetAmount: Math.round(totalBetAmount * 100) / 100,
+          totalWinAmount: Math.round(totalWinAmount * 100) / 100,
+          totalLossAmount: Math.round(totalLossAmount * 100) / 100,
+          totalPendingBets,
+          totalPlayersPlayed,
+          winRate: Math.round(winRate * 100) / 100,
+          averageBetAmount: Math.round(averageBetAmount * 100) / 100,
+          totalProfit: Math.round(totalProfit * 100) / 100,
+          
+          // Recent activity
+          lastBetPlaced: row.lastBetPlaced,
+          lastWinAmount: Number(row.lastWinAmount) || 0,
+          lastLossAmount: Number(row.lastLossAmount) || 0,
+          
+          // Player distribution
+          uniquePlayersToday: timeStats?.uniquePlayersToday || 0,
+          uniquePlayersThisWeek: timeStats?.uniquePlayersThisWeek || 0,
+          uniquePlayersThisMonth: timeStats?.uniquePlayersThisMonth || 0,
+        };
+      });
+
+      // Calculate summary statistics
+      const summary = {
+        totalGames: total,
+        totalBets: gameStats.reduce((sum, game) => sum + game.totalBets, 0),
+        totalBetAmount: Math.round(gameStats.reduce((sum, game) => sum + game.totalBetAmount, 0) * 100) / 100,
+        totalWinAmount: Math.round(gameStats.reduce((sum, game) => sum + game.totalWinAmount, 0) * 100) / 100,
+        totalLossAmount: Math.round(gameStats.reduce((sum, game) => sum + game.totalLossAmount, 0) * 100) / 100,
+        totalPendingBets: gameStats.reduce((sum, game) => sum + game.totalPendingBets, 0),
+        totalPlayersPlayed: new Set(gameStats.flatMap(game => Array.from({ length: game.totalPlayersPlayed }, () => game.gameId))).size,
+        overallWinRate: gameStats.length > 0 ? Math.round(gameStats.reduce((sum, game) => sum + game.winRate, 0) / gameStats.length * 100) / 100 : 0,
+      };
+
+      return {
+        data: gameStats,
+        total,
+        summary,
+      };
+    } catch (error) {
+      console.error("Error fetching game-wise statistics:", error);
       throw error;
     }
   },
