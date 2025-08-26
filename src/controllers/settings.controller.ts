@@ -99,7 +99,7 @@ export const updateSettings = async (req: Request, res: Response) => {
         .json({ status: false, message: "Invalid settings ID" });
     }
 
-    const { defaultTurnover } = req.body;
+    const { defaultTurnover,adminBalance } = req.body;
 
     if (defaultTurnover === undefined || defaultTurnover === null) {
       return res
@@ -109,6 +109,7 @@ export const updateSettings = async (req: Request, res: Response) => {
 
     const result = await SettingsModel.update(settingsId, {
       defaultTurnover: Number(defaultTurnover),
+      adminBalance: Number(adminBalance||0).toString()
     });
 
     return res.json({
