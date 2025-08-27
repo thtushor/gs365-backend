@@ -28,6 +28,8 @@ import gameRoute from "./routes/game.route";
 import betResultRoute from "./routes/betResult.route";
 import commissionRoute from "./routes/commission.route";
 import userLoginHistoryRouter from "./routes/userLoginHistory.route";
+import dashboardRouter from "./routes/dashboard.route";
+import gameStatsRouter from "./routes/gameStats.route";
 import { errorHandler } from "./middlewares/errorHandler";
 import { setupSwagger } from "./utils/swagger";
 // Ensure process.env.DATABASE_URL is defined and of correct type
@@ -101,6 +103,8 @@ app.use("/api/games", gameRoute);
 app.use("/api/bet-results", betResultRoute);
 app.use("/api/commissions", commissionRoute);
 app.use("/api/user-login-history", userLoginHistoryRouter);
+app.use("/api/dashboard", dashboardRouter);
+app.use("/api/game-stats", gameStatsRouter);
 
 app.get("/", (req, res) => {
   res.send("Welcome to the Fashion Glory API!");
