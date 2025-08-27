@@ -7,7 +7,7 @@ import { turnover } from "../db/schema/turnover";
 import { users } from "../db/schema/users";
 import { games } from "../db/schema/games";
 import { currencies } from "../db/schema/currency";
-import { eq, and, like, asc, desc, sql, inArray } from "drizzle-orm";
+import { eq, and, like, asc, desc, sql, inArray, isNotNull } from "drizzle-orm";
 import { generateUniqueTransactionId } from "../utils/refCode";
 import {
   adminUsers,
@@ -337,6 +337,7 @@ export const getTransactions = async (req: Request, res: Response) => {
       sortOrder = "desc",
       userId,
       affiliateId,
+      userType = "user",
     } = req.query as Record<string, string | undefined>;
 
     const currentPage = Math.max(Number(page) || 1, 1);
@@ -358,6 +359,9 @@ export const getTransactions = async (req: Request, res: Response) => {
     }
     if (affiliateId && !Number.isNaN(Number(affiliateId))) {
       whereClauses.push(eq(transactions.affiliateId, Number(affiliateId)));
+    }
+    if (userType === "affiliate") {
+      whereClauses.push(isNotNull(transactions.affiliateId));
     }
     if (search && search.trim()) {
       whereClauses.push(like(transactions.customTransactionId, `%${search}%`));
@@ -517,6 +521,103 @@ export const updateTransactionStatus = async (req: Request, res: Response) => {
       .update(transactions)
       .set(updatePayload)
       .where(eq(transactions.id, id));
+
+    const [updated] = await db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.id, id));
+
+    return res.status(200).json({
+      status: true,
+      message: `Transaction status updated to ${status}`,
+      data: updated,
+    });
+  } catch (err) {
+    console.error("updateTransactionStatus error", err);
+    return res
+      .status(500)
+      .json({ status: false, message: "Internal Server Error", errors: err });
+  }
+};
+export const updateAffiliateWithdrawStatus = async (
+  req: Request,
+  res: Response
+) => {
+  const tx = db; // If you use transaction wrapper, replace with `await db.transaction(...)`
+  try {
+    const id = Number(req.params.id);
+    const { status, notes } = req.body as { status?: string; notes?: string };
+
+    if (Number.isNaN(id)) {
+      return res
+        .status(400)
+        .json({ status: false, message: "Invalid transaction id" });
+    }
+
+    const validStatuses = ["approved", "pending", "rejected"] as const;
+    if (!status || !(validStatuses as readonly string[]).includes(status)) {
+      return res.status(400).json({
+        status: false,
+        message:
+          "Invalid or missing status. Allowed: approved, pending, rejected",
+      });
+    }
+
+    const [existing] = await db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.id, id));
+
+    if (!existing) {
+      return res
+        .status(404)
+        .json({ status: false, message: "Transaction not found" });
+    }
+
+    const affiliateId = existing.affiliateId;
+    const processedBy = (req as any)?.user?.id ?? null;
+    const updatePayload: any = {
+      status: status as any,
+      processedAt: new Date(),
+    };
+    if (processedBy) updatePayload.processedBy = Number(processedBy);
+    if (typeof notes === "string") updatePayload.notes = notes;
+
+    await tx
+      .update(transactions)
+      .set(updatePayload)
+      .where(eq(transactions.id, id));
+
+    // Apply extra logic based on status
+    if (status === "approved") {
+      // ✅ Mark all 'paid' commissions as 'settled' for this affiliate
+      await tx
+        .update(commission)
+        .set({ status: "settled" })
+        .where(
+          and(
+            eq(commission.adminUserId, Number(affiliateId)),
+            eq(commission.status, "paid")
+          )
+        );
+    } else if (status === "rejected") {
+      // ✅ Mark all 'paid' commissions back to 'approved'
+      await tx
+        .update(commission)
+        .set({ status: "approved" })
+        .where(
+          and(
+            eq(commission.adminUserId, Number(affiliateId)),
+            eq(commission.status, "paid")
+          )
+        );
+
+      // ✅ Set remaining balance to 0
+      await tx
+        .update(adminUsers)
+        .set({ remainingBalance: 0 })
+        .where(eq(adminUsers.id, Number(affiliateId)));
+    }
 
     const [updated] = await db
       .select()

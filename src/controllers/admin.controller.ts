@@ -212,12 +212,57 @@ export const adminRegistration = async (
     const uniqueRefCode = await generateUniqueRefCode("admin");
     // If refCode is provided, find the referring admin
     let referred_by = undefined;
+    console.log("refer_code", refer_code);
     if (refer_code) {
       const referringAdmin = await findAdminByRefCode(refer_code);
-      if (referringAdmin && referringAdmin.id) {
-        referred_by = referringAdmin.id;
+      console.log("referringAdmin", referringAdmin);
+      if (
+        referringAdmin &&
+        referringAdmin.id &&
+        referringAdmin?.role === "superAffiliate"
+      ) {
+        // const hashedPassword = await bcrypt.hash(password, 10);
+        const admin = await createAdmin({
+          username,
+          fullname,
+          phone,
+          email,
+          password: password,
+          role: "affiliate",
+          country,
+          city,
+          street,
+          minTrx:
+            minTrx !== undefined
+              ? String(minTrx)
+              : referringAdmin?.minTrx
+              ? referringAdmin?.minTrx
+              : undefined,
+          maxTrx:
+            maxTrx !== undefined
+              ? String(maxTrx)
+              : referringAdmin?.maxTrx
+              ? referringAdmin?.maxTrx
+              : undefined,
+          currency: currency ? currency : referringAdmin?.currency,
+          createdBy: Number(createdByData) || undefined,
+          refCode: uniqueRefCode,
+          status,
+          referred_by: referringAdmin?.id,
+          commission_percent: commission_percent
+            ? commission_percent
+            : referringAdmin?.commission_percent
+            ? referringAdmin?.commission_percent / 2
+            : commission_percent,
+        });
+        res.status(201).json({
+          status: true,
+          message: "Admin registered successfully",
+          data: admin,
+        });
       }
     }
+
     // const hashedPassword = await bcrypt.hash(password, 10);
     const admin = await createAdmin({
       username,
