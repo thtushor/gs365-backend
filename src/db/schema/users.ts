@@ -42,6 +42,11 @@ export const users = mysqlTable("users", {
   referred_by: int("referred_by"),
   referred_by_admin_user: int("referred_by_admin_user"),
   created_at: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
+  kyc_status: mysqlEnum("kyc_status", [
+    "verified",
+    "unverified",
+    "required",
+  ]).default("unverified"),
 });
 
 export const usersRelations = relations(users, ({ one }) => ({

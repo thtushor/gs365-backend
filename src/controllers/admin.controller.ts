@@ -85,6 +85,7 @@ import { DecodedUser } from "../middlewares/verifyToken";
 import { createPromotionRequiredFields } from "../utils/requiredFields";
 import { PromotionDataType } from "../utils/types";
 import { generateUniqueRefCode } from "../utils/refCode";
+import { kyc } from "../db/schema/kyc";
 
 export function getClientIp(req: Request): string {
   const ipSource = {
@@ -3093,5 +3094,350 @@ export const updateMenuPriority = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Error updating menu priority:", error);
     return res.status(500).json({ status: false, message: "Server error" });
+  }
+};
+
+export const createUpdateKyc = async (req: Request, res: Response) => {
+  try {
+    const {
+      id,
+      documentType,
+      documentNo,
+      expiryDate,
+      documentFront,
+      documentBack,
+      selfie,
+      holderId,
+      holderType,
+      status,
+    } = req.body;
+
+    // ---------------------- Validation ----------------------
+    if (!documentType || typeof documentType !== "string") {
+      return res
+        .status(400)
+        .json({ status: false, message: "Document type is required." });
+    }
+    if (!documentNo || typeof documentNo !== "string") {
+      return res
+        .status(400)
+        .json({ status: false, message: "Document number is required." });
+    }
+    if (!expiryDate || typeof expiryDate !== "string") {
+      return res
+        .status(400)
+        .json({ status: false, message: "Expiry date is required." });
+    }
+    if (!documentFront || typeof documentFront !== "string") {
+      return res
+        .status(400)
+        .json({ status: false, message: "Document front is required." });
+    }
+    if (!documentBack || typeof documentBack !== "string") {
+      return res
+        .status(400)
+        .json({ status: false, message: "Document back is required." });
+    }
+    if (!selfie || typeof selfie !== "string") {
+      return res
+        .status(400)
+        .json({ status: false, message: "Selfie is required." });
+    }
+    if (!holderId || typeof holderId !== "number") {
+      return res
+        .status(400)
+        .json({ status: false, message: "Holder ID is required." });
+    }
+    if (!holderType || !["player", "affiliate", "agent"].includes(holderType)) {
+      return res
+        .status(400)
+        .json({ status: false, message: "Holder type is not valid." });
+    }
+
+    // ---------------------- Prepare Status ----------------------
+    const validatedStatus =
+      status === "approved" || status === "rejected" ? status : "pending";
+
+    // ---------------------- Update or Create ----------------------
+    let kycToUpdate;
+
+    if (id) {
+      // Update by provided ID
+      kycToUpdate = await db.select().from(kyc).where(eq(kyc.id, id));
+    }
+
+    if (!kycToUpdate || kycToUpdate.length === 0) {
+      // If no ID or record not found by ID, check holderId + holderType
+      kycToUpdate = await db
+        .select()
+        .from(kyc)
+        .where(and(eq(kyc.holderId, holderId), eq(kyc.holderType, holderType)));
+    }
+
+    console.log(kycToUpdate);
+
+    if (kycToUpdate && kycToUpdate.length > 0) {
+      // Update existing KYC
+      await db
+        .update(kyc)
+        .set({
+          documentType,
+          documentNo,
+          expiryDate,
+          documentFront,
+          documentBack,
+          selfie,
+          holderId,
+          holderType,
+          status: validatedStatus,
+          updated_at: new Date(),
+        })
+        .where(eq(kyc.id, kycToUpdate[0].id));
+
+      return res
+        .status(200)
+        .json({ status: true, message: "KYC updated successfully." });
+    } else {
+      // Create new KYC
+      await db.insert(kyc).values({
+        documentType,
+        documentNo,
+        expiryDate,
+        documentFront,
+        documentBack,
+        selfie,
+        holderId,
+        holderType,
+        status: "pending",
+      });
+
+      return res
+        .status(200)
+        .json({ status: true, message: "KYC created successfully." });
+    }
+  } catch (error) {
+    console.error("Error creating/updating KYC:", error);
+    return res.status(500).json({ status: false, message: "Server error." });
+  }
+};
+export const sendKycVerificationRequest = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { holderType, holderId } = req.body;
+
+    // ---------------------- Validation ----------------------
+    if (!holderType || !["player", "affiliate", "agent"].includes(holderType)) {
+      return res
+        .status(400)
+        .json({ status: false, message: "Holder type is not valid." });
+    }
+
+    if (!holderId || typeof holderId !== "number") {
+      return res.status(400).json({
+        status: false,
+        message: "Holder ID is required and must be a number.",
+      });
+    }
+
+    // ---------------------- Update KYC Status ----------------------
+    if (holderType === "player") {
+      await db
+        .update(users)
+        .set({ kyc_status: "required" })
+        .where(eq(users.id, holderId))
+        .execute();
+
+      const updated = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, holderId));
+
+      if (!updated.length) {
+        return res
+          .status(404)
+          .json({ status: false, message: "Player not found." });
+      }
+    } else {
+      await db
+        .update(adminUsers)
+        .set({ kyc_status: "required" })
+        .where(eq(adminUsers.id, holderId))
+        .execute();
+
+      const updated = await db
+        .select()
+        .from(adminUsers)
+        .where(eq(adminUsers.id, holderId));
+
+      if (!updated.length) {
+        return res
+          .status(404)
+          .json({ status: false, message: "Affiliate/Agent not found." });
+      }
+    }
+
+    // ---------------------- Success ----------------------
+    return res.status(200).json({
+      status: true,
+      message: "KYC verification request sent successfully.",
+    });
+  } catch (error) {
+    console.error("Error sending KYC verification request:", error);
+    return res.status(500).json({ status: false, message: "Server error." });
+  }
+};
+
+export const updateKycStatus = async (req: Request, res: Response) => {
+  try {
+    const { kycId, holderId, status, holderType } = req.body;
+
+    // ---------------------- Validation ----------------------
+    if (!kycId || typeof kycId !== "number") {
+      return res
+        .status(400)
+        .json({ status: false, message: "KYC ID is required." });
+    }
+
+    if (!holderId || typeof holderId !== "number") {
+      return res
+        .status(400)
+        .json({ status: false, message: "Holder ID is required." });
+    }
+
+    if (!holderType || !["player", "affiliate", "agent"].includes(holderType)) {
+      return res
+        .status(400)
+        .json({ status: false, message: "Holder type is not valid." });
+    }
+
+    if (!status || !["approved", "rejected", "pending"].includes(status)) {
+      return res
+        .status(400)
+        .json({ status: false, message: "Invalid status value." });
+    }
+
+    // ---------------------- Update KYC Table ----------------------
+    const result = await db
+      .update(kyc)
+      .set({ status, updated_at: new Date() })
+      .where(and(eq(kyc.id, kycId), eq(kyc.holderId, holderId)));
+
+    if (!result) {
+      return res.status(404).json({ status: false, message: "KYC not found." });
+    }
+
+    // ---------------------- Update User/Admin User KYC Status ----------------------
+    if (status === "approved") {
+      if (holderType === "player") {
+        // Update kyc_status in users table
+        await db
+          .update(users)
+          .set({ kyc_status: "verified" })
+          .where(eq(users.id, holderId));
+      } else if (holderType === "affiliate" || holderType === "agent") {
+        // Update kyc_status in adminUsers table
+        await db
+          .update(adminUsers)
+          .set({ kyc_status: "verified" })
+          .where(eq(adminUsers.id, holderId));
+      }
+    }
+
+    return res
+      .status(200)
+      .json({ status: true, message: "KYC status updated successfully." });
+  } catch (error) {
+    console.error("Error updating KYC status:", error);
+    return res.status(500).json({ status: false, message: "Server error." });
+  }
+};
+
+export const getKycList = async (req: Request, res: Response) => {
+  try {
+    const { kycId, page = 1, limit = 10 } = req.query;
+    const pageNum = parseInt(page as string, 10);
+    const limitNum = parseInt(limit as string, 10);
+    const offset = (pageNum - 1) * limitNum;
+
+    // Base query with LEFT JOINs for holder details
+    const baseQuery = db
+      .select({
+        id: kyc.id,
+        documentType: kyc.documentType,
+        documentNo: kyc.documentNo,
+        expiryDate: kyc.expiryDate,
+        documentFront: kyc.documentFront,
+        documentBack: kyc.documentBack,
+        selfie: kyc.selfie,
+        holderId: kyc.holderId,
+        holderType: kyc.holderType,
+        status: kyc.status,
+        created_at: kyc.created_at,
+        updated_at: kyc.updated_at,
+        holderUsername:
+          sql<string>`COALESCE(users.username, admin_users.username)`.as(
+            "holderUsername"
+          ),
+        holderEmail: sql<string>`COALESCE(users.email, admin_users.email)`.as(
+          "holderEmail"
+        ),
+        holderKycStatus:
+          sql<string>`COALESCE(users.kyc_status, admin_users.kyc_status)`.as(
+            "holderKycStatus"
+          ),
+      })
+      .from(kyc)
+      .leftJoin(
+        users,
+        and(eq(kyc.holderId, users.id), eq(kyc.holderType, "player"))
+      )
+      .leftJoin(
+        adminUsers,
+        and(
+          eq(kyc.holderId, adminUsers.id),
+          inArray(kyc.holderType, ["affiliate", "agent"])
+        )
+      )
+      .orderBy(desc(kyc.created_at));
+
+    // Single KYC by ID
+    if (kycId) {
+      const kycData = await baseQuery
+        .where(and(eq(kyc.holderId, Number(kycId))))
+        .limit(1);
+
+      if (!kycData || kycData.length === 0) {
+        return res
+          .status(404)
+          .json({ status: false, message: "KYC not found." });
+      }
+
+      return res.status(200).json({ status: true, data: kycData[0] });
+    }
+
+    // Paginated list
+    const [totalCountResult] = await db
+      .select({ count: sql<number>`COUNT(*)`.as("count") })
+      .from(kyc);
+
+    const totalCount = totalCountResult?.count ?? 0;
+
+    const kycList = await baseQuery.limit(limitNum).offset(offset);
+
+    return res.status(200).json({
+      status: true,
+      data: kycList,
+      pagination: {
+        total: totalCount,
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(totalCount / limitNum),
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching KYC data:", error);
+    return res.status(500).json({ status: false, message: "Server error." });
   }
 };

@@ -66,6 +66,11 @@ export const adminUsers = mysqlTable("admin_users", {
   referred_by: int("referred_by"),
 
   created_at: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
+  kyc_status: mysqlEnum("kyc_status", [
+    "verified",
+    "unverified",
+    "required",
+  ]).default("unverified"),
 });
 
 // 🔗 Self-reference for createdBy relationship

@@ -279,9 +279,12 @@ export const createAffiliateWithdraw = async (req: Request, res: Response) => {
           )
         );
 
-      await tx.update(adminUsers).set({
-        remainingBalance: remainingBalance,
-      });
+      await tx
+        .update(adminUsers)
+        .set({
+          remainingBalance: remainingBalance,
+        })
+        .where(eq(adminUsers.id, Number(affiliateId)));
 
       const [createdTxn] = await tx.insert(transactions).values({
         affiliateId: Number(affiliateId),
@@ -337,7 +340,7 @@ export const getTransactions = async (req: Request, res: Response) => {
       sortOrder = "desc",
       userId,
       affiliateId,
-      userType = "user",
+      historyType = "global",
     } = req.query as Record<string, string | undefined>;
 
     const currentPage = Math.max(Number(page) || 1, 1);
@@ -360,8 +363,11 @@ export const getTransactions = async (req: Request, res: Response) => {
     if (affiliateId && !Number.isNaN(Number(affiliateId))) {
       whereClauses.push(eq(transactions.affiliateId, Number(affiliateId)));
     }
-    if (userType === "affiliate") {
+    if (historyType === "affiliate") {
       whereClauses.push(isNotNull(transactions.affiliateId));
+    }
+    if (historyType === "user") {
+      whereClauses.push(isNotNull(transactions.userId));
     }
     if (search && search.trim()) {
       whereClauses.push(like(transactions.customTransactionId, `%${search}%`));

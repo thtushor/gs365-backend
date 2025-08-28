@@ -2,6 +2,7 @@ import { db } from "../db/connection";
 import { adminUsers, betResults, commission, users } from "../db/schema";
 import { eq, and, desc, asc, like, sql } from "drizzle-orm";
 import { asyncHandler } from "../utils/asyncHandler";
+import { alias } from "drizzle-orm/mysql-core";
 
 export interface CommissionData {
   betResultId: number;
@@ -94,6 +95,8 @@ export class CommissionModel {
       whereClause.push(eq(commission.playerId, Number(filter?.playerId)));
     }
 
+    const referredUser = alias(adminUsers, "referredUser");
+
     const results = await db
       .select({
         id: commission.id,
@@ -110,10 +113,15 @@ export class CommissionModel {
         user: users,
         adminUser: adminUsers,
         betResults: betResults,
+        referredUser: referredUser,
       })
       .from(commission)
       .leftJoin(users, eq(users.id, commission?.playerId))
       .leftJoin(adminUsers, eq(adminUsers.id, commission?.adminUserId))
+      .leftJoin(
+        referredUser,
+        eq(referredUser.id, users?.referred_by_admin_user)
+      )
       .leftJoin(betResults, eq(betResults?.id, commission?.betResultId))
       .where(and(...whereClause))
       .orderBy(desc(commission.createdAt))

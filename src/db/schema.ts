@@ -23,3 +23,4 @@ export * from "./schema/settings";
 export * from "./schema/betResults";
 export * from "./schema/commission";
 export * from "./schema/userLoginHistory";
+export * from "./schema/kyc";

@@ -59,6 +59,10 @@ import {
   getMenuProviders,
   updateMenuPriority,
   getDetailsByReferer,
+  createUpdateKyc,
+  getKycList,
+  updateKycStatus,
+  sendKycVerificationRequest,
 } from "../controllers/admin.controller";
 
 const router = Router();
@@ -253,5 +257,13 @@ router.post(
   "/update-menu-priority",
   verifyToken,
   asyncHandler(updateMenuPriority)
+);
+router.get("/kyc", verifyToken, asyncHandler(getKycList));
+router.post("/create-update-kyc", verifyToken, asyncHandler(createUpdateKyc));
+router.post("/update-kyc-status", verifyToken, asyncHandler(updateKycStatus));
+router.post(
+  "/send-kyc-verification-request",
+  verifyToken,
+  asyncHandler(sendKycVerificationRequest)
 );
 export default router;
