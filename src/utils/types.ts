@@ -1,3 +1,6 @@
+import { Request } from "express";
+import { DecodedUser } from "../middlewares/verifyToken";
+
 export type statusType = "active" | "inactive";
 
 export interface ImageObject {
@@ -18,4 +21,9 @@ export interface PromotionDataType {
   bonus: number;
   description: string;
   createdBy: string;
+}
+
+// Extended Request interface with user property
+export interface AuthenticatedRequest extends Request {
+  user?: DecodedUser;
 }
