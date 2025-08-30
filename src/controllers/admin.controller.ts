@@ -301,7 +301,7 @@ export const adminLogin = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { userNameOrEmailorPhone, password } = req.body;
+    const { userNameOrEmailorPhone, password, userType } = req.body;
     if (!userNameOrEmailorPhone || !password) {
       res.status(400).json({
         status: false,
@@ -336,6 +336,20 @@ export const adminLogin = async (
 
     if (admin.status !== "active") {
       res.status(401).json({ status: false, message: "User is inactive" });
+      return;
+    }
+    if (admin.role === "admin" && userType === "affiliate") {
+      res.status(403).json({
+        status: false,
+        message: "Provide your affiliate credentials!",
+      });
+      return;
+    }
+    if (admin.role === "admin" && userType === "agent") {
+      res.status(403).json({
+        status: false,
+        message: "Provide your agent credentials!",
+      });
       return;
     }
 
@@ -1249,6 +1263,7 @@ export const addOrUpdatePromotion = async (req: Request, res: Response) => {
       bannerImg,
       bonus,
       description,
+      isRecommended,
     } = req.body;
 
     // Normalize bannerImg
@@ -1304,6 +1319,7 @@ export const addOrUpdatePromotion = async (req: Request, res: Response) => {
       bonus: parseInt(bonus),
       description,
       createdBy: userData?.username ?? "N/A",
+      isRecommended: isRecommended === true || isRecommended === "true",
     };
 
     if (id) {
@@ -3110,6 +3126,7 @@ export const createUpdateKyc = async (req: Request, res: Response) => {
       holderId,
       holderType,
       status,
+      dob,
     } = req.body;
 
     // ---------------------- Validation ----------------------
@@ -3142,6 +3159,11 @@ export const createUpdateKyc = async (req: Request, res: Response) => {
       return res
         .status(400)
         .json({ status: false, message: "Selfie is required." });
+    }
+    if (!dob) {
+      return res
+        .status(400)
+        .json({ status: false, message: "Date of Birth is required." });
     }
     if (!holderId || typeof holderId !== "number") {
       return res
@@ -3191,6 +3213,7 @@ export const createUpdateKyc = async (req: Request, res: Response) => {
           holderType,
           status: validatedStatus,
           updated_at: new Date(),
+          dob,
         })
         .where(eq(kyc.id, kycToUpdate[0].id));
 
@@ -3209,6 +3232,7 @@ export const createUpdateKyc = async (req: Request, res: Response) => {
         holderId,
         holderType,
         status: "pending",
+        dob,
       });
 
       return res
@@ -3226,6 +3250,7 @@ export const sendKycVerificationRequest = async (
 ) => {
   try {
     const { holderType, holderId } = req.body;
+    console.log("holder info from front", holderId, holderType);
 
     // ---------------------- Validation ----------------------
     if (!holderType || !["player", "affiliate", "agent"].includes(holderType)) {
@@ -3243,38 +3268,81 @@ export const sendKycVerificationRequest = async (
 
     // ---------------------- Update KYC Status ----------------------
     if (holderType === "player") {
-      await db
-        .update(users)
-        .set({ kyc_status: "required" })
-        .where(eq(users.id, holderId))
-        .execute();
-
       const updated = await db
         .select()
         .from(users)
-        .where(eq(users.id, holderId));
+        .where(eq(users.id, Number(holderId)));
 
       if (!updated.length) {
         return res
           .status(404)
           .json({ status: false, message: "Player not found." });
       }
-    } else {
       await db
-        .update(adminUsers)
+        .update(users)
         .set({ kyc_status: "required" })
-        .where(eq(adminUsers.id, holderId))
-        .execute();
+        .where(eq(users.id, Number(holderId)));
 
+      const updatedKyc = await db
+        .select()
+        .from(kyc)
+        .where(
+          and(
+            eq(kyc.holderId, Number(holderId)),
+            eq(kyc.holderType, holderType)
+          )
+        );
+
+      if (updatedKyc.length) {
+        const result = await db
+          .update(kyc)
+          .set({ status: "pending" })
+          .where(
+            and(
+              eq(kyc.holderId, Number(holderId)),
+              eq(kyc.holderType, holderType)
+            )
+          );
+        console.log("updated kyc", result);
+      }
+    } else {
       const updated = await db
         .select()
         .from(adminUsers)
-        .where(eq(adminUsers.id, holderId));
+        .where(eq(adminUsers.id, Number(holderId)));
 
       if (!updated.length) {
         return res
           .status(404)
           .json({ status: false, message: "Affiliate/Agent not found." });
+      }
+
+      await db
+        .update(adminUsers)
+        .set({ kyc_status: "required" })
+        .where(eq(adminUsers.id, Number(holderId)));
+
+      const updatedKyc = await db
+        .select()
+        .from(kyc)
+        .where(
+          and(
+            eq(kyc.holderId, Number(holderId)),
+            eq(kyc.holderType, holderType)
+          )
+        );
+
+      if (updatedKyc.length) {
+        const result = await db
+          .update(kyc)
+          .set({ status: "pending" })
+          .where(
+            and(
+              eq(kyc.holderId, Number(holderId)),
+              eq(kyc.holderType, holderType)
+            )
+          );
+        console.log("updated kyc", result);
       }
     }
 
@@ -3376,6 +3444,7 @@ export const getKycList = async (req: Request, res: Response) => {
         status: kyc.status,
         created_at: kyc.created_at,
         updated_at: kyc.updated_at,
+        dob: kyc.dob,
         holderUsername:
           sql<string>`COALESCE(users.username, admin_users.username)`.as(
             "holderUsername"
