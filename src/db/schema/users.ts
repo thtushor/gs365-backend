@@ -22,6 +22,7 @@ export const users = mysqlTable("users", {
   email: varchar("email", { length: 255 }).unique(),
   password: varchar("password", { length: 255 }),
   currency_id: int("currency_id"),
+  country_id: int("country_id"),
   refer_code: varchar("refer_code", { length: 50 }),
   created_by: int("created_by"),
   status: ActivityStatus,
