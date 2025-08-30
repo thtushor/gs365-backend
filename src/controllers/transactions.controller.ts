@@ -151,24 +151,28 @@ export const createDeposit = async (req: Request, res: Response) => {
           targetTurnover: promoTarget as any,
           remainingTurnover: promoTarget as any,
         } as any);
+
+        await tx.update(transactions).set({
+          bonusAmount: bonusAmount.toFixed(2),
+        }).where(eq(transactions.id, transactionId));
       }
 
-      if (Number(gateWayBonus?.bonus || 0) > 0) {
-        const bonusPercentage = Number(gateWayBonus?.bonus || 0);
-        const bonusAmount = (baseAmount * bonusPercentage) / 100;
-        const promoBase = bonusAmount;
-        const promoTarget = promoBase * Number(defaultTurnoverMultiply);
-        await tx.insert(turnover).values({
-          userId: Number(userId),
-          transactionId: transactionId,
-          type: "promotion",
-          status: "active",
-          depositAmount: promoBase,
-          turnoverName: `Gateway bonus: ${gateWayBonus.bonus}%`,
-          targetTurnover: promoTarget as any,
-          remainingTurnover: promoTarget as any,
-        } as any);
-      }
+      // if (Number(gateWayBonus?.bonus || 0) > 0) {
+      //   const bonusPercentage = Number(gateWayBonus?.bonus || 0);
+      //   const bonusAmount = (baseAmount * bonusPercentage) / 100;
+      //   const promoBase = bonusAmount;
+      //   const promoTarget = promoBase * Number(defaultTurnoverMultiply);
+      //   await tx.insert(turnover).values({
+      //     userId: Number(userId),
+      //     transactionId: transactionId,
+      //     type: "promotion",
+      //     status: "active",
+      //     depositAmount: promoBase,
+      //     turnoverName: `Gateway bonus: ${gateWayBonus.bonus}%`,
+      //     targetTurnover: promoTarget as any,
+      //     remainingTurnover: promoTarget as any,
+      //   } as any);
+      // }
 
       return { transactionId, customTransactionId };
     });
@@ -407,6 +411,8 @@ export const getTransactions = async (req: Request, res: Response) => {
         amount: transactions.amount,
         currencyId: transactions.currencyId,
         promotionId: transactions.promotionId,
+        promotionName: promotions.promotionName,
+        bonusAmount: transactions.bonusAmount,
         gameId: transactions.gameId,
         status: transactions.status,
         customTransactionId: transactions.customTransactionId,
@@ -458,6 +464,7 @@ export const getTransactions = async (req: Request, res: Response) => {
         currencySymbol: currencies.symbol,
       })
       .from(transactions)
+      .leftJoin(promotions, eq(transactions.promotionId, promotions.id))
       .leftJoin(users, eq(transactions.userId, users.id))
       .leftJoin(adminUsers, eq(transactions.affiliateId, adminUsers.id))
       .leftJoin(games, eq(transactions.gameId, games.id))

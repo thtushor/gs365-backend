@@ -2,6 +2,7 @@ import { eq, and, sql } from "drizzle-orm";
 import { db } from "../db/connection";
 import { transactions } from "../db/schema/transactions";
 import { currencies } from "../db/schema/currency";
+import { promotions } from "../db/schema";
 
 export interface PlayerBalance {
   currencyCode: string;
@@ -65,6 +66,7 @@ export const BalanceModel = {
           `,
         })
         .from(transactions)
+        .leftJoin(promotions, eq(transactions.promotionId, promotions.id))
         .where(and(...whereConditions))
         .groupBy(transactions.userId);
 
