@@ -7,6 +7,7 @@ import {
   decimal,
   text,
   json,
+  boolean,
 } from "drizzle-orm/mysql-core";
 import { sql } from "drizzle-orm";
 
@@ -28,6 +29,7 @@ export const promotions = mysqlTable("promotions", {
   bannerImg: text("banner_img").notNull(),
   bonus: int("bonus").notNull(),
   description: text("description").notNull(),
+  isRecommended: boolean("is_recommended").default(false),
   createdBy: varchar("created_by", { length: 200 }).notNull(),
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
 });

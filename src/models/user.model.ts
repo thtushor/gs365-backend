@@ -539,6 +539,7 @@ export const getUserProfileById = async (id: number): Promise<any> => {
         lastLogin: users.lastLogin,
         lastIp: users.lastIp,
         isLoggedIn: users.isLoggedIn,
+        kyc_status: users.kyc_status,
         // Currency info
         currencyCode: currencies.code,
         currencyName: currencies.name,
@@ -685,6 +686,7 @@ export const getUserProfileById = async (id: number): Promise<any> => {
       isLoggedIn: user.isLoggedIn,
       device_type: user.device_type,
       ip_address: user.ip_address,
+      kyc_status: user.kyc_status,
 
       // Currency information
       currency: {
