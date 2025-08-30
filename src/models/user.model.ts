@@ -33,6 +33,7 @@ export const createUser = async (data: {
   email: string;
   password: string;
   currency_id: number;
+  country_id: number;
   refer_code?: string;
   isAgreeWithTerms: boolean;
   createdBy?: number;

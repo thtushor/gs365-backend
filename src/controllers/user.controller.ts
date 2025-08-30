@@ -33,7 +33,10 @@ export const getAllUsers = async (req: Request, res: Response) => {
   }
 };
 
-export const getUsersWithFiltersController = async (req: Request, res: Response) => {
+export const getUsersWithFiltersController = async (
+  req: Request,
+  res: Response
+) => {
   try {
     const {
       playerId,
@@ -45,7 +48,7 @@ export const getUsersWithFiltersController = async (req: Request, res: Response)
       createdBy,
       referred_by,
       referred_by_admin_user,
-      userType = 'all',
+      userType = "all",
       currencyId,
       dateFrom,
       dateTo,
@@ -60,15 +63,17 @@ export const getUsersWithFiltersController = async (req: Request, res: Response)
       pageSize: Number(pageSize),
       createdBy: createdBy ? Number(createdBy) : undefined,
       referred_by: referred_by ? Number(referred_by) : undefined,
-      referred_by_admin_user: referred_by_admin_user ? Number(referred_by_admin_user) : undefined,
-      userType: userType as 'all' | 'affiliate' | 'agent' | 'player',
+      referred_by_admin_user: referred_by_admin_user
+        ? Number(referred_by_admin_user)
+        : undefined,
+      userType: userType as "all" | "affiliate" | "agent" | "player",
       currencyId: currencyId ? Number(currencyId) : undefined,
       dateFrom: dateFrom as string,
       dateTo: dateTo as string,
     };
 
     const result = await getUsersWithFilters(filters);
-    
+
     return res.json({
       status: true,
       message: "Users fetched successfully",
@@ -85,7 +90,7 @@ export const getUsersWithFiltersController = async (req: Request, res: Response)
 export const getUserDetailsController = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    
+
     if (!id) {
       return res
         .status(400)
@@ -93,11 +98,9 @@ export const getUserDetailsController = async (req: Request, res: Response) => {
     }
 
     const userDetails = await getUserDetailsById(Number(id));
-    
+
     if (!userDetails) {
-      return res
-        .status(404)
-        .json({ status: false, message: "User not found" });
+      return res.status(404).json({ status: false, message: "User not found" });
     }
 
     return res.json({
@@ -113,33 +116,40 @@ export const getUserDetailsController = async (req: Request, res: Response) => {
   }
 };
 
-export const getUsersByReferrerTypeController = async (req: Request, res: Response) => {
+export const getUsersByReferrerTypeController = async (
+  req: Request,
+  res: Response
+) => {
   try {
     const { type } = req.params;
     const { page = 1, pageSize = 10 } = req.query;
 
-    if (type !== 'affiliate' && type !== 'agent') {
-      return res
-        .status(400)
-        .json({ status: false, message: "Type must be 'affiliate' or 'agent'" });
+    if (type !== "affiliate" && type !== "agent") {
+      return res.status(400).json({
+        status: false,
+        message: "Type must be 'affiliate' or 'agent'",
+      });
     }
 
     const result = await getUsersByReferrerType(
-      type as 'affiliate' | 'agent',
+      type as "affiliate" | "agent",
       Number(page),
       Number(pageSize)
     );
 
     return res.json({
       status: true,
-      message: `${type.charAt(0).toUpperCase() + type.slice(1)} users fetched successfully`,
+      message: `${
+        type.charAt(0).toUpperCase() + type.slice(1)
+      } users fetched successfully`,
       data: result,
     });
   } catch (error) {
     console.error(`Error fetching ${req.params.type} users:`, error);
-    return res
-      .status(500)
-      .json({ status: false, message: `Failed to fetch ${req.params.type} users` });
+    return res.status(500).json({
+      status: false,
+      message: `Failed to fetch ${req.params.type} users`,
+    });
   }
 };
 
@@ -155,6 +165,7 @@ export const registerUser = async (req: Request, res: Response) => {
       refer_code,
       isAgreeWithTerms,
       createdBy,
+      country_id,
     } = req.body;
     if (
       !username ||
@@ -162,6 +173,7 @@ export const registerUser = async (req: Request, res: Response) => {
       !phone ||
       !email ||
       !password ||
+      !country_id ||
       !currency_id ||
       typeof isAgreeWithTerms !== "boolean"
     ) {
@@ -206,7 +218,8 @@ export const registerUser = async (req: Request, res: Response) => {
       createdBy,
       referred_by,
       referred_by_admin_user,
-      status:"active"
+      status: "active",
+      country_id,
     });
     return res.status(201).json({
       status: true,
@@ -353,7 +366,7 @@ export const updateUser = async (req: Request, res: Response) => {
   } catch (error) {
     return res
       .status(500)
-      .json({ status: false, message: "Failed to update user",error });
+      .json({ status: false, message: "Failed to update user", error });
   }
 };
 
@@ -379,13 +392,13 @@ export const deleteUser = async (req: Request, res: Response) => {
   }
 };
 
-export const userProfile = async (req: Request, res: Response): Promise<void> => {
+export const userProfile = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const user = (req as unknown as { user: JwtPayload }).user;
 
-
-  const user = (req as unknown as {user: JwtPayload}).user;
-
-  if(!Boolean(user.id) || user.userType!=="user"){
-    
+  if (!Boolean(user.id) || user.userType !== "user") {
     res.status(401).json({ status: false, message: "Unauthorized" });
     return;
   }
