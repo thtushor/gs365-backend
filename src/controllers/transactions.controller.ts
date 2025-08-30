@@ -7,7 +7,7 @@ import { turnover } from "../db/schema/turnover";
 import { users } from "../db/schema/users";
 import { games } from "../db/schema/games";
 import { currencies } from "../db/schema/currency";
-import { eq, and, like, asc, desc, sql, inArray, isNotNull } from "drizzle-orm";
+import { eq, and, like, asc, desc, sql, inArray, isNotNull, aliasedTable } from "drizzle-orm";
 import { generateUniqueTransactionId } from "../utils/refCode";
 import {
   adminUsers,
@@ -38,8 +38,10 @@ export const createDeposit = async (req: Request, res: Response) => {
       paymentGatewayProviderAccountId,
       notes,
       givenTransactionId,
-      attachment,
+      attachment
     } = req.body as CreateDepositBody;
+    
+    const user = (req as unknown as {user: any}).user as any;
 
     if (!userId || !amount || !currencyId) {
       return res.status(400).json({
@@ -118,11 +120,14 @@ export const createDeposit = async (req: Request, res: Response) => {
         attachment: attachment ?? null,
         accountNumber: gateWayBonus?.gateway_accounts?.accountNumber ?? null,
         accountHolderName: gateWayBonus?.gateway_accounts?.holderName ?? null,
-        bankName: gateWayBonus?.gateway_accounts?.bankName ?? null,
+        bankName: gateWayBonus?.gateway_accounts?.bankName ?? "Cash",
         branchName: gateWayBonus?.gateway_accounts?.branchName ?? null,
         branchAddress: gateWayBonus?.gateway_accounts?.branchAddress ?? null,
+        network: gateWayBonus?.gateway_accounts?.network ?? null,
         swiftCode: gateWayBonus?.gateway_accounts?.swiftCode ?? null,
         iban: gateWayBonus?.gateway_accounts?.iban ?? null,
+        processedBy: user?.userType==="admin" ?  user?.id: null,
+        processedByUser: user?.userType==="user" ?  user?.id: null,
       } as any);
 
       const transactionId =
@@ -409,6 +414,9 @@ export const getTransactions = async (req: Request, res: Response) => {
       .where(whereExpr as any)
       .then((rows) => Number((rows as any)[0]?.count || 0));
 
+    const processedByUser = aliasedTable(users,"processedByUser");
+    const processedByAdmin = aliasedTable(adminUsers,"processedByAdmin");
+
     const data = await db
       .select({
         // Transaction fields
@@ -420,6 +428,7 @@ export const getTransactions = async (req: Request, res: Response) => {
         currencyId: transactions.currencyId,
         promotionId: transactions.promotionId,
         promotionName: promotions.promotionName,
+        promotionPercentage: promotions?.bonus,
         bonusAmount: transactions.bonusAmount,
         gameId: transactions.gameId,
         status: transactions.status,
@@ -438,7 +447,8 @@ export const getTransactions = async (req: Request, res: Response) => {
         iban: transactions.iban,
         walletAddress: transactions.walletAddress,
         network: transactions.network,
-        processedBy: transactions.processedBy,
+        processedById: transactions.processedBy,
+        processedByUserId: transactions?.processedByUser,
         processedAt: transactions.processedAt,
         createdAt: transactions.createdAt,
         updatedAt: transactions.updatedAt,
@@ -466,14 +476,30 @@ export const getTransactions = async (req: Request, res: Response) => {
         gameLogo: games.gameLogo,
         gameUrl: games.gameUrl,
 
+
         // Currency fields
         currencyCode: currencies.code,
         currencyName: currencies.name,
         currencySymbol: currencies.symbol,
+        processedBy: sql`
+  CASE 
+    WHEN ${transactions.processedBy} IS NOT NULL THEN ${processedByAdmin.username}
+    WHEN ${transactions.processedByUser} IS NOT NULL THEN ${processedByUser.username}
+  END
+`,
+processedByRoleType: sql`
+CASE 
+  WHEN ${transactions.processedBy} IS NOT NULL THEN ${processedByAdmin.role}
+  WHEN ${transactions.processedByUser} IS NOT NULL THEN ${'player'}
+END
+`
+
       })
       .from(transactions)
       .leftJoin(promotions, eq(transactions.promotionId, promotions.id))
       .leftJoin(users, eq(transactions.userId, users.id))
+      .leftJoin(processedByAdmin,eq(transactions?.processedBy, processedByAdmin?.id))
+      .leftJoin(processedByUser,eq(transactions.processedByUser,processedByUser.id))
       .leftJoin(adminUsers, eq(transactions.affiliateId, adminUsers.id))
       .leftJoin(games, eq(transactions.gameId, games.id))
       .leftJoin(currencies, eq(transactions.currencyId, currencies.id))

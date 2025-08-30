@@ -76,6 +76,7 @@ export const transactions = mysqlTable("transactions", {
   walletAddress: text("wallet_address"),
   network: varchar("network", { length: 50 }),
   processedBy: int("processed_by"),
+  processedByUser:int("processedByUser"),
   processedAt: datetime("processed_at"),
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updated_at").default(

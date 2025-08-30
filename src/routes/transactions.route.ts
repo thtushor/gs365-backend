@@ -7,15 +7,19 @@ import {
   updateTransactionStatus,
 } from "../controllers/transactions.controller";
 import { asyncHandler } from "../utils/asyncHandler";
+import { verifyToken } from "../middlewares/verifyToken";
 
 const router = Router();
 
-router.post("/deposit", asyncHandler(createDeposit));
-router.post("/affiliate-withdraw", asyncHandler(createAffiliateWithdraw));
-router.get("/", asyncHandler(getTransactions));
-router.post("/:id/status", asyncHandler(updateTransactionStatus));
+
+// router.use(verifyToken);
+
+router.post("/deposit",verifyToken, asyncHandler(createDeposit));
+router.post("/affiliate-withdraw",verifyToken, asyncHandler(createAffiliateWithdraw));
+router.get("/",verifyToken, asyncHandler(getTransactions));
+router.post("/:id/status", verifyToken,asyncHandler(updateTransactionStatus));
 router.post(
-  "/affiliate-withdraw/:id/status",
+  "/affiliate-withdraw/:id/status",verifyToken,
   asyncHandler(updateAffiliateWithdrawStatus)
 );
 

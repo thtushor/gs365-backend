@@ -39,6 +39,7 @@ export function verifyToken(req: Request, res: Response, next: NextFunction) {
   try {
     const decoded = verifyJwt(token);
     (req as any).user = decoded as DecodedUser;
+    console.log({decoded})
 
     return next();
   } catch {
