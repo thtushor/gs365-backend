@@ -20,6 +20,7 @@ import {
 type CreateDepositBody = {
   userId: number;
   amount: number;
+  givenTransactionId?: string;
   currencyId: number;
   promotionId?: number;
   paymentGatewayProviderAccountId?: number;
@@ -36,6 +37,7 @@ export const createDeposit = async (req: Request, res: Response) => {
       promotionId,
       paymentGatewayProviderAccountId,
       notes,
+      givenTransactionId,
       attachment,
     } = req.body as CreateDepositBody;
 
@@ -77,9 +79,7 @@ export const createDeposit = async (req: Request, res: Response) => {
 
       const [gateWayBonus] = paymentGatewayProviderAccountId
         ? await tx
-            .select({
-              bonus: paymentGateway.bonus,
-            })
+            .select()
             .from(paymentGatewayProviderAccount)
             .leftJoin(
               paymentGatewayProvider,
@@ -114,7 +114,15 @@ export const createDeposit = async (req: Request, res: Response) => {
           ? Number(paymentGatewayProviderAccountId)
           : null,
         notes: notes ?? null,
+        givenTransactionId: givenTransactionId ?? null,
         attachment: attachment ?? null,
+        accountNumber: gateWayBonus?.gateway_accounts?.accountNumber ?? null,
+        accountHolderName: gateWayBonus?.gateway_accounts?.holderName ?? null,
+        bankName: gateWayBonus?.gateway_accounts?.bankName ?? null,
+        branchName: gateWayBonus?.gateway_accounts?.branchName ?? null,
+        branchAddress: gateWayBonus?.gateway_accounts?.branchAddress ?? null,
+        swiftCode: gateWayBonus?.gateway_accounts?.swiftCode ?? null,
+        iban: gateWayBonus?.gateway_accounts?.iban ?? null,
       } as any);
 
       const transactionId =

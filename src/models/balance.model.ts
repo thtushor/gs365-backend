@@ -37,7 +37,7 @@ export const BalanceModel = {
           totalDeposits: sql<number>`
             COALESCE(SUM(CASE WHEN ${transactions.type} = 'deposit' 
               AND ${transactions.status} = 'approved' 
-              THEN ${transactions.amount} ELSE 0 END), 0)
+              THEN ${transactions.amount} + COALESCE(${transactions.bonusAmount}, 0) ELSE 0 END), 0)
           `,
           totalWithdrawals: sql<number>`
             COALESCE(SUM(CASE WHEN ${transactions.type} = 'withdraw' 
@@ -57,7 +57,7 @@ export const BalanceModel = {
           pendingDeposits: sql<number>`
             COALESCE(SUM(CASE WHEN ${transactions.type} = 'deposit' 
               AND ${transactions.status} = 'pending' 
-              THEN ${transactions.amount} ELSE 0 END), 0)
+              THEN ${transactions.amount} + COALESCE(${transactions.bonusAmount}, 0) ELSE 0 END), 0)
           `,
           pendingWithdrawals: sql<number>`
             COALESCE(SUM(CASE WHEN ${transactions.type} = 'withdraw' 
