@@ -386,6 +386,9 @@ export const getTransactions = async (req: Request, res: Response) => {
     if (historyType === "user") {
       whereClauses.push(isNotNull(transactions.userId));
     }
+    if(historyType==="promotion"){
+      whereClauses.push(isNotNull(transactions.promotionId))
+    }
     if (search && search.trim()) {
       whereClauses.push(like(transactions.customTransactionId, `%${search}%`));
     }
