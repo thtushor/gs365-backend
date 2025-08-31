@@ -12,14 +12,14 @@ import { verifyToken } from "../middlewares/verifyToken";
 const router = Router();
 
 
-// router.use(verifyToken);
+router.use(verifyToken);
 
-router.post("/deposit",verifyToken, asyncHandler(createDeposit));
-router.post("/affiliate-withdraw",verifyToken, asyncHandler(createAffiliateWithdraw));
-router.get("/",verifyToken, asyncHandler(getTransactions));
-router.post("/:id/status", verifyToken,asyncHandler(updateTransactionStatus));
+router.post("/deposit", asyncHandler(createDeposit));
+router.post("/affiliate-withdraw", asyncHandler(createAffiliateWithdraw));
+router.get("/", asyncHandler(getTransactions));
+router.post("/:id/status",asyncHandler(updateTransactionStatus));
 router.post(
-  "/affiliate-withdraw/:id/status",verifyToken,
+  "/affiliate-withdraw/:id/status",
   asyncHandler(updateAffiliateWithdrawStatus)
 );
 
