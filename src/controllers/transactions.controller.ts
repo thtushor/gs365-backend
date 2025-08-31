@@ -113,6 +113,7 @@ export const createDeposit = async (req: Request, res: Response) => {
         promotionId: promo ? promo.id : null,
         status: "pending" as any,
         customTransactionId,
+        paymentGatewayId:gateWayBonus?.payment_gateway?.id, 
         paymentGatewayProviderAccountId: paymentGatewayProviderAccountId
           ? Number(paymentGatewayProviderAccountId)
           : null,
@@ -121,7 +122,7 @@ export const createDeposit = async (req: Request, res: Response) => {
         attachment: attachment ?? null,
         accountNumber: gateWayBonus?.gateway_accounts?.accountNumber ?? null,
         accountHolderName: gateWayBonus?.gateway_accounts?.holderName ?? null,
-        bankName: gateWayBonus?.gateway_accounts?.bankName ?? "Cash",
+        bankName: gateWayBonus?.payment_gateway?.name ?? "Cash",
         branchName: gateWayBonus?.gateway_accounts?.branchName ?? null,
         branchAddress: gateWayBonus?.gateway_accounts?.branchAddress ?? null,
         network: gateWayBonus?.gateway_accounts?.network ?? null,
@@ -412,10 +413,21 @@ export const createWithdraw = async (req: Request, res: Response) => {
       .where(eq(users.id, userId));
 
     if (!userExists) {
-      return res.status(404).json({
+      return res.status(200).json({
         status: false,
         message: "User not found",
       });
+    }
+
+
+    const [getGateWayData] = await db.select().from(paymentGateway).where((eq(paymentGateway.id,paymentGatewayId)))
+
+
+    if(!getGateWayData?.id){
+      return res.status(200).json({
+        status: false,
+        message: "Gateway not found"
+      })
     }
 
     // Get minimum withdrawable balance from settings
@@ -511,15 +523,17 @@ export const createWithdraw = async (req: Request, res: Response) => {
         status: "pending" as any,
         customTransactionId,
         notes: notes ?? null,
+        
         attachment: attachment ?? null,
         // Bank-specific fields
         accountNumber: accountNumber ?? null,
         accountHolderName: accountHolderName ?? null,
-        bankName: bankName ?? null,
+        bankName: getGateWayData?.name ?? bankName ?? null,
         branchName: branchName ?? null,
         branchAddress: branchAddress ?? null,
         swiftCode: swiftCode ?? null,
         iban: iban ?? null,
+        
         // Wallet-specific fields
         walletAddress: walletAddress ?? null,
         network: network ?? null,
@@ -688,6 +702,7 @@ export const getTransactions = async (req: Request, res: Response) => {
         gameStatus: games.status,
         gameLogo: games.gameLogo,
         gameUrl: games.gameUrl,
+        paymentGateway: paymentGateway,
 
     
 
@@ -711,7 +726,7 @@ END
 
       })
       .from(transactions)
-      .leftJoin(paymentGateway, eq(paymentGateway.id, transactions.id))
+      .leftJoin(paymentGateway, eq(paymentGateway.id, transactions.paymentGatewayId))
       .leftJoin(promotions, eq(transactions.promotionId, promotions.id))
       .leftJoin(users, eq(transactions.userId, users.id))
       .leftJoin(processedByAdmin,eq(transactions?.processedBy, processedByAdmin?.id))
