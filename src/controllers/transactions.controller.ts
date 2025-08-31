@@ -345,6 +345,213 @@ export const createAffiliateWithdraw = async (req: Request, res: Response) => {
     });
   }
 };
+
+type CreateWithdrawBody = {
+  userId: number;
+  amount: number;
+  currencyId: number;
+  withdrawalPaymentAccountId?: number;
+  notes?: string;
+  attachment?: string;
+  // Bank-specific fields
+  accountNumber?: string;
+  accountHolderName?: string;
+  bankName?: string;
+  branchName?: string;
+  branchAddress?: string;
+  swiftCode?: string;
+  iban?: string;
+  // Wallet-specific fields
+  walletAddress?: string;
+  network?: string;
+};
+
+export const createWithdraw = async (req: Request, res: Response) => {
+  try {
+    const {
+      userId,
+      amount,
+      currencyId,
+      withdrawalPaymentAccountId,
+      notes,
+      attachment,
+      // Bank-specific fields
+      accountNumber,
+      accountHolderName,
+      bankName,
+      branchName,
+      branchAddress,
+      swiftCode,
+      iban,
+      // Wallet-specific fields
+      walletAddress,
+      network
+    } = req.body as CreateWithdrawBody;
+    
+    const user = (req as unknown as {user: any}).user as any;
+
+    if (!userId || !amount || !currencyId) {
+      return res.status(400).json({
+        status: false,
+        message: "userId, amount and currencyId are required",
+      });
+    }
+
+    // Validate amount is positive
+    if (Number(amount) <= 0) {
+      return res.status(400).json({
+        status: false,
+        message: "Amount must be greater than 0",
+      });
+    }
+
+    // Check if user exists
+    const [userExists] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId));
+
+    if (!userExists) {
+      return res.status(404).json({
+        status: false,
+        message: "User not found",
+      });
+    }
+
+    // Get minimum withdrawable balance from settings
+    const [settingsRow] = await db.select().from(settings).limit(1);
+    const minWithdrawableBalance = Number(settingsRow?.minWithdrawableBalance || 25000);
+
+    // Check for pending turnover
+    const pendingTurnover = await db
+      .select({
+        id: turnover.id,
+        remainingTurnover: turnover.remainingTurnover,
+        targetTurnover: turnover.targetTurnover,
+        type: turnover.type,
+        status: turnover.status,
+      })
+      .from(turnover)
+      .where(
+        and(
+          eq(turnover.userId, userId),
+          eq(turnover.status, "active")
+        )
+      );
+
+    // Calculate user's current balance using BalanceModel
+    const playerBalance = await BalanceModel.calculatePlayerBalance(userId);
+    const currentBalance = playerBalance.currentBalance;
+
+    // Check if user has sufficient withdrawable balance
+    const hasSufficientBalance = currentBalance >= minWithdrawableBalance;
+
+    // Check if there are any pending turnovers
+    const hasPendingTurnover = pendingTurnover.length > 0;
+
+    // User can withdraw if: sufficient balance AND no pending turnover
+    const canWithdraw = hasSufficientBalance && !hasPendingTurnover;
+
+    if (!canWithdraw) {
+      let withdrawReason = "";
+      if (!hasSufficientBalance) {
+        withdrawReason = `Insufficient balance. Current balance: ${currentBalance.toFixed(2)}, Minimum required: ${minWithdrawableBalance.toFixed(2)}`;
+      } else if (hasPendingTurnover) {
+        const turnoverDetails = pendingTurnover.map(t => 
+          `${t.type} turnover: ${Number(t.remainingTurnover).toFixed(2)} remaining out of ${Number(t.targetTurnover).toFixed(2)} target`
+        ).join(', ');
+        withdrawReason = `Pending turnover requirements: ${turnoverDetails}`;
+      }
+
+      return res.status(400).json({
+        status: false,
+        message: "Withdrawal not allowed",
+        data: {
+          canWithdraw: false,
+          currentBalance: Number(currentBalance.toFixed(2)),
+          minWithdrawableBalance,
+          hasSufficientBalance,
+          hasPendingTurnover,
+          withdrawReason,
+          pendingTurnover: pendingTurnover.map(t => ({
+            id: t.id,
+            remainingTurnover: Number(t.remainingTurnover),
+            targetTurnover: Number(t.targetTurnover),
+            type: t.type,
+            status: t.status,
+          }))
+        }
+      });
+    }
+
+    // Check if withdrawal amount doesn't exceed current balance
+    if (Number(amount) > currentBalance) {
+      return res.status(400).json({
+        status: false,
+        message: "Withdrawal amount exceeds available balance",
+        data: {
+          requestedAmount: Number(amount),
+          currentBalance: Number(currentBalance.toFixed(2)),
+          availableForWithdrawal: Number(currentBalance.toFixed(2))
+        }
+      });
+    }
+
+    const customTransactionId = await generateUniqueTransactionId();
+
+    const result = await db.transaction(async (tx) => {
+      // Create withdrawal transaction
+      const [createdTxn] = await tx.insert(transactions).values({
+        userId: Number(userId),
+        type: "withdraw" as any,
+        amount: Number(amount) as any,
+        currencyId: Number(currencyId),
+        status: "pending" as any,
+        customTransactionId,
+        notes: notes ?? null,
+        attachment: attachment ?? null,
+        // Bank-specific fields
+        accountNumber: accountNumber ?? null,
+        accountHolderName: accountHolderName ?? null,
+        bankName: bankName ?? null,
+        branchName: branchName ?? null,
+        branchAddress: branchAddress ?? null,
+        swiftCode: swiftCode ?? null,
+        iban: iban ?? null,
+        // Wallet-specific fields
+        walletAddress: walletAddress ?? null,
+        network: network ?? null,
+        processedBy: user?.userType === "admin" ? user?.id : null,
+        processedByUser: user?.userType === "user" ? user?.id : null,
+      } as any);
+
+      const transactionId = (createdTxn as any).insertId ?? (createdTxn as any)?.id;
+
+      return { transactionId, customTransactionId };
+    });
+
+    return res.status(201).json({
+      status: true,
+      message: "Withdrawal request created successfully",
+      data: {
+        ...result,
+        amount: Number(amount),
+        status: "pending",
+        currentBalance: Number(currentBalance.toFixed(2)),
+        remainingBalance: Number((currentBalance - Number(amount)).toFixed(2))
+      },
+    });
+
+  } catch (err) {
+    console.error("createWithdraw error", err);
+    return res.status(500).json({
+      status: false,
+      message: "Internal Server Error",
+      error: err instanceof Error ? err.message : "Unknown error"
+    });
+  }
+};
+
 export const getTransactions = async (req: Request, res: Response) => {
   try {
     const {

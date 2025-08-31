@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   createAffiliateWithdraw,
   createDeposit,
+  createWithdraw,
   getTransactions,
   updateAffiliateWithdrawStatus,
   updateTransactionStatus,
@@ -15,6 +16,7 @@ const router = Router();
 router.use(verifyToken);
 
 router.post("/deposit", asyncHandler(createDeposit));
+router.post("/withdraw", asyncHandler(createWithdraw));
 router.post("/affiliate-withdraw", asyncHandler(createAffiliateWithdraw));
 router.get("/", asyncHandler(getTransactions));
 router.post("/:id/status",asyncHandler(updateTransactionStatus));

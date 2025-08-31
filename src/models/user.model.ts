@@ -386,6 +386,7 @@ export const getUsersWithFilters = async (filters: UserFilters) => {
     )
     .where(where)
     .limit(pageSize)
+    .orderBy(desc(users.id))
     .offset((page - 1) * pageSize);
 
   // Get all user IDs for batch balance calculation
