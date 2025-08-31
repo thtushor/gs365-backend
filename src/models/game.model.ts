@@ -458,6 +458,30 @@ export const GameModel = {
         }
 
 
+          // Create transaction record
+      if (update.betStatus === "win" && update.winAmount) {
+        await db.insert(transactions).values({
+          userId: tokenData.userId,
+          type: "win",
+          gameId: gameResult.gameId,
+          amount: update.winAmount.toString(),
+          status: "approved",
+          currencyId: 1, // Default currency, you might want to get this from user
+          createdAt: new Date(),
+        });
+      } else if (update.betStatus === "loss" && update.lossAmount) {
+        await db.insert(transactions).values({
+          userId: tokenData.userId,
+          type: "loss",
+          gameId: gameResult.gameId,
+          amount: update.lossAmount.toString(),
+          status: "approved",
+          currencyId: 1, // Default currency, you might want to get this from user
+          createdAt: new Date(),
+        });
+      }
+
+
 
         let turnOverReduction = update.betAmount;
         const updatedBalance = userBalance.currentBalance - Number(update.lossAmount || 0)
@@ -515,28 +539,7 @@ export const GameModel = {
         throw updateError;
       }
 
-      // Create transaction record
-      if (update.betStatus === "win" && update.winAmount) {
-        await db.insert(transactions).values({
-          userId: tokenData.userId,
-          type: "win",
-          gameId: gameResult.gameId,
-          amount: update.winAmount.toString(),
-          status: "approved",
-          currencyId: 1, // Default currency, you might want to get this from user
-          createdAt: new Date(),
-        });
-      } else if (update.betStatus === "loss" && update.lossAmount) {
-        await db.insert(transactions).values({
-          userId: tokenData.userId,
-          type: "loss",
-          gameId: gameResult.gameId,
-          amount: update.lossAmount.toString(),
-          status: "approved",
-          currencyId: 1, // Default currency, you might want to get this from user
-          createdAt: new Date(),
-        });
-      }
+    
 
       return true;
     } catch (error) {
