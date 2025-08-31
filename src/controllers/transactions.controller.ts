@@ -16,6 +16,7 @@ import {
   paymentGatewayProvider,
   paymentGatewayProviderAccount,
 } from "../db/schema";
+import { BalanceModel } from "../models/balance.model";
 
 type CreateDepositBody = {
   userId: number;
@@ -684,5 +685,98 @@ export const updateAffiliateWithdrawStatus = async (
     return res
       .status(500)
       .json({ status: false, message: "Internal Server Error", errors: err });
+  }
+};
+
+export const checkWithdrawCapability = async (req: Request, res: Response) => {
+  try {
+    const userId = Number(req.params.userId);
+    
+    if (Number.isNaN(userId)) {
+      return res.status(400).json({
+        status: false,
+        message: "Invalid user ID",
+      });
+    }
+
+    // Check if user exists
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId));
+
+    if (!user) {
+      return res.status(404).json({
+        status: false,
+        message: "User not found",
+      });
+    }
+
+    // Get minimum withdrawable balance from settings
+    const [settingsRow] = await db.select().from(settings).limit(1);
+    const minWithdrawableBalance = Number(settingsRow?.minWithdrawableBalance || 25000);
+
+    // Check for pending turnover
+    const pendingTurnover = await db
+      .select({
+        id: turnover.id,
+        remainingTurnover: turnover.remainingTurnover,
+        targetTurnover: turnover.targetTurnover,
+        type: turnover.type,
+        status: turnover.status,
+      })
+      .from(turnover)
+      .where(
+        and(
+          eq(turnover.userId, userId),
+          eq(turnover.status, "active")
+        )
+      );
+
+    // Calculate user's current balance using BalanceModel
+    const playerBalance = await BalanceModel.calculatePlayerBalance(userId);
+    const currentBalance = playerBalance.currentBalance;
+
+    // Check if user has sufficient withdrawable balance
+    const hasSufficientBalance = currentBalance >= minWithdrawableBalance;
+
+    // Check if there are any pending turnovers
+    const hasPendingTurnover = pendingTurnover.length > 0;
+
+    // User can withdraw if: sufficient balance AND no pending turnover
+    const canWithdraw = hasSufficientBalance && !hasPendingTurnover;
+
+    return res.status(200).json({
+      status: true,
+      message: "Withdraw capability check completed",
+      data: {
+        canWithdraw,
+        currentBalance: Number(currentBalance.toFixed(2)),
+        minWithdrawableBalance,
+        hasSufficientBalance,
+        hasPendingTurnover,
+        pendingTurnover: pendingTurnover.map(t => ({
+          id: t.id,
+          remainingTurnover: Number(t.remainingTurnover),
+          targetTurnover: Number(t.targetTurnover),
+          type: t.type,
+          status: t.status,
+        })),
+        balanceBreakdown: {
+          totalDeposits: playerBalance.totalDeposits,
+          totalWins: playerBalance.totalWins,
+          totalWithdrawals: playerBalance.totalWithdrawals,
+          totalLosses: playerBalance.totalLosses,
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error("Error checking withdraw capability:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Internal Server Error",
+      error: error instanceof Error ? error.message : "Unknown error"
+    });
   }
 };

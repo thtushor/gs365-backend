@@ -5,12 +5,12 @@ import {
   getTransactions,
   updateAffiliateWithdrawStatus,
   updateTransactionStatus,
+  checkWithdrawCapability,
 } from "../controllers/transactions.controller";
 import { asyncHandler } from "../utils/asyncHandler";
 import { verifyToken } from "../middlewares/verifyToken";
 
 const router = Router();
-
 
 router.use(verifyToken);
 
@@ -22,5 +22,6 @@ router.post(
   "/affiliate-withdraw/:id/status",
   asyncHandler(updateAffiliateWithdrawStatus)
 );
+router.get("/withdraw-capability/:userId", asyncHandler(checkWithdrawCapability));
 
 export default router;
