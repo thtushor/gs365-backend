@@ -11,6 +11,8 @@ import {
   userProfile,
 } from "../controllers/user.controller";
 import { verifyToken } from "../middlewares/verifyToken";
+import { asyncHandler } from "../utils/asyncHandler";
+import { createUpdateKyc, getKycList } from "../controllers/admin.controller";
 
 const router = Router();
 
@@ -20,7 +22,7 @@ router.post("/register", (req, res, next) => {
 });
 
 router.post("/login", (req, res, next) => {
-  console.log("hit login page...")
+  console.log("hit login page...");
   loginUser(req, res).catch(next);
 });
 
@@ -57,5 +59,7 @@ router.post("/update/:id", (req, res, next) => {
 router.post("/delete/:id", (req, res, next) => {
   deleteUser(req, res).catch(next);
 });
+router.get("/kyc", asyncHandler(getKycList));
+router.post("/create-update-kyc", asyncHandler(createUpdateKyc));
 
 export default router;

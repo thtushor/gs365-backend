@@ -27,6 +27,8 @@ import {
   banners,
   dropdownOptions,
   events,
+  featuredGames,
+  games,
   gamingLicenses,
   responsibleGaming,
   sponsors,
@@ -35,7 +37,7 @@ import {
   video_advertisement,
   website_popups,
 } from "../db/schema";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 
 export const getPublicPromotionList = async (req: Request, res: Response) => {
   try {
@@ -782,6 +784,48 @@ export const getAllPublicEvents = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("getAllPublicEvents error:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Server error.",
+    });
+  }
+};
+export const getFeaturedGame = async (req: Request, res: Response) => {
+  try {
+    const result = await db
+      .select({
+        id: featuredGames.id,
+        title: featuredGames.title,
+        gameId: featuredGames.gameId,
+        images: featuredGames.images,
+        createdAt: featuredGames.createdAt,
+        gameName: games.name,
+        status: featuredGames.status,
+      })
+      .from(featuredGames)
+      .leftJoin(games, eq(featuredGames.gameId, games.id))
+      .where(and(eq(featuredGames.id, 1), eq(featuredGames.status, "active"))) // always fetch id = 1
+      .limit(1); // optional but safe
+
+    if (result.length === 0) {
+      return res.status(400).json({
+        status: false,
+        message: "Featured game not found.",
+      });
+    }
+
+    const featuredGame = {
+      ...result[0],
+      images: result[0].images ? JSON.parse(result[0].images) : [],
+    };
+
+    return res.status(200).json({
+      status: true,
+      data: featuredGame,
+      message: "Featured game fetched successfully.",
+    });
+  } catch (error) {
+    console.error("getFeaturedGame error:", error);
     return res.status(500).json({
       status: false,
       message: "Server error.",

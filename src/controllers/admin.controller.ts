@@ -52,7 +52,9 @@ import {
   dropdownOptions,
   dropdowns,
   events,
+  featuredGames,
   game_providers,
+  games,
   gamingLicenses,
   responsibleGaming,
   sponsors,
@@ -1562,6 +1564,111 @@ export const getAllEvents = async (req: Request, res: Response) => {
     });
   }
 };
+export const createUpdateFeaturedGame = async (req: Request, res: Response) => {
+  try {
+    const { image, status, title, gameId } = req.body;
+
+    if (!gameId) {
+      return res.status(400).json({
+        status: false,
+        message: "Game ID is required.",
+      });
+    }
+
+    // Generate title if missing or not a string
+    const finalTitle =
+      typeof title === "string" && title.trim().length > 0
+        ? title.trim()
+        : `Event - ${Math.floor(1000 + Math.random() * 9000)}`;
+
+    // Basic validation for single image object
+    if (!image || typeof image !== "object") {
+      return res.status(400).json({
+        status: false,
+        message: "Image object is required.",
+      });
+    }
+
+    const validatedStatus = status === "active" ? "active" : "inactive";
+
+    const payload = {
+      images: JSON.stringify(image), // store as array of one for consistency
+      status: validatedStatus as "active" | "inactive",
+      title: finalTitle,
+      gameId: gameId,
+    };
+
+    // Check if a row already exists
+    const existing = await db.select().from(featuredGames).limit(1);
+
+    if (existing.length > 0) {
+      // Update the existing row (id = 1)
+      await db
+        .update(featuredGames)
+        .set(payload)
+        .where(eq(featuredGames.id, existing[0].id));
+      return res
+        .status(200)
+        .json({ status: true, message: "Featured game updated successfully." });
+    } else {
+      // Insert a new row with id = 1
+      await db.insert(featuredGames).values({ id: 1, ...payload });
+      return res
+        .status(201)
+        .json({ status: true, message: "Featured game created successfully." });
+    }
+  } catch (error) {
+    console.error("create or update featured games error:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Server error.",
+    });
+  }
+};
+
+export const getFeaturedGame = async (req: Request, res: Response) => {
+  try {
+    const result = await db
+      .select({
+        id: featuredGames.id,
+        title: featuredGames.title,
+        gameId: featuredGames.gameId,
+        images: featuredGames.images,
+        createdAt: featuredGames.createdAt,
+        gameName: games.name,
+        status: featuredGames.status,
+      })
+      .from(featuredGames)
+      .leftJoin(games, eq(featuredGames.gameId, games.id))
+      .where(eq(featuredGames.id, 1)) // always fetch id = 1
+      .limit(1); // optional but safe
+
+    if (result.length === 0) {
+      return res.status(400).json({
+        status: false,
+        message: "Featured game not found.",
+      });
+    }
+
+    const featuredGame = {
+      ...result[0],
+      images: result[0].images ? JSON.parse(result[0].images) : [],
+    };
+
+    return res.status(200).json({
+      status: true,
+      data: featuredGame,
+      message: "Featured game fetched successfully.",
+    });
+  } catch (error) {
+    console.error("getFeaturedGame error:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Server error.",
+    });
+  }
+};
+
 export const createOrUpdateAnnouncement = async (
   req: Request,
   res: Response
@@ -3127,6 +3234,7 @@ export const createUpdateKyc = async (req: Request, res: Response) => {
       holderType,
       status,
       dob,
+      fullName,
     } = req.body;
 
     // ---------------------- Validation ----------------------
@@ -3134,6 +3242,11 @@ export const createUpdateKyc = async (req: Request, res: Response) => {
       return res
         .status(400)
         .json({ status: false, message: "Document type is required." });
+    }
+    if (!fullName || typeof fullName !== "string") {
+      return res
+        .status(400)
+        .json({ status: false, message: "Full name is required." });
     }
     if (!documentNo || typeof documentNo !== "string") {
       return res
@@ -3209,6 +3322,7 @@ export const createUpdateKyc = async (req: Request, res: Response) => {
           documentFront,
           documentBack,
           selfie,
+          fullName,
           holderId,
           holderType,
           status: validatedStatus,
@@ -3228,6 +3342,7 @@ export const createUpdateKyc = async (req: Request, res: Response) => {
         expiryDate,
         documentFront,
         documentBack,
+        fullName,
         selfie,
         holderId,
         holderType,
@@ -3411,6 +3526,85 @@ export const updateKycStatus = async (req: Request, res: Response) => {
           .set({ kyc_status: "verified" })
           .where(eq(adminUsers.id, holderId));
       }
+    } else {
+      if (holderType === "player") {
+        const updated = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, Number(holderId)));
+
+        if (!updated.length) {
+          return res
+            .status(404)
+            .json({ status: false, message: "Player not found." });
+        }
+        await db
+          .update(users)
+          .set({ kyc_status: "required" })
+          .where(eq(users.id, Number(holderId)));
+
+        const updatedKyc = await db
+          .select()
+          .from(kyc)
+          .where(
+            and(
+              eq(kyc.holderId, Number(holderId)),
+              eq(kyc.holderType, holderType)
+            )
+          );
+
+        if (updatedKyc.length) {
+          const result = await db
+            .update(kyc)
+            .set({ status: "pending" })
+            .where(
+              and(
+                eq(kyc.holderId, Number(holderId)),
+                eq(kyc.holderType, holderType)
+              )
+            );
+          console.log("updated kyc", result);
+        }
+      } else {
+        const updated = await db
+          .select()
+          .from(adminUsers)
+          .where(eq(adminUsers.id, Number(holderId)));
+
+        if (!updated.length) {
+          return res
+            .status(404)
+            .json({ status: false, message: "Affiliate/Agent not found." });
+        }
+
+        await db
+          .update(adminUsers)
+          .set({ kyc_status: "required" })
+          .where(eq(adminUsers.id, Number(holderId)));
+
+        const updatedKyc = await db
+          .select()
+          .from(kyc)
+          .where(
+            and(
+              eq(kyc.holderId, Number(holderId)),
+              eq(kyc.holderType, holderType)
+            )
+          );
+
+        if (updatedKyc.length) {
+          const result = await db
+            .update(kyc)
+            .set({ status: "pending" })
+            .where(
+              and(
+                eq(kyc.holderId, Number(holderId)),
+                eq(kyc.holderType, holderType)
+              )
+            );
+          console.log("updated kyc", result);
+        }
+      }
     }
 
     return res
@@ -3434,6 +3628,7 @@ export const getKycList = async (req: Request, res: Response) => {
       .select({
         id: kyc.id,
         documentType: kyc.documentType,
+        fullName: kyc.fullName,
         documentNo: kyc.documentNo,
         expiryDate: kyc.expiryDate,
         documentFront: kyc.documentFront,
@@ -3479,7 +3674,7 @@ export const getKycList = async (req: Request, res: Response) => {
 
       if (!kycData || kycData.length === 0) {
         return res
-          .status(404)
+          .status(400)
           .json({ status: false, message: "KYC not found." });
       }
 

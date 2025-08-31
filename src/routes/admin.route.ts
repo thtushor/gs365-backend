@@ -63,6 +63,8 @@ import {
   getKycList,
   updateKycStatus,
   sendKycVerificationRequest,
+  createUpdateFeaturedGame,
+  getFeaturedGame,
 } from "../controllers/admin.controller";
 
 const router = Router();
@@ -152,6 +154,12 @@ router.post(
 );
 router.post("/event", verifyToken, asyncHandler(createUpdateEvent));
 router.get("/events", verifyToken, asyncHandler(getAllEvents));
+router.post(
+  "/featured-games",
+  verifyToken,
+  asyncHandler(createUpdateFeaturedGame)
+);
+router.get("/featured-games", verifyToken, asyncHandler(getFeaturedGame));
 router.post(
   "/website-popup",
   verifyToken,

@@ -13,6 +13,7 @@ import {
   getAllExclusiveGamesSportsList,
   getAllGamesByCategoryID,
   getAllPublicEvents,
+  getFeaturedGame,
   getGameList,
   getMenuProviders,
   getProviderAndCategory,
@@ -52,5 +53,6 @@ router.get(
   "/exclusive-games-sports",
   asyncHandler(getAllExclusiveGamesSportsList)
 );
+router.get("/featured-games", asyncHandler(getFeaturedGame));
 
 export default router;
