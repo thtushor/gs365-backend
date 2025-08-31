@@ -746,6 +746,16 @@ export const checkWithdrawCapability = async (req: Request, res: Response) => {
     // User can withdraw if: sufficient balance AND no pending turnover
     const canWithdraw = hasSufficientBalance && !hasPendingTurnover;
 
+    // Determine the reason why withdrawal is not allowed
+    let withdrawReason = null;
+    if (!canWithdraw) {
+      if (!hasSufficientBalance) {
+        withdrawReason = `Insufficient balance. Current balance: ${currentBalance.toFixed(2)}, Minimum required: ${minWithdrawableBalance.toFixed(2)}`;
+      } else if (hasPendingTurnover) {
+        withdrawReason = `Turnover has not yet reached`;
+      }
+    }
+
     return res.status(200).json({
       status: true,
       message: "Withdraw capability check completed",
@@ -755,6 +765,7 @@ export const checkWithdrawCapability = async (req: Request, res: Response) => {
         minWithdrawableBalance,
         hasSufficientBalance,
         hasPendingTurnover,
+        withdrawReason,
         pendingTurnover: pendingTurnover.map(t => ({
           id: t.id,
           remainingTurnover: Number(t.remainingTurnover),

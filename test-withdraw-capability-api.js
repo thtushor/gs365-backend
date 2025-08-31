@@ -35,6 +35,10 @@ async function testWithdrawCapability() {
     console.log(`- Sufficient Balance: ${data.hasSufficientBalance ? '✅ YES' : '❌ NO'}`);
     console.log(`- Pending Turnover: ${data.hasPendingTurnover ? '❌ YES' : '✅ NO'}`);
     
+    if (!data.canWithdraw && data.withdrawReason) {
+      console.log(`- Withdraw Reason: ${data.withdrawReason}`);
+    }
+    
     if (data.pendingTurnover.length > 0) {
       console.log('\n⚠️  Pending Turnover Details:');
       data.pendingTurnover.forEach((turnover, index) => {

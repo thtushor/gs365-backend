@@ -37,6 +37,7 @@ curl -X GET \
     "minWithdrawableBalance": 25000.00,
     "hasSufficientBalance": true,
     "hasPendingTurnover": false,
+    "withdrawReason": null,
     "pendingTurnover": [],
     "balanceBreakdown": {
       "totalDeposits": 80000.00,
@@ -92,6 +93,7 @@ curl -X GET \
 | `minWithdrawableBalance` | number | Minimum balance required for withdrawal (from settings) |
 | `hasSufficientBalance` | boolean | Whether user meets minimum balance requirement |
 | `hasPendingTurnover` | boolean | Whether user has any pending turnover requirements |
+| `withdrawReason` | string | Reason why the user cannot withdraw (null if can withdraw) |
 | `pendingTurnover` | array | Array of pending turnover objects (empty if none) |
 | `balanceBreakdown` | object | Detailed breakdown of user's financial position |
 
@@ -168,7 +170,8 @@ Integrate with withdrawal processing systems to prevent invalid requests.
   "currentBalance": 15000.00,
   "minWithdrawableBalance": 25000.00,
   "hasSufficientBalance": false,
-  "hasPendingTurnover": false
+  "hasPendingTurnover": false,
+  "withdrawReason": "Insufficient balance. Current balance: 15000.00, Minimum required: 25000.00"
 }
 ```
 
@@ -180,6 +183,7 @@ Integrate with withdrawal processing systems to prevent invalid requests.
   "minWithdrawableBalance": 25000.00,
   "hasSufficientBalance": true,
   "hasPendingTurnover": true,
+  "withdrawReason": "Pending turnover requirements: promotion turnover: 50000.00 remaining out of 100000.00 target",
   "pendingTurnover": [
     {
       "id": 1,

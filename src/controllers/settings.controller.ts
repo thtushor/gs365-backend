@@ -62,7 +62,7 @@ export const getCurrentSettings = async (req: Request, res: Response) => {
 
 export const createSettings = async (req: Request, res: Response) => {
   try {
-    const { defaultTurnover,adminBalance } = req.body;
+    const { defaultTurnover,adminBalance,...rest} = req.body;
 
     if (defaultTurnover === undefined || defaultTurnover === null) {
       return res
@@ -72,7 +72,8 @@ export const createSettings = async (req: Request, res: Response) => {
 
     const result = await SettingsModel.create({
       defaultTurnover: Number(defaultTurnover),
-      adminBalance: Number(adminBalance).toString()
+      adminBalance: Number(adminBalance).toString(),
+      ...rest
     });
 
     return res.status(201).json({
@@ -99,7 +100,7 @@ export const updateSettings = async (req: Request, res: Response) => {
         .json({ status: false, message: "Invalid settings ID" });
     }
 
-    const { defaultTurnover,adminBalance } = req.body;
+    const { defaultTurnover,adminBalance,...rest } = req.body;
 
     if (defaultTurnover === undefined || defaultTurnover === null) {
       return res
@@ -109,7 +110,8 @@ export const updateSettings = async (req: Request, res: Response) => {
 
     const result = await SettingsModel.update(settingsId, {
       defaultTurnover: Number(defaultTurnover),
-      adminBalance: Number(adminBalance||0).toString()
+      adminBalance: Number(adminBalance||0).toString(),
+      ...rest
     });
 
     return res.json({
