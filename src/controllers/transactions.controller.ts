@@ -350,7 +350,7 @@ type CreateWithdrawBody = {
   userId: number;
   amount: number;
   currencyId: number;
-  withdrawalPaymentAccountId?: number;
+  paymentGatewayId?: number;
   notes?: string;
   attachment?: string;
   // Bank-specific fields
@@ -372,7 +372,7 @@ export const createWithdraw = async (req: Request, res: Response) => {
       userId,
       amount,
       currencyId,
-      withdrawalPaymentAccountId,
+      paymentGatewayId,
       notes,
       attachment,
       // Bank-specific fields
@@ -390,10 +390,10 @@ export const createWithdraw = async (req: Request, res: Response) => {
     
     const user = (req as unknown as {user: any}).user as any;
 
-    if (!userId || !amount || !currencyId) {
+    if (!userId || !amount || !currencyId || !paymentGatewayId) {
       return res.status(400).json({
         status: false,
-        message: "userId, amount and currencyId are required",
+        message: "userId, paymentGatewayId, amount and currencyId are required",
       });
     }
 
@@ -430,6 +430,7 @@ export const createWithdraw = async (req: Request, res: Response) => {
         targetTurnover: turnover.targetTurnover,
         type: turnover.type,
         status: turnover.status,
+        
       })
       .from(turnover)
       .where(
@@ -506,6 +507,7 @@ export const createWithdraw = async (req: Request, res: Response) => {
         type: "withdraw" as any,
         amount: Number(amount) as any,
         currencyId: Number(currencyId),
+        paymentGatewayId: Number(paymentGatewayId),
         status: "pending" as any,
         customTransactionId,
         notes: notes ?? null,
@@ -687,6 +689,8 @@ export const getTransactions = async (req: Request, res: Response) => {
         gameLogo: games.gameLogo,
         gameUrl: games.gameUrl,
 
+    
+
 
         // Currency fields
         currencyCode: currencies.code,
@@ -707,6 +711,7 @@ END
 
       })
       .from(transactions)
+      .leftJoin(paymentGateway, eq(paymentGateway.id, transactions.id))
       .leftJoin(promotions, eq(transactions.promotionId, promotions.id))
       .leftJoin(users, eq(transactions.userId, users.id))
       .leftJoin(processedByAdmin,eq(transactions?.processedBy, processedByAdmin?.id))

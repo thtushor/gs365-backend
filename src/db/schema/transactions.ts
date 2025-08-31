@@ -14,6 +14,7 @@ import { currencies } from "./currency";
 import { promotions } from "./promotions";
 import { games } from "./games";
 import { adminUsers } from "./AdminUsers";
+import { paymentGateway } from "./paymentGateway";
 
 export const TransactionStatus = mysqlEnum("transaction_status", [
   "approved",
@@ -60,6 +61,12 @@ export const transactions = mysqlTable("transactions", {
   notes: text("notes"),
   paymentGatewayProviderAccountId: int("provider_account_id").references(
     () => paymentGatewayProviderAccount.id,
+    {
+      onDelete: "cascade",
+    }
+  ),
+  paymentGatewayId: int("gateWayId").references(
+    () => paymentGateway.id,
     {
       onDelete: "cascade",
     }
