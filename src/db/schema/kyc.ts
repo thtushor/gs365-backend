@@ -13,6 +13,7 @@ import { users } from "./users";
 export const kyc = mysqlTable("kyc", {
   id: int("id").primaryKey().autoincrement(),
   documentType: varchar("document_type", { length: 150 }).notNull(),
+  fullName: varchar("full_name", { length: 150 }).notNull(),
   documentNo: varchar("document_no", { length: 150 }).notNull(),
   expiryDate: varchar("expiry_date", { length: 150 }).notNull(),
   dob: varchar("dob", { length: 150 }).notNull(),
