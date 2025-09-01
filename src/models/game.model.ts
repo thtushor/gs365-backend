@@ -1,4 +1,4 @@
-import { eq, and, sql, isNotNull, gte, gt } from "drizzle-orm";
+import { eq, and, sql, isNotNull, gte, gt, asc } from "drizzle-orm";
 import { db } from "../db/connection";
 import { games } from "../db/schema/games";
 import { game_providers } from "../db/schema/gameProvider";
@@ -488,7 +488,8 @@ export const GameModel = {
 
         if (updatedBalance <= 20) {
           await db.update(turnover).set({
-            status: "completed"
+            status: "completed",
+            // remainingTurnover: "0"
           }).where(eq(turnover.userId, gameResult.userId))
           return false;
         }
@@ -500,9 +501,10 @@ export const GameModel = {
           .where(
             and(
               eq(turnover.userId, gameResult.userId),
+              eq(turnover.status, "active"),
               gt(sql`CAST(${turnover.remainingTurnover} AS DECIMAL)`, 0)
             )
-          );
+          ).orderBy(asc(turnover.id));
 
         for (const item of getActiveTurnOver) {
           if (turnOverReduction > 0) {
@@ -511,9 +513,9 @@ export const GameModel = {
                 .update(turnover)
                 .set({
                   remainingTurnover: (
-                    Number(item?.remainingTurnover) - Number(turnOverReduction)
+                    Math.max(Number(item?.remainingTurnover) - Number(turnOverReduction),0)
                   ).toString(),
-                  status: (Number(item?.remainingTurnover) - Number(turnOverReduction)) <= 0 ? "completed" : "active"
+                  status: (Math.max(Number(item?.remainingTurnover) - Number(turnOverReduction),0)) <= 0 ? "completed" : undefined
                 })
                 .where(eq(turnover.id, item?.id));
               turnOverReduction = 0;
@@ -521,7 +523,7 @@ export const GameModel = {
               await db
                 .update(turnover)
                 .set({
-                  remainingTurnover: Number(item?.remainingTurnover).toString(),
+                  remainingTurnover: "0",
                   status: "completed",
                 })
                 .where(eq(turnover.id, item?.id));
