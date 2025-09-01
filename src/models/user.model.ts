@@ -373,6 +373,8 @@ export const getUsersWithFilters = async (filters: UserFilters) => {
       // Referrer info (could be affiliate or agent)
       referrerName: adminUsers.fullname,
       referrerRole: adminUsers.role,
+      referred_by: users.referred_by,
+      referred_by_admin_user: users.referred_by_admin_user,
       // User referrer info (from referred_by column)
       userReferrerName: sql<string>`user_referrer.fullname`,
       userReferrerUsername: sql<string>`user_referrer.username`,
@@ -445,6 +447,7 @@ export const getUsersWithFilters = async (filters: UserFilters) => {
     // Determine affiliate and agent info based on referrer role
     let affiliateName: string | null = null;
     let affiliateRole: string | null = null;
+    let affiliateId: number | null = null;
     let agentName: string | null = null;
     let agentRole: string | null = null;
 
@@ -613,7 +616,15 @@ export const getUserProfileById = async (id: number): Promise<any> => {
         givenTransactionId: transactions.givenTransactionId,
       })
       .from(transactions)
-      .where(and(eq(transactions.userId, user.id)))
+      .where(
+        and(
+          eq(transactions.userId, user.id),
+          or(
+            eq(transactions.type, "deposit"),
+            eq(transactions.type, "withdraw")
+          )
+        )
+      )
       .orderBy(desc(transactions.createdAt))
       .limit(10);
 

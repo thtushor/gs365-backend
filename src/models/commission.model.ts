@@ -1,6 +1,6 @@
 import { db } from "../db/connection";
 import { adminUsers, betResults, commission, users } from "../db/schema";
-import { eq, and, desc, asc, like, sql } from "drizzle-orm";
+import { eq, and, desc, asc, like, sql, or } from "drizzle-orm";
 import { asyncHandler } from "../utils/asyncHandler";
 import { alias } from "drizzle-orm/mysql-core";
 
@@ -74,73 +74,91 @@ export class CommissionModel {
 
   // Get all commissions with pagination
   static getAllCommissions = async (filter: {
-    search?: String;
-    playerId?: Number;
-    adminUserId?: Number;
-    page: Number;
-    pageSize: Number;
+    search?: string;
+    playerId?: number;
+    adminUserId?: number;
+    page: number;
+    pageSize: number;
   }) => {
     const offset = (Number(filter.page) - 1) * Number(filter.pageSize);
 
     let whereClause = [];
+
     if (filter?.search) {
-      whereClause.push(like(adminUsers?.username, `%${filter?.search}%`));
+      const kw = `%${filter?.search}%`;
+      whereClause.push(
+        or(
+          like(users.username, kw), // ✅ search in users table
+          like(users.fullname, kw),
+          like(users.email, kw),
+          like(users.phone, kw),
+          like(adminUsers.username, kw), // ✅ search in admin_users table
+          like(adminUsers.fullname, kw),
+          like(adminUsers.email, kw),
+          like(adminUsers.phone, kw)
+        )
+      );
     }
 
     if (filter?.adminUserId) {
-      whereClause.push(eq(commission.adminUserId, Number(filter?.adminUserId)));
+      whereClause.push(eq(commission.adminUserId, Number(filter.adminUserId)));
     }
 
     if (filter?.playerId) {
-      whereClause.push(eq(commission.playerId, Number(filter?.playerId)));
+      whereClause.push(eq(commission.playerId, Number(filter.playerId)));
     }
 
     const referredUser = alias(adminUsers, "referredUser");
 
+    // -----------------------------
+    // Main query with pagination
+    // -----------------------------
     const results = await db
       .select({
         id: commission.id,
-        betResultId: commission?.betResultId,
-        playerId: commission?.playerId,
-        adminUserId: commission?.adminUserId,
-        commissionAmount: commission?.commissionAmount,
-        percentage: commission?.percentage,
-        status: commission?.status,
-        notes: commission?.notes,
-        createdBy: commission?.createdBy,
-        updatedBy: commission?.updatedBy,
-        createdAt: commission?.createdAt,
+        betResultId: commission.betResultId,
+        playerId: commission.playerId,
+        adminUserId: commission.adminUserId,
+        commissionAmount: commission.commissionAmount,
+        percentage: commission.percentage,
+        status: commission.status,
+        notes: commission.notes,
+        createdBy: commission.createdBy,
+        updatedBy: commission.updatedBy,
+        createdAt: commission.createdAt,
         user: users,
         adminUser: adminUsers,
         betResults: betResults,
         referredUser: referredUser,
       })
       .from(commission)
-      .leftJoin(users, eq(users.id, commission?.playerId))
-      .leftJoin(adminUsers, eq(adminUsers.id, commission?.adminUserId))
-      .leftJoin(
-        referredUser,
-        eq(referredUser.id, users?.referred_by_admin_user)
-      )
-      .leftJoin(betResults, eq(betResults?.id, commission?.betResultId))
-      .where(and(...whereClause))
+      .leftJoin(users, eq(users.id, commission.playerId))
+      .leftJoin(adminUsers, eq(adminUsers.id, commission.adminUserId))
+      .leftJoin(referredUser, eq(referredUser.id, users.referred_by_admin_user))
+      .leftJoin(betResults, eq(betResults.id, commission.betResultId))
+      .where(whereClause.length ? and(...whereClause) : undefined)
       .orderBy(desc(commission.createdAt))
-      .limit(Number(filter?.pageSize))
+      .limit(Number(filter.pageSize))
       .offset(offset);
 
+    // -----------------------------
+    // Total count query (with joins)
+    // -----------------------------
     const totalCount = await db
       .select({ count: sql<number>`count(*)` })
       .from(commission)
-      .where(and(...whereClause));
+      .leftJoin(users, eq(users.id, commission.playerId)) // ✅ add join
+      .leftJoin(adminUsers, eq(adminUsers.id, commission.adminUserId)) // ✅ add join
+      .where(whereClause.length ? and(...whereClause) : undefined);
 
     return {
       data: results,
       pagination: {
-        page: filter?.page,
-        pageSize: filter?.pageSize,
+        page: filter.page,
+        pageSize: filter.pageSize,
         total: totalCount[0]?.count || 0,
         totalPages: Math.ceil(
-          (totalCount[0]?.count || 0) / Number(filter?.pageSize)
+          (totalCount[0]?.count || 0) / Number(filter.pageSize)
         ),
       },
     };

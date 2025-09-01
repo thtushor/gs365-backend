@@ -354,6 +354,13 @@ export const adminLogin = async (
       });
       return;
     }
+    if (admin.role !== "admin" && userType === "admin") {
+      res.status(403).json({
+        status: false,
+        message: "Provide your admin credentials!",
+      });
+      return;
+    }
 
     if (admin.id)
       await db
@@ -693,6 +700,8 @@ export const getAffiliates = async (req: Request, res: Response) => {
     if (status && validStatuses.includes(status as any)) {
       statusFilter = status as "active" | "inactive";
     }
+
+    console.log(keyword);
 
     const filters = {
       role: roleFilter,
@@ -1056,6 +1065,7 @@ export const addOrUpdateDropdownOption = async (
       .from(dropdownOptions)
       .where(
         and(
+          eq(dropdownOptions.dropdown_id, dropdownId),
           eq(dropdownOptions.dropdown_id, dropdownId),
           sql`LOWER(${dropdownOptions.title}) = ${title.toLowerCase()}`
         )
