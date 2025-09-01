@@ -147,6 +147,7 @@ export const getAdminsWithFilters = async (filters: AdminFilters) => {
     whereClauses.push(inArray(adminUsers.role, [...roleList]));
   }
 
+  console.log(searchKeyword);
   if (searchKeyword) {
     const kw = `%${searchKeyword}%`;
     whereClauses.push(
