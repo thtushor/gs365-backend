@@ -25,3 +25,4 @@ export * from "./schema/commission";
 export * from "./schema/userLoginHistory";
 export * from "./schema/kyc";
 export * from "./schema/withdrawalPaymentAccount";
+export * from "./schema/adminMainBalance";
