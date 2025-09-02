@@ -33,9 +33,7 @@ export const adminMainBalance = mysqlTable("admin_main_balance", {
     onDelete: "set null",
   }),
   promotionName: varchar("promotion_name", { length: 300 }),
-  currencyId: int("currency_id")
-    .notNull()
-    .references(() => currencies.id, { onDelete: "cascade" }),
+  currencyId: int("currency_id").references(() => currencies.id, { onDelete: "cascade" }),
   createdByPlayer: int("created_by_player").references(() => users.id, {
     onDelete: "set null",
   }),

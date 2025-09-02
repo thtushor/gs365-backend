@@ -13,7 +13,7 @@ export interface AdminMainBalanceData {
   promotionId?: number;
   transactionId?: number;
   promotionName?: string;
-  currencyId: number;
+  currencyId?: number;
   createdByPlayer?: number;
   createdByAdmin?: number;
   notes?: string;
@@ -33,7 +33,7 @@ export interface AdminMainBalanceFilters {
 
 export interface PaginationParams {
   page?: number;
-  limit?: number;
+  pageSize?: number;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
 }
@@ -52,7 +52,7 @@ export interface PaginatedResult<T> {
   data: T[];
   pagination: {
     page: number;
-    limit: number;
+    pageSize: number;
     total: number;
     totalPages: number;
     hasNext: boolean;
@@ -173,12 +173,12 @@ export const AdminMainBalanceModel = {
     try {
       const {
         page = 1,
-        limit = 10,
+        pageSize = 10,
         sortBy = "createdAt",
         sortOrder = "desc"
       } = pagination;
 
-      const offset = (page - 1) * limit;
+      const offset = (page - 1) * pageSize;
 
       // Build where conditions
       const whereConditions = [];
@@ -258,19 +258,19 @@ export const AdminMainBalanceModel = {
         .leftJoin(adminUsers, eq(adminMainBalance.createdByAdmin, adminUsers.id))
         .where(whereClause)
         .orderBy(orderBy)
-        .limit(limit)
+        .limit(pageSize)
         .offset(offset);
 
       // Calculate stats
       const stats = await this.calculateStats(filters);
 
-      const totalPages = Math.ceil(total / limit);
+      const totalPages = Math.ceil(total / pageSize);
 
       return {
         data,
         pagination: {
           page,
-          limit,
+         pageSize,
           total,
           totalPages,
           hasNext: page < totalPages,

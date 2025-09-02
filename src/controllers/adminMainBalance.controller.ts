@@ -49,7 +49,7 @@ export const AdminMainBalanceController = {
         promotionId: promotionId ? Number(promotionId) : undefined,
         transactionId: transactionId ? Number(transactionId) : undefined,
         promotionName: promotionName || undefined,
-        currencyId: Number(currencyId),
+        currencyId: currencyId ? Number(currencyId) : undefined,
         createdByPlayer: createdByPlayer ? Number(createdByPlayer) : undefined,
         createdByAdmin: createdByAdmin ? Number(createdByAdmin) : undefined,
         notes: notes || undefined,
@@ -208,7 +208,7 @@ export const AdminMainBalanceController = {
         endDate,
         search,
         page,
-        limit,
+        pageSize,
         sortBy,
         sortOrder,
       } = req.query;
@@ -229,7 +229,7 @@ export const AdminMainBalanceController = {
 
       // Build pagination
       if (page) pagination.page = Number(page);
-      if (limit) pagination.limit = Number(limit);
+      if (pageSize) pagination.pageSize = Number(pageSize);
       if (sortBy) pagination.sortBy = sortBy as string;
       if (sortOrder) pagination.sortOrder = sortOrder as "asc" | "desc";
 

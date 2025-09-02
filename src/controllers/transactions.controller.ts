@@ -17,6 +17,7 @@ import {
   paymentGatewayProviderAccount,
 } from "../db/schema";
 import { BalanceModel } from "../models/balance.model";
+import { AdminMainBalanceModel } from "../models/adminMainBalance.model";
 
 type CreateDepositBody = {
   userId: number;
@@ -971,12 +972,17 @@ export const checkWithdrawCapability = async (req: Request, res: Response) => {
     const hasPendingTurnover = pendingTurnover.length > 0;
 
     // User can withdraw if: sufficient balance AND no pending turnover
-    const canWithdraw = hasSufficientBalance && !hasPendingTurnover;
+    const canWithdraw = hasSufficientBalance && !hasPendingTurnover && user.kyc_status==="verified" && user.status==="active";
 
     // Determine the reason why withdrawal is not allowed
     let withdrawReason = null;
     if (!canWithdraw) {
-      if (!hasSufficientBalance) {
+      if (user.kyc_status!=="verified") {
+        withdrawReason = "KYC is not verified";
+      } else if (user.status!=="active") {
+        withdrawReason = "User is not active";
+      }
+      else if (!hasSufficientBalance) {
         withdrawReason = `Insufficient balance. Current balance: ${currentBalance.toFixed(2)}, Minimum required: ${minWithdrawableBalance.toFixed(2)}`;
       } else if (hasPendingTurnover) {
         withdrawReason = `Turnover has not yet reached`;
