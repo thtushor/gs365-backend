@@ -96,6 +96,14 @@ export const featuredGames = mysqlTable("featured_games", {
   gameId: int("game_id").notNull(),
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
+export const socials = mysqlTable("socials", {
+  id: int("id").primaryKey().autoincrement(),
+  status: mysqlEnum("status", ["active", "inactive"]).default("inactive"),
+  images: text("banner_images").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  link: varchar("link", { length: 255 }).notNull(),
+  createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
+});
 export const eventsRelation = relations(events, ({ one }) => ({
   sport: one(sports, {
     fields: [events.sportId],

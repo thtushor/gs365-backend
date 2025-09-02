@@ -65,6 +65,8 @@ import {
   sendKycVerificationRequest,
   createUpdateFeaturedGame,
   getFeaturedGame,
+  getAllSocial,
+  createUpdateSocial,
 } from "../controllers/admin.controller";
 
 const router = Router();
@@ -154,6 +156,8 @@ router.post(
 );
 router.post("/event", verifyToken, asyncHandler(createUpdateEvent));
 router.get("/events", verifyToken, asyncHandler(getAllEvents));
+router.post("/social-media", verifyToken, asyncHandler(createUpdateSocial));
+router.get("/social-media", verifyToken, asyncHandler(getAllSocial));
 router.post(
   "/featured-games",
   verifyToken,

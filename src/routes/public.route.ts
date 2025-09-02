@@ -13,6 +13,7 @@ import {
   getAllExclusiveGamesSportsList,
   getAllGamesByCategoryID,
   getAllPublicEvents,
+  getAllPublicSocial,
   getFeaturedGame,
   getGameList,
   getMenuProviders,
@@ -54,5 +55,6 @@ router.get(
   asyncHandler(getAllExclusiveGamesSportsList)
 );
 router.get("/featured-games", asyncHandler(getFeaturedGame));
+router.get("/social-platforms", asyncHandler(getAllPublicSocial));
 
 export default router;
