@@ -63,9 +63,9 @@ export interface PaginatedResult<T> {
 
 export const AdminMainBalanceModel = {
   // Create a new admin main balance record
-  async create(data: AdminMainBalanceData): Promise<number> {
+  async create(data: AdminMainBalanceData,tx?:any): Promise<number> {
     try {
-      const [result] = await db.insert(adminMainBalance).values({
+      const [result] = await (tx ?? db).insert(adminMainBalance).values({
         amount: data.amount.toString(),
         type: data.type,
         promotionId: data.promotionId || null,

@@ -335,9 +335,9 @@ export const AdminMainBalanceController = {
   // Get recent transactions
   getRecentTransactions: asyncHandler(async (req: Request, res: Response) => {
     try {
-      const { limit = 10 } = req.query;
+      const { pageSize = 10 } = req.query;
 
-      const transactions = await AdminMainBalanceModel.getRecentTransactions(Number(limit));
+      const transactions = await AdminMainBalanceModel.getRecentTransactions(Number(pageSize));
 
       res.status(200).json({
         success: true,

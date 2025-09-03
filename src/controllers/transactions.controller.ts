@@ -173,6 +173,35 @@ export const createDeposit = async (req: Request, res: Response) => {
         }).where(eq(transactions.id, transactionId));
       }
 
+      // Create admin main balance record for player deposit
+      await AdminMainBalanceModel.create({
+        amount: baseAmount,
+        type: "player_deposit",
+        transactionId: transactionId,
+        currencyId: Number(currencyId),
+        createdByPlayer: Number(userId),
+        createdByAdmin: user?.userType === "admin" ? user?.id : undefined,
+        notes: `Player deposit - Transaction ID: ${customTransactionId}`,
+      },tx);
+
+      // If promotion applied, create admin main balance record for promotion
+      if (promo) {
+        const bonusPercentage = Number(promo.bonus || 0);
+        const bonusAmount = (baseAmount * bonusPercentage) / 100;
+        
+        await AdminMainBalanceModel.create({
+          amount: bonusAmount,
+          type: "promotion",
+          promotionId: promo.id,
+          promotionName: promo.promotionName,
+          transactionId: transactionId,
+          currencyId: Number(currencyId),
+          createdByPlayer: Number(userId),
+          createdByAdmin: user?.userType === "admin" ? user?.id : undefined,
+          notes: `Promotion bonus - ${promo.promotionName} (${bonusPercentage}%)`,
+        },tx);
+      }
+
       // if (Number(gateWayBonus?.bonus || 0) > 0) {
       //   const bonusPercentage = Number(gateWayBonus?.bonus || 0);
       //   const bonusAmount = (baseAmount * bonusPercentage) / 100;
@@ -329,6 +358,16 @@ export const createAffiliateWithdraw = async (req: Request, res: Response) => {
 
       const transactionId =
         (createdTxn as any).insertId ?? (createdTxn as any)?.id;
+
+      // Create admin main balance record for affiliate withdrawal
+      await AdminMainBalanceModel.create({
+        amount: Number(amount),
+        type: "admin_withdraw",
+        transactionId: transactionId,
+        currencyId: Number(currencyId),
+        createdByAdmin: Number(affiliateId),
+        notes: `Affiliate withdrawal - Transaction ID: ${customTransactionId}`,
+      });
 
       return { transactionId, customTransactionId };
     });
@@ -543,6 +582,17 @@ export const createWithdraw = async (req: Request, res: Response) => {
       } as any);
 
       const transactionId = (createdTxn as any).insertId ?? (createdTxn as any)?.id;
+
+      // Create admin main balance record for player withdrawal
+      await AdminMainBalanceModel.create({
+        amount: Number(amount),
+        type: "player_withdraw",
+        transactionId: transactionId,
+        currencyId: Number(currencyId),
+        createdByPlayer: Number(userId),
+        createdByAdmin: user?.userType === "admin" ? user?.id : undefined,
+        notes: `Player withdrawal - Transaction ID: ${customTransactionId}`,
+      });
 
       return { transactionId, customTransactionId };
     });

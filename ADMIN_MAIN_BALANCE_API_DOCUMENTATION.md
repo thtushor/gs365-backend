@@ -93,13 +93,13 @@ Retrieves all admin main balance records with filtering, pagination, and statist
 - `endDate` (string): Filter by end date (ISO format)
 - `search` (string): Search in promotion name and notes
 - `page` (number): Page number (default: 1)
-- `limit` (number): Records per page (default: 10)
+- `pageSize` (number): Records per page (default: 10)
 - `sortBy` (string): Sort field (default: "createdAt")
 - `sortOrder` (string): Sort order - "asc" or "desc" (default: "desc")
 
 #### Example Request
 ```
-GET /api/admin-main-balance?type=admin_deposit&page=1&limit=10&sortBy=amount&sortOrder=desc
+GET /api/admin-main-balance?type=admin_deposit&page=1&pageSize=10&sortBy=amount&sortOrder=desc
 ```
 
 #### Response
@@ -134,7 +134,7 @@ GET /api/admin-main-balance?type=admin_deposit&page=1&limit=10&sortBy=amount&sor
   ],
   "pagination": {
     "page": 1,
-    "limit": 10,
+    "pageSize": 10,
     "total": 25,
     "totalPages": 3,
     "hasNext": true,
@@ -314,7 +314,7 @@ GET /api/admin-main-balance/balance/admin_deposit?currencyId=1
 Retrieves the most recent admin main balance transactions.
 
 #### Query Parameters
-- `limit` (number): Number of records to retrieve (default: 10)
+- `pageSize` (number): Number of records to retrieve (default: 10)
 
 #### Response
 ```json
