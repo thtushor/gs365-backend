@@ -540,6 +540,7 @@ export const getUserProfileById = async (id: number): Promise<any> => {
         status: users.status,
         created_at: users.created_at,
         device_type: users.device_type,
+        refer_code: users.refer_code,
         ip_address: users.ip_address,
         lastLogin: users.lastLogin,
         lastIp: users.lastIp,
@@ -556,11 +557,13 @@ export const getUserProfileById = async (id: number): Promise<any> => {
         adminReferrerPhone: sql<string>`admin_referrer.phone`,
         adminReferrerEmail: sql<string>`admin_referrer.email`,
         adminReferrerCommission: sql<string>`admin_referrer.commission_percent`,
+        adminReferrerId: sql<string>`admin_referrer.id`,
         // User referrer info (from referred_by column)
         userReferrerName: sql<string>`user_referrer.fullname`,
         userReferrerUsername: sql<string>`user_referrer.username`,
         userReferrerPhone: sql<string>`user_referrer.phone`,
         userReferrerEmail: sql<string>`user_referrer.email`,
+        userReferrerId: sql<string>`user_referrer.id`,
         // Created by info
         createdByName: sql<string>`created_by_user.fullname`,
         createdByUsername: sql<string>`created_by_user.username`,
@@ -655,6 +658,7 @@ export const getUserProfileById = async (id: number): Promise<any> => {
         userType = "affiliate_user";
         referrerType = "affiliate";
         referrerDetails = {
+          id: user.adminReferrerId,
           name: user.adminReferrerName,
           username: user.adminReferrerUsername,
           role: user.adminReferrerRole,
@@ -666,6 +670,7 @@ export const getUserProfileById = async (id: number): Promise<any> => {
         userType = "agent_user";
         referrerType = "agent";
         referrerDetails = {
+          id: user.adminReferrerId,
           name: user.adminReferrerName,
           username: user.adminReferrerUsername,
           role: user.adminReferrerRole,
@@ -677,6 +682,7 @@ export const getUserProfileById = async (id: number): Promise<any> => {
       userType = "referred_player";
       referrerType = "player";
       referrerDetails = {
+        id: user.userReferrerId,
         name: user.userReferrerName,
         username: user.userReferrerUsername,
         phone: user.userReferrerPhone,
@@ -698,6 +704,7 @@ export const getUserProfileById = async (id: number): Promise<any> => {
       lastIp: user.lastIp,
       isLoggedIn: user.isLoggedIn,
       device_type: user.device_type,
+      refer_code: user.refer_code,
       ip_address: user.ip_address,
       kyc_status: user.kyc_status,
 

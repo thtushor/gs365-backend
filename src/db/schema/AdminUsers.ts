@@ -14,7 +14,7 @@ import { relations, sql } from "drizzle-orm";
 export const adminUsers = mysqlTable("admin_users", {
   id: int("id").primaryKey().autoincrement(),
 
-  username: varchar("username", { length: 50 }),
+  username: varchar("username", { length: 50 }).unique(),
   fullname: varchar("fullname", { length: 100 }),
   phone: varchar("phone", { length: 20 }).unique(),
   email: varchar("email", { length: 255 }).unique(),

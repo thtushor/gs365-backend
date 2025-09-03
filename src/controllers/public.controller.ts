@@ -31,6 +31,7 @@ import {
   games,
   gamingLicenses,
   responsibleGaming,
+  socials,
   sponsors,
   sports,
   sports_providers,
@@ -826,6 +827,33 @@ export const getFeaturedGame = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("getFeaturedGame error:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Server error.",
+    });
+  }
+};
+export const getAllPublicSocial = async (req: Request, res: Response) => {
+  try {
+    const result = await db
+      .select()
+      .from(socials)
+      .where(eq(socials.status, "active"))
+      .orderBy(desc(socials.createdAt));
+
+    // Safely parse images
+    const parsed = result.map((social) => ({
+      ...social,
+      images: social.images ? JSON.parse(social.images) : [],
+    }));
+
+    return res.status(200).json({
+      status: true,
+      data: parsed,
+      message: "Social data fetched successfully.",
+    });
+  } catch (error) {
+    console.error("social get error:", error);
     return res.status(500).json({
       status: false,
       message: "Server error.",

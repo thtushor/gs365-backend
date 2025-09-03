@@ -44,29 +44,29 @@ export const getDashboardStats = asyncHandler(async (req: Request, res: Response
       .from(adminUsers)
       .limit(1);
 
-    // Get player statistics
-    const playerStats = await db
-      .select({
-        totalPlayers: sql<number>`COUNT(*)`,
-        totalOnlinePlayers: sql<number>`COUNT(CASE WHEN ${users.isLoggedIn} = true THEN 1 END)`,
-      })
-      .from(users)
-      .limit(1);
+      // Get player statistics
+      const playerStats = await db
+        .select({
+          totalPlayers: sql<number>`COUNT(*)`,
+          totalOnlinePlayers: sql<number>`COUNT(CASE WHEN ${users.isLoggedIn} = true THEN 1 END)`,
+        })
+        .from(users)
+        .limit(1);
 
-    // Get bet statistics
-    const betStats = await db
-      .select({
-        totalBetPlaced: sql<number>`SUM(${betResults.betAmount})`,
-        totalBetWin: sql<number>`SUM(${betResults.winAmount})`,
-        totalBetLost: sql<number>`SUM(${betResults.lossAmount})`,
-      })
-      .from(betResults)
-      .limit(1);
+      // Get bet statistics
+      const betStats = await db
+        .select({
+          totalBetPlaced: sql<number>`SUM(${betResults.betAmount})`,
+          totalBetWin: sql<number>`SUM(${betResults.winAmount})`,
+          totalBetLost: sql<number>`SUM(${betResults.lossAmount})`,
+        })
+        .from(betResults)
+        .limit(1);
 
-    // Get total games count
-    const [gamesCount] = await db
-      .select({ totalGames: sql<number>`COUNT(*)` })
-      .from(games);
+      // Get total games count
+      const [gamesCount] = await db
+        .select({ totalGames: sql<number>`COUNT(*)` })
+        .from(games);
 
     // Prepare dashboard data
     const dashboardData = {
@@ -117,19 +117,20 @@ export const getDashboardStats = asyncHandler(async (req: Request, res: Response
       totalGames: Number(gamesCount?.totalGames || 0),
     };
 
-    console.log("✅ Dashboard statistics fetched successfully");
-    
-    res.status(200).json({
-      success: true,
-      message: "Dashboard statistics retrieved successfully",
-      data: dashboardData,
-    });
-  } catch (error) {
-    console.error("❌ Error fetching dashboard stats:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch dashboard statistics",
-      error: error instanceof Error ? error.message : "Unknown error",
-    });
+      console.log("✅ Dashboard statistics fetched successfully");
+
+      res.status(200).json({
+        success: true,
+        message: "Dashboard statistics retrieved successfully",
+        data: dashboardData,
+      });
+    } catch (error) {
+      console.error("❌ Error fetching dashboard stats:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch dashboard statistics",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
   }
-});
+);

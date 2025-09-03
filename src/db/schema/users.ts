@@ -16,7 +16,7 @@ export const ActivityStatus = mysqlEnum("status", ["active", "inactive"]);
 
 export const users = mysqlTable("users", {
   id: int("id").primaryKey().autoincrement(),
-  username: varchar("username", { length: 50 }),
+  username: varchar("username", { length: 50 }).unique(),
   fullname: varchar("fullname", { length: 100 }),
   phone: varchar("phone", { length: 20 }).unique(),
   email: varchar("email", { length: 255 }).unique(),

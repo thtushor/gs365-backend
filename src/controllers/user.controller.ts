@@ -14,13 +14,14 @@ import bcrypt from "bcryptjs";
 
 import * as UAParser from "ua-parser-js";
 import { db } from "../db/connection";
-import { users } from "../db/schema";
-import { eq } from "drizzle-orm";
+import { games, users } from "../db/schema";
+import { and, eq } from "drizzle-orm";
 import { generateUniqueRefCode } from "../utils/refCode";
 import { findUserByReferCode } from "../models/user.model";
 import { findAdminByRefCode } from "../models/admin.model";
 import { generateJwtToken, JwtPayload, verifyJwt } from "../utils/jwt";
 import { createUserLoginHistory } from "../models/userLoginHistory.model";
+import { user_favorites } from "../db/schema/user_favorites";
 
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
@@ -434,5 +435,88 @@ export const userProfile = async (
         .status(200)
         .json({ message: "Something went wrong", status: false, error });
     }
+  }
+};
+// Add favorite
+export const addFavorite = async (req: Request, res: Response) => {
+  try {
+    const { userId, gameId } = req.body;
+
+    // Check if already favorited
+    const exists = await db
+      .select()
+      .from(user_favorites)
+      .where(
+        and(
+          eq(user_favorites.gameId, Number(gameId)),
+          eq(user_favorites.userId, Number(userId))
+        )
+      );
+
+    if (exists.length > 0) {
+      return res.status(400).json({ message: "Game already in favorites" });
+    }
+
+    await db
+      .insert(user_favorites)
+      .values({ userId: Number(userId), gameId: Number(gameId) });
+
+    return res.status(200).json({ message: "Added to favorites" });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Remove favorite
+export const removeFavorite = async (req: Request, res: Response) => {
+  try {
+    const { userId, gameId } = req.body;
+
+    await db
+      .delete(user_favorites)
+      .where(
+        and(
+          eq(user_favorites.gameId, Number(gameId)),
+          eq(user_favorites.userId, Number(userId))
+        )
+      );
+
+    return res.status(200).json({ message: "Removed from favorites" });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Get user's favorite games
+export const getFavorites = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+
+    const favorites = await db
+      .select({
+        gameId: games.id,
+        gameName: games.name,
+        gameLogo: games.gameLogo,
+        gameUrl: games.gameUrl,
+        gameApiKey: games.apiKey,
+        gameLicenseKey: games.licenseKey,
+        userId: users.id,
+        username: users.username,
+        userFullname: users.fullname,
+        userEmail: users.email,
+        createdAt: user_favorites.createdAt,
+        id: user_favorites.id,
+      })
+      .from(user_favorites)
+      .leftJoin(games, eq(user_favorites.gameId, games.id))
+      .leftJoin(users, eq(user_favorites.userId, users.id))
+      .where(eq(user_favorites.userId, Number(userId)));
+
+    return res.status(200).json(favorites);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Server error" });
   }
 };

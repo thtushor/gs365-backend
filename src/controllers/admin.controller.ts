@@ -57,6 +57,7 @@ import {
   games,
   gamingLicenses,
   responsibleGaming,
+  socials,
   sponsors,
   sports,
   sports_providers,
@@ -1574,6 +1575,95 @@ export const getAllEvents = async (req: Request, res: Response) => {
     });
   }
 };
+
+// social media
+export const createUpdateSocial = async (req: Request, res: Response) => {
+  try {
+    const { id, image, status, title, link } = req.body;
+
+    if (!link) {
+      return res.status(400).json({
+        status: false,
+        message: "Social link is required.",
+      });
+    }
+
+    // Generate title if missing or not a string
+    const finalTitle =
+      typeof title === "string" && title.trim().length > 0
+        ? title.trim()
+        : `Event - ${Math.floor(1000 + Math.random() * 9000)}`;
+
+    // Basic validation for single image object
+    if (!image || typeof image !== "object") {
+      return res.status(400).json({
+        status: false,
+        message: "Social icon is required.",
+      });
+    }
+
+    const validatedStatus = status === "active" ? "active" : "inactive";
+
+    const payload = {
+      images: JSON.stringify(image), // store as array of one for consistency
+      status: validatedStatus as "active" | "inactive",
+      title: finalTitle,
+      link: link,
+    };
+
+    if (id) {
+      await db.update(socials).set(payload).where(eq(socials.id, id));
+      return res
+        .status(200)
+        .json({
+          status: true,
+          message: "Social platform updated successfully.",
+        });
+    } else {
+      await db.insert(socials).values(payload);
+      return res
+        .status(201)
+        .json({
+          status: true,
+          message: "Social platform created successfully.",
+        });
+    }
+  } catch (error) {
+    console.error("social error:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Server error.",
+    });
+  }
+};
+
+export const getAllSocial = async (req: Request, res: Response) => {
+  try {
+    const result = await db
+      .select()
+      .from(socials)
+      .orderBy(desc(socials.createdAt));
+
+    // Safely parse images
+    const parsed = result.map((social) => ({
+      ...social,
+      images: social.images ? JSON.parse(social.images) : [],
+    }));
+
+    return res.status(200).json({
+      status: true,
+      data: parsed,
+      message: "Social data fetched successfully.",
+    });
+  } catch (error) {
+    console.error("social get error:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Server error.",
+    });
+  }
+};
+
 export const createUpdateFeaturedGame = async (req: Request, res: Response) => {
   try {
     const { image, status, title, gameId } = req.body;
