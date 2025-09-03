@@ -22,10 +22,17 @@ export const AdminMainBalanceType = mysqlEnum("admin_main_balance_type", [
   "admin_withdraw",
 ]);
 
+export const AdminMainBalanceStatus = mysqlEnum("admin_main_balance_status", [
+  "approved",
+  "pending",
+  "rejected",
+]);
+
 export const adminMainBalance = mysqlTable("admin_main_balance", {
   id: int("id").primaryKey().autoincrement(),
   amount: decimal("amount", { precision: 20, scale: 2 }).notNull(),
   type: AdminMainBalanceType.notNull(),
+  status: AdminMainBalanceStatus.default("pending"),
   promotionId: int("promotion_id").references(() => promotions.id, {
     onDelete: "set null",
   }),

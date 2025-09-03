@@ -9,6 +9,7 @@ export const AdminMainBalanceController = {
       const {
         amount,
         type,
+        status,
         promotionId,
         transactionId,
         promotionName,
@@ -35,6 +36,17 @@ export const AdminMainBalanceController = {
         });
       }
 
+      // Validate status if provided
+      if (status) {
+        const validStatuses = ["approved", "pending", "rejected"];
+        if (!validStatuses.includes(status)) {
+          return res.status(400).json({
+            success: false,
+            message: "status must be one of: approved, pending, rejected",
+          });
+        }
+      }
+
       // Validate amount
       if (amount <= 0) {
         return res.status(400).json({
@@ -46,6 +58,7 @@ export const AdminMainBalanceController = {
       const data: AdminMainBalanceData = {
         amount: Number(amount),
         type: type as any,
+        status: status ? (status as any) : undefined,
         promotionId: promotionId ? Number(promotionId) : undefined,
         transactionId: transactionId ? Number(transactionId) : undefined,
         promotionName: promotionName || undefined,
@@ -130,6 +143,17 @@ export const AdminMainBalanceController = {
         }
       }
 
+      // Validate status if provided
+      if (updateData.status) {
+        const validStatuses = ["approved", "pending", "rejected"];
+        if (!validStatuses.includes(updateData.status)) {
+          return res.status(400).json({
+            success: false,
+            message: "status must be one of: approved, pending, rejected",
+          });
+        }
+      }
+
       // Validate amount if provided
       if (updateData.amount && updateData.amount <= 0) {
         return res.status(400).json({
@@ -199,6 +223,7 @@ export const AdminMainBalanceController = {
     try {
       const {
         type,
+        status,
         promotionId,
         transactionId,
         createdByPlayer,
@@ -218,6 +243,7 @@ export const AdminMainBalanceController = {
 
       // Build filters
       if (type) filters.type = type as string;
+      if (status) filters.status = status as string;
       if (promotionId) filters.promotionId = Number(promotionId);
       if (transactionId) filters.transactionId = Number(transactionId);
       if (createdByPlayer) filters.createdByPlayer = Number(createdByPlayer);
@@ -256,6 +282,7 @@ export const AdminMainBalanceController = {
     try {
       const {
         currencyId,
+        status,
         startDate,
         endDate,
       } = req.query;
@@ -263,6 +290,7 @@ export const AdminMainBalanceController = {
       const filters: AdminMainBalanceFilters = {};
 
       if (currencyId) filters.currencyId = Number(currencyId);
+      if (status) filters.status = status as string;
       if (startDate) filters.startDate = startDate as string;
       if (endDate) filters.endDate = endDate as string;
 
@@ -359,6 +387,7 @@ export const AdminMainBalanceController = {
     try {
       const {
         currencyId,
+        status,
         startDate,
         endDate,
       } = req.query;
@@ -366,6 +395,7 @@ export const AdminMainBalanceController = {
       const filters: AdminMainBalanceFilters = {};
 
       if (currencyId) filters.currencyId = Number(currencyId);
+      if (status) filters.status = status as string;
       if (startDate) filters.startDate = startDate as string;
       if (endDate) filters.endDate = endDate as string;
 

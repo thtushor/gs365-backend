@@ -10,6 +10,7 @@ import { currencies } from "../db/schema/currency";
 export interface AdminMainBalanceData {
   amount: number;
   type: "admin_deposit" | "player_deposit" | "promotion" | "player_withdraw" | "admin_withdraw";
+  status?: "approved" | "pending" | "rejected";
   promotionId?: number;
   transactionId?: number;
   promotionName?: string;
@@ -21,6 +22,7 @@ export interface AdminMainBalanceData {
 
 export interface AdminMainBalanceFilters {
   type?: string;
+  status?: string;
   promotionId?: number;
   transactionId?: number;
   createdByPlayer?: number;
@@ -68,6 +70,7 @@ export const AdminMainBalanceModel = {
       const [result] = await (tx ?? db).insert(adminMainBalance).values({
         amount: data.amount.toString(),
         type: data.type,
+        status: data.status || "pending",
         promotionId: data.promotionId || null,
         transactionId: data.transactionId || null,
         promotionName: data.promotionName || null,
@@ -92,6 +95,7 @@ export const AdminMainBalanceModel = {
           id: adminMainBalance.id,
           amount: adminMainBalance.amount,
           type: adminMainBalance.type,
+          status: adminMainBalance.status,
           promotionId: adminMainBalance.promotionId,
           transactionId: adminMainBalance.transactionId,
           promotionName: adminMainBalance.promotionName,
@@ -131,6 +135,7 @@ export const AdminMainBalanceModel = {
       
       if (data.amount !== undefined) updateData.amount = data.amount.toString();
       if (data.type !== undefined) updateData.type = data.type;
+      if (data.status !== undefined) updateData.status = data.status;
       if (data.promotionId !== undefined) updateData.promotionId = data.promotionId;
       if (data.transactionId !== undefined) updateData.transactionId = data.transactionId;
       if (data.promotionName !== undefined) updateData.promotionName = data.promotionName;
@@ -147,6 +152,34 @@ export const AdminMainBalanceModel = {
       return true;
     } catch (error) {
       console.error("Error updating admin main balance:", error);
+      throw error;
+    }
+  },
+
+  // Update admin main balance records by transaction ID
+  async updateByTransactionId(transactionId: number, data: Partial<AdminMainBalanceData>): Promise<boolean> {
+    try {
+      const updateData: any = {};
+      
+      if (data.amount !== undefined) updateData.amount = data.amount.toString();
+      if (data.type !== undefined) updateData.type = data.type;
+      if (data.status !== undefined) updateData.status = data.status;
+      if (data.promotionId !== undefined) updateData.promotionId = data.promotionId;
+      if (data.transactionId !== undefined) updateData.transactionId = data.transactionId;
+      if (data.promotionName !== undefined) updateData.promotionName = data.promotionName;
+      if (data.currencyId !== undefined) updateData.currencyId = data.currencyId;
+      if (data.createdByPlayer !== undefined) updateData.createdByPlayer = data.createdByPlayer;
+      if (data.createdByAdmin !== undefined) updateData.createdByAdmin = data.createdByAdmin;
+      if (data.notes !== undefined) updateData.notes = data.notes;
+
+      await db
+        .update(adminMainBalance)
+        .set(updateData)
+        .where(eq(adminMainBalance.transactionId, transactionId));
+
+      return true;
+    } catch (error) {
+      console.error("Error updating admin main balance by transaction ID:", error);
       throw error;
     }
   },
@@ -185,6 +218,9 @@ export const AdminMainBalanceModel = {
 
       if (filters.type) {
         whereConditions.push(eq(adminMainBalance.type, filters.type as any));
+      }
+      if (filters.status) {
+        whereConditions.push(eq(adminMainBalance.status, filters.status as any));
       }
       if (filters.promotionId) {
         whereConditions.push(eq(adminMainBalance.promotionId, filters.promotionId));
@@ -234,6 +270,7 @@ export const AdminMainBalanceModel = {
           id: adminMainBalance.id,
           amount: adminMainBalance.amount,
           type: adminMainBalance.type,
+          status: adminMainBalance.status,
           promotionId: adminMainBalance.promotionId,
           transactionId: adminMainBalance.transactionId,
           promotionName: adminMainBalance.promotionName,
@@ -292,6 +329,9 @@ export const AdminMainBalanceModel = {
 
       if (filters.currencyId) {
         whereConditions.push(eq(adminMainBalance.currencyId, filters.currencyId));
+      }
+      if (filters.status) {
+        whereConditions.push(eq(adminMainBalance.status, filters.status as any));
       }
       if (filters.startDate) {
         whereConditions.push(gte(adminMainBalance.createdAt, new Date(filters.startDate)));
@@ -380,6 +420,7 @@ export const AdminMainBalanceModel = {
           id: adminMainBalance.id,
           amount: adminMainBalance.amount,
           type: adminMainBalance.type,
+          status: adminMainBalance.status,
           promotionName: adminMainBalance.promotionName,
           notes: adminMainBalance.notes,
           createdAt: adminMainBalance.createdAt,

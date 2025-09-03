@@ -177,9 +177,10 @@ export const createDeposit = async (req: Request, res: Response) => {
       await AdminMainBalanceModel.create({
         amount: baseAmount,
         type: "player_deposit",
+        status: "pending", // Match transaction status
         transactionId: transactionId,
-        currencyId: Number(currencyId),
-        createdByPlayer: Number(userId),
+        currencyId: Number(currencyId),  
+        createdByPlayer: user?.userType === "user"  ? user?.id: undefined,
         createdByAdmin: user?.userType === "admin" ? user?.id : undefined,
         notes: `Player deposit - Transaction ID: ${customTransactionId}`,
       },tx);
@@ -192,12 +193,14 @@ export const createDeposit = async (req: Request, res: Response) => {
         await AdminMainBalanceModel.create({
           amount: bonusAmount,
           type: "promotion",
+          status: "pending", // Match transaction status
           promotionId: promo.id,
           promotionName: promo.promotionName,
           transactionId: transactionId,
           currencyId: Number(currencyId),
-          createdByPlayer: Number(userId),
-          createdByAdmin: user?.userType === "admin" ? user?.id : undefined,
+                   
+        createdByPlayer: user?.userType === "user"  ? user?.id: undefined,
+        createdByAdmin: user?.userType === "admin" ? user?.id : undefined,
           notes: `Promotion bonus - ${promo.promotionName} (${bonusPercentage}%)`,
         },tx);
       }
@@ -274,6 +277,8 @@ export const createAffiliateWithdraw = async (req: Request, res: Response) => {
       walletAddress?: string;
       network?: string;
     };
+
+    const user = (req as unknown as {user: any}).user as any;
 
     // ✅ Validate basic fields
     if (
@@ -363,9 +368,12 @@ export const createAffiliateWithdraw = async (req: Request, res: Response) => {
       await AdminMainBalanceModel.create({
         amount: Number(amount),
         type: "admin_withdraw",
+        status: "pending", // Match transaction status
         transactionId: transactionId,
         currencyId: Number(currencyId),
-        createdByAdmin: Number(affiliateId),
+        
+        createdByPlayer: user?.userType === "user"  ? user?.id: undefined,
+        createdByAdmin: user?.userType === "admin" ? user?.id : undefined,
         notes: `Affiliate withdrawal - Transaction ID: ${customTransactionId}`,
       });
 
@@ -587,9 +595,10 @@ export const createWithdraw = async (req: Request, res: Response) => {
       await AdminMainBalanceModel.create({
         amount: Number(amount),
         type: "player_withdraw",
+        status: "pending", // Match transaction status
         transactionId: transactionId,
         currencyId: Number(currencyId),
-        createdByPlayer: Number(userId),
+        createdByPlayer: user?.userType === "user"  ? user?.id: undefined,
         createdByAdmin: user?.userType === "admin" ? user?.id : undefined,
         notes: `Player withdrawal - Transaction ID: ${customTransactionId}`,
       });
@@ -851,6 +860,11 @@ export const updateTransactionStatus = async (req: Request, res: Response) => {
       .set(updatePayload)
       .where(eq(transactions.id, id));
 
+    // Update corresponding adminMainBalance records to match transaction status
+    await AdminMainBalanceModel.updateByTransactionId(id, {
+      status: status as any, // Update status to match transaction
+    });
+
     const [updated] = await db
       .select()
       .from(transactions)
@@ -916,6 +930,11 @@ export const updateAffiliateWithdrawStatus = async (
       .update(transactions)
       .set(updatePayload)
       .where(eq(transactions.id, id));
+
+    // Update corresponding adminMainBalance records to match transaction status
+    await AdminMainBalanceModel.updateByTransactionId(id, {
+      status: status as any, // Update status to match transaction
+    });
 
     // Apply extra logic based on status
     if (status === "approved") {
