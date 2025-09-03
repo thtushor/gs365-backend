@@ -38,13 +38,13 @@ async function seed() {
     await seedGameProviderAndGame();
     
     // Seed bet results (after games and users are seeded)
-    await seedBetResults();
+    // await seedBetResults();
 
     // Seed transactions
-    await seedTransactions();
+    // await seedTransactions();
 
     // Seed admin main balance (after transactions are seeded)
-    await seedAdminMainBalance();
+    // await seedAdminMainBalance();
   } catch (error) {
     console.error("❌ Failed to insert seed data:", error);
   } finally {

@@ -342,18 +342,68 @@ export const AdminMainBalanceModel = {
 
       const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
 
-      // Get all stats in one query
-      const [statsResult] = await db
-        .select({
-          totalAdminDeposit: sql<number>`COALESCE(SUM(CASE WHEN ${adminMainBalance.type} = 'admin_deposit' THEN CAST(${adminMainBalance.amount} AS DECIMAL(20,2)) ELSE 0 END), 0)`,
-          totalPlayerDeposit: sql<number>`COALESCE(SUM(CASE WHEN ${adminMainBalance.type} = 'player_deposit' THEN CAST(${adminMainBalance.amount} AS DECIMAL(20,2)) ELSE 0 END), 0)`,
-          totalPromotion: sql<number>`COALESCE(SUM(CASE WHEN ${adminMainBalance.type} = 'promotion' THEN CAST(${adminMainBalance.amount} AS DECIMAL(20,2)) ELSE 0 END), 0)`,
-          totalPlayerWithdraw: sql<number>`COALESCE(SUM(CASE WHEN ${adminMainBalance.type} = 'player_withdraw' THEN CAST(${adminMainBalance.amount} AS DECIMAL(20,2)) ELSE 0 END), 0)`,
-          totalAdminWithdraw: sql<number>`COALESCE(SUM(CASE WHEN ${adminMainBalance.type} = 'admin_withdraw' THEN CAST(${adminMainBalance.amount} AS DECIMAL(20,2)) ELSE 0 END), 0)`,
-          totalRecords: count(),
-        })
-        .from(adminMainBalance)
-        .where(whereClause);
+     const [statsResult] = await db
+  .select({
+    totalAdminDeposit: sql<number>`
+      COALESCE(
+        SUM(
+          CASE 
+            WHEN ${adminMainBalance.type} = 'admin_deposit' 
+            THEN CAST(${adminMainBalance.amount} AS DECIMAL(18,2)) 
+          END
+        ), 0
+      )
+    `,
+    totalPlayerDeposit: sql<number>`
+      COALESCE(
+        SUM(
+          CASE 
+            WHEN ${adminMainBalance.type} = 'player_deposit' 
+              AND ${adminMainBalance.status} = 'approved'
+            THEN CAST(${adminMainBalance.amount} AS DECIMAL(18,2)) 
+          END
+        ), 0
+      )
+    `,
+    totalPromotion: sql<number>`
+      COALESCE(
+        SUM(
+          CASE 
+            WHEN ${adminMainBalance.type} = 'promotion' 
+              AND ${adminMainBalance.status} = 'approved'
+            THEN CAST(${adminMainBalance.amount} AS DECIMAL(18,2)) 
+          END
+        ), 0
+      )
+    `,
+    totalPlayerWithdraw: sql<number>`
+      COALESCE(
+        SUM(
+          CASE 
+            WHEN ${adminMainBalance.type} = 'player_withdraw' 
+              AND ${adminMainBalance.status} = 'approved'
+            THEN CAST(${adminMainBalance.amount} AS DECIMAL(18,2)) 
+          END
+        ), 0
+      )
+    `,
+    totalAdminWithdraw: sql<number>`
+      COALESCE(
+        SUM(
+          CASE 
+            WHEN ${adminMainBalance.type} = 'admin_withdraw' 
+              AND ${adminMainBalance.status} = 'approved'
+            THEN CAST(${adminMainBalance.amount} AS DECIMAL(18,2)) 
+          END
+        ), 0
+      )
+    `,
+    totalRecords: count(),
+  })
+  .from(adminMainBalance)
+  .where(whereClause);
+
+
 
       const {
         totalAdminDeposit,
@@ -366,7 +416,7 @@ export const AdminMainBalanceModel = {
 
       // Calculate current main balance
       // current main balance = total admin deposit - total player deposit - total promotion + total player withdraw + total admin withdraw
-      const currentMainBalance = totalAdminDeposit - totalPlayerDeposit - totalPromotion + totalPlayerWithdraw + totalAdminWithdraw;
+      const currentMainBalance = Number(totalAdminDeposit) + Number(totalPlayerWithdraw) + Number(totalAdminWithdraw) - Number(totalPlayerDeposit) - Number(totalPromotion);
 
       return {
         totalAdminDeposit,
