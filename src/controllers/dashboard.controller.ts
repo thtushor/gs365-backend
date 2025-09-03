@@ -40,6 +40,16 @@ export const getDashboardStats = asyncHandler(async (req: Request, res: Response
         totalSubAgent: sql<number>`COUNT(CASE WHEN role = 'agent' THEN 1 END)`,
         totalAffiliate: sql<number>`COUNT(CASE WHEN role IN ('affiliate', 'superAffiliate') THEN 1 END)`,
         totalAgent: sql<number>`COUNT(CASE WHEN role IN ('agent', 'superAgent') THEN 1 END)`,
+        totalAffiliateWithdrawal: sql<number>`
+      COALESCE(
+        (SELECT SUM(${transactions.amount})
+         FROM ${transactions}
+         WHERE ${transactions.affiliateId} IS NOT NULL
+           AND ${transactions.type} = 'withdraw'
+           AND ${transactions.status} = 'approved'
+        ), 0
+      )
+    `,
       })
       .from(adminUsers)
       .limit(1);
@@ -112,6 +122,7 @@ export const getDashboardStats = asyncHandler(async (req: Request, res: Response
       totalSportsProvidersPayment: 0,
       gameProviderPendingPayment: 0,
       sportsProviderPendingPayment: 0,
+      totalAffiliateWithdrawal: Number(affiliateAgentStats[0]?.totalAffiliateWithdrawal || 0),
       
       // Total Games
       totalGames: Number(gamesCount?.totalGames || 0),
