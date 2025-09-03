@@ -58,7 +58,7 @@ export const AdminMainBalanceController = {
       const data: AdminMainBalanceData = {
         amount: Number(amount),
         type: type as any,
-        status: status ? (status as any) : undefined,
+        status: "approved",
         promotionId: promotionId ? Number(promotionId) : undefined,
         transactionId: transactionId ? Number(transactionId) : undefined,
         promotionName: promotionName || undefined,
