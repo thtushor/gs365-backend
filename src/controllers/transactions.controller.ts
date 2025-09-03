@@ -17,6 +17,7 @@ import {
   paymentGatewayProviderAccount,
 } from "../db/schema";
 import { BalanceModel } from "../models/balance.model";
+import { AdminMainBalanceModel } from "../models/adminMainBalance.model";
 
 type CreateDepositBody = {
   userId: number;
@@ -172,6 +173,38 @@ export const createDeposit = async (req: Request, res: Response) => {
         }).where(eq(transactions.id, transactionId));
       }
 
+      // Create admin main balance record for player deposit
+      await AdminMainBalanceModel.create({
+        amount: baseAmount,
+        type: "player_deposit",
+        status: "pending", // Match transaction status
+        transactionId: transactionId,
+        currencyId: Number(currencyId),  
+        createdByPlayer: user?.userType === "user"  ? user?.id: undefined,
+        createdByAdmin: user?.userType === "admin" ? user?.id : undefined,
+        notes: `Player deposit - Transaction ID: ${customTransactionId}`,
+      },tx);
+
+      // If promotion applied, create admin main balance record for promotion
+      if (promo) {
+        const bonusPercentage = Number(promo.bonus || 0);
+        const bonusAmount = (baseAmount * bonusPercentage) / 100;
+        
+        await AdminMainBalanceModel.create({
+          amount: bonusAmount,
+          type: "promotion",
+          status: "pending", // Match transaction status
+          promotionId: promo.id,
+          promotionName: promo.promotionName,
+          transactionId: transactionId,
+          currencyId: Number(currencyId),
+                   
+        createdByPlayer: user?.userType === "user"  ? user?.id: undefined,
+        createdByAdmin: user?.userType === "admin" ? user?.id : undefined,
+          notes: `Promotion bonus - ${promo.promotionName} (${bonusPercentage}%)`,
+        },tx);
+      }
+
       // if (Number(gateWayBonus?.bonus || 0) > 0) {
       //   const bonusPercentage = Number(gateWayBonus?.bonus || 0);
       //   const bonusAmount = (baseAmount * bonusPercentage) / 100;
@@ -244,6 +277,8 @@ export const createAffiliateWithdraw = async (req: Request, res: Response) => {
       walletAddress?: string;
       network?: string;
     };
+
+    const user = (req as unknown as {user: any}).user as any;
 
     // ✅ Validate basic fields
     if (
@@ -328,6 +363,19 @@ export const createAffiliateWithdraw = async (req: Request, res: Response) => {
 
       const transactionId =
         (createdTxn as any).insertId ?? (createdTxn as any)?.id;
+
+      // Create admin main balance record for affiliate withdrawal
+      await AdminMainBalanceModel.create({
+        amount: Number(amount),
+        type: "admin_withdraw",
+        status: "pending", // Match transaction status
+        transactionId: transactionId,
+        currencyId: Number(currencyId),
+        
+        createdByPlayer: user?.userType === "user"  ? user?.id: undefined,
+        createdByAdmin: user?.userType === "admin" ? user?.id : undefined,
+        notes: `Affiliate withdrawal - Transaction ID: ${customTransactionId}`,
+      });
 
       return { transactionId, customTransactionId };
     });
@@ -542,6 +590,18 @@ export const createWithdraw = async (req: Request, res: Response) => {
       } as any);
 
       const transactionId = (createdTxn as any).insertId ?? (createdTxn as any)?.id;
+
+      // Create admin main balance record for player withdrawal
+      await AdminMainBalanceModel.create({
+        amount: Number(amount),
+        type: "player_withdraw",
+        status: "pending", // Match transaction status
+        transactionId: transactionId,
+        currencyId: Number(currencyId),
+        createdByPlayer: user?.userType === "user"  ? user?.id: undefined,
+        createdByAdmin: user?.userType === "admin" ? user?.id : undefined,
+        notes: `Player withdrawal - Transaction ID: ${customTransactionId}`,
+      });
 
       return { transactionId, customTransactionId };
     });
@@ -800,6 +860,11 @@ export const updateTransactionStatus = async (req: Request, res: Response) => {
       .set(updatePayload)
       .where(eq(transactions.id, id));
 
+    // Update corresponding adminMainBalance records to match transaction status
+    await AdminMainBalanceModel.updateByTransactionId(id, {
+      status: status as any, // Update status to match transaction
+    });
+
     const [updated] = await db
       .select()
       .from(transactions)
@@ -865,6 +930,11 @@ export const updateAffiliateWithdrawStatus = async (
       .update(transactions)
       .set(updatePayload)
       .where(eq(transactions.id, id));
+
+    // Update corresponding adminMainBalance records to match transaction status
+    await AdminMainBalanceModel.updateByTransactionId(id, {
+      status: status as any, // Update status to match transaction
+    });
 
     // Apply extra logic based on status
     if (status === "approved") {
@@ -971,12 +1041,17 @@ export const checkWithdrawCapability = async (req: Request, res: Response) => {
     const hasPendingTurnover = pendingTurnover.length > 0;
 
     // User can withdraw if: sufficient balance AND no pending turnover
-    const canWithdraw = hasSufficientBalance && !hasPendingTurnover;
+    const canWithdraw = hasSufficientBalance && !hasPendingTurnover && user.kyc_status==="verified" && user.status==="active";
 
     // Determine the reason why withdrawal is not allowed
     let withdrawReason = null;
     if (!canWithdraw) {
-      if (!hasSufficientBalance) {
+      if (user.kyc_status!=="verified") {
+        withdrawReason = "KYC is not verified";
+      } else if (user.status!=="active") {
+        withdrawReason = "User is not active";
+      }
+      else if (!hasSufficientBalance) {
         withdrawReason = `Insufficient balance. Current balance: ${currentBalance.toFixed(2)}, Minimum required: ${minWithdrawableBalance.toFixed(2)}`;
       } else if (hasPendingTurnover) {
         withdrawReason = `Turnover has not yet reached`;

@@ -14,6 +14,7 @@ import {
 import { seedGameProviderAndGame } from "./seed-fn/gameProviderSeed";
 import { seedBetResults } from "./seed-fn/betResults";
 import { seedTransactions } from "./seed-fn/transactions";
+import { seedAdminMainBalance } from "./seed-fn/adminMainBalance";
 
 async function seed() {
   try {
@@ -41,6 +42,9 @@ async function seed() {
 
     // Seed transactions
     await seedTransactions();
+
+    // Seed admin main balance (after transactions are seeded)
+    await seedAdminMainBalance();
   } catch (error) {
     console.error("❌ Failed to insert seed data:", error);
   } finally {
