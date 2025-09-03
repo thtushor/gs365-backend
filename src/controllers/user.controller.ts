@@ -492,7 +492,7 @@ export const removeFavorite = async (req: Request, res: Response) => {
 // Get user's favorite games
 export const getFavorites = async (req: Request, res: Response) => {
   try {
-    const { userId } = req.params;
+    const { userId } = req.query;
 
     const favorites = await db
       .select({

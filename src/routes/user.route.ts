@@ -9,6 +9,9 @@ import {
   updateUser,
   deleteUser,
   userProfile,
+  addFavorite,
+  removeFavorite,
+  getFavorites,
 } from "../controllers/user.controller";
 import { verifyToken } from "../middlewares/verifyToken";
 import { asyncHandler } from "../utils/asyncHandler";
@@ -61,5 +64,8 @@ router.post("/delete/:id", (req, res, next) => {
 });
 router.get("/kyc", asyncHandler(getKycList));
 router.post("/create-update-kyc", asyncHandler(createUpdateKyc));
+router.post("/add-favorite", asyncHandler(addFavorite));
+router.post("/remove-favorite", asyncHandler(removeFavorite));
+router.get("/get-favorites", asyncHandler(getFavorites));
 
 export default router;
