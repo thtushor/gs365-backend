@@ -8,16 +8,14 @@ import { betResults } from "../db/schema/betResults";
 import { games } from "../db/schema/games";
 import { sql } from "drizzle-orm";
 import { asyncHandler } from "../utils/asyncHandler";
+import { AdminMainBalanceModel } from "../models/adminMainBalance.model";
 
 export const getDashboardStats = asyncHandler(async (req: Request, res: Response) => {
   try {
     console.log("🔄 Fetching dashboard statistics...");
     
-    // Get main balance from settings
-    const [mainBalanceResult] = await db
-      .select({ adminBalance: settings.adminBalance })
-      .from(settings)
-      .limit(1);
+    // Get main balance from adminMainBalance
+    const adminMainBalanceStats = await AdminMainBalanceModel.calculateStats();
 
     // Get transaction statistics
     const transactionStats = await db
@@ -29,12 +27,17 @@ export const getDashboardStats = asyncHandler(async (req: Request, res: Response
         pendingDeposit: sql<number>`SUM(CASE WHEN transaction_type = 'deposit' AND transaction_status = 'pending' THEN amount ELSE 0 END)`,
         pendingWithdraw: sql<number>`SUM(CASE WHEN transaction_type = 'withdraw' AND transaction_status = 'pending' THEN amount ELSE 0 END)`,
         totalBonusCoin: sql<number>`SUM(CASE WHEN promotion_id IS NOT NULL THEN amount ELSE 0 END)`,
+        totalBonusAmount: sql<number>`SUM(bonus_amount)`,
       })
       .from(transactions);
 
     // Get affiliate and agent counts
     const affiliateAgentStats = await db
       .select({
+        totalSuperAffiliate: sql<number>`COUNT(CASE WHEN role = 'superAffiliate' THEN 1 END)`,
+        totalSubAffiliate: sql<number>`COUNT(CASE WHEN role = 'affiliate' THEN 1 END)`,
+        totalSuperAgent: sql<number>`COUNT(CASE WHEN role = 'superAgent' THEN 1 END)`,
+        totalSubAgent: sql<number>`COUNT(CASE WHEN role = 'agent' THEN 1 END)`,
         totalAffiliate: sql<number>`COUNT(CASE WHEN role IN ('affiliate', 'superAffiliate') THEN 1 END)`,
         totalAgent: sql<number>`COUNT(CASE WHEN role IN ('agent', 'superAgent') THEN 1 END)`,
       })
@@ -67,7 +70,7 @@ export const getDashboardStats = asyncHandler(async (req: Request, res: Response
 
     // Prepare dashboard data
     const dashboardData = {
-      mainBalance: mainBalanceResult?.adminBalance || 0,
+      mainBalance: adminMainBalanceStats.currentMainBalance,
       
       // Win/Loss
       totalWin: Number(transactionStats[0]?.totalWin || 0),
@@ -81,12 +84,19 @@ export const getDashboardStats = asyncHandler(async (req: Request, res: Response
       pendingDeposit: Number(transactionStats[0]?.pendingDeposit || 0),
       pendingWithdraw: Number(transactionStats[0]?.pendingWithdraw || 0),
       
-      // Bonus Coins
+      // Bonus Coins and Bonus Amount
       totalBonusCoin: Number(transactionStats[0]?.totalBonusCoin || 0),
+      totalBonusAmount: Number(transactionStats[0]?.totalBonusAmount || 0),
       
-      // Affiliate & Agent Stats
+      // Affiliate Stats
       totalAffiliate: Number(affiliateAgentStats[0]?.totalAffiliate || 0),
+      totalSuperAffiliate: Number(affiliateAgentStats[0]?.totalSuperAffiliate || 0),
+      totalSubAffiliate: Number(affiliateAgentStats[0]?.totalSubAffiliate || 0),
+      
+      // Agent Stats
       totalAgent: Number(affiliateAgentStats[0]?.totalAgent || 0),
+      totalSuperAgent: Number(affiliateAgentStats[0]?.totalSuperAgent || 0),
+      totalSubAgent: Number(affiliateAgentStats[0]?.totalSubAgent || 0),
       
       // Player Stats
       totalPlayers: Number(playerStats[0]?.totalPlayers || 0),
