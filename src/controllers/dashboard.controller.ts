@@ -9,6 +9,7 @@ import { games } from "../db/schema/games";
 import { sql } from "drizzle-orm";
 import { asyncHandler } from "../utils/asyncHandler";
 import { AdminMainBalanceModel } from "../models/adminMainBalance.model";
+import { game_providers, sports_providers } from "../db/schema";
 
 export const getDashboardStats = asyncHandler(async (req: Request, res: Response) => {
   try {
@@ -50,6 +51,9 @@ export const getDashboardStats = asyncHandler(async (req: Request, res: Response
         ), 0
       )
     `,
+        totalAffiliateKycVerified: sql<number>`COUNT(CASE WHEN ${adminUsers.kyc_status} = 'verified' AND role IN ('affiliate', 'superAffiliate') THEN 1 END)`,
+        totalAffiliateKycUnverified: sql<number>`COUNT(CASE WHEN ${adminUsers.kyc_status} = 'unverified' AND role IN ('affiliate', 'superAffiliate') THEN 1 END)`,
+        totalAffiliateKycRequired: sql<number>`COUNT(CASE WHEN ${adminUsers.kyc_status} = 'required' AND role IN ('affiliate', 'superAffiliate') THEN 1 END)`,
       })
       .from(adminUsers)
       .limit(1);
@@ -59,6 +63,9 @@ export const getDashboardStats = asyncHandler(async (req: Request, res: Response
         .select({
           totalPlayers: sql<number>`COUNT(*)`,
           totalOnlinePlayers: sql<number>`COUNT(CASE WHEN ${users.isLoggedIn} = true THEN 1 END)`,
+          totalPlayerKycVerified: sql<number>`COUNT(CASE WHEN ${users.kyc_status} = 'verified' THEN 1 END)`,
+          totalPlayerKycUnverified: sql<number>`COUNT(CASE WHEN ${users.kyc_status} = 'unverified' THEN 1 END)`,
+          totalPlayerKycRequired: sql<number>`COUNT(CASE WHEN ${users.kyc_status} = 'required' THEN 1 END)`,
         })
         .from(users)
         .limit(1);
@@ -75,12 +82,38 @@ export const getDashboardStats = asyncHandler(async (req: Request, res: Response
 
       // Get total games count
       const [gamesCount] = await db
-        .select({ totalGames: sql<number>`COUNT(*)` })
+        .select({ totalGames: sql<number>`COUNT(*)`,
+        totalActiveGames: sql<number>`COUNT(CASE WHEN ${games.status} = 'active' THEN 1 END)`,
+        totalInactiveGames: sql<number>`COUNT(CASE WHEN ${games.status} = 'inactive' THEN 1 END)`,
+         })
         .from(games);
+
+      const [gameProvidersCount] = await db
+        .select({ totalGameProviders: sql<number>`COUNT(*)`,
+        totalActiveGameProviders: sql<number>`COUNT(CASE WHEN ${game_providers.status} = 'active' THEN 1 END)`,
+        totalInactiveGameProviders: sql<number>`COUNT(CASE WHEN ${game_providers.status} = 'inactive' THEN 1 END)`,
+        totalParentGameProviders: sql<number>`COUNT(CASE WHEN ${game_providers.parentId} IS NULL THEN 1 END)`,
+        totalSubGameProviders: sql<number>`COUNT(CASE WHEN ${game_providers.parentId} IS NOT NULL THEN 1 END)`,
+         })
+        .from(game_providers);
+
+      const [sportsProvidersCount] = await db
+        .select({ totalSportsProviders: sql<number>`COUNT(*)`,
+        totalActiveSportsProviders: sql<number>`COUNT(CASE WHEN ${sports_providers.status} = 'active' THEN 1 END)`,
+        totalInactiveSportsProviders: sql<number>`COUNT(CASE WHEN ${sports_providers.status} = 'inactive' THEN 1 END)`,
+        totalParentSportsProviders: sql<number>`COUNT(CASE WHEN ${sports_providers.parentId} IS NULL THEN 1 END)`,
+        totalSubSportsProviders: sql<number>`COUNT(CASE WHEN ${sports_providers.parentId} IS NOT NULL THEN 1 END)`,
+         })
+        .from(sports_providers);
 
     // Prepare dashboard data
     const dashboardData = {
       mainBalance: adminMainBalanceStats.currentMainBalance,
+      totalAdminDeposit: adminMainBalanceStats.totalAdminDeposit,
+      totalPlayerDeposit: adminMainBalanceStats.totalPlayerDeposit,
+      totalPromotion: adminMainBalanceStats.totalPromotion,
+      totalPlayerWithdraw: adminMainBalanceStats.totalPlayerWithdraw,
+      totalAdminWithdraw: adminMainBalanceStats.totalAdminWithdraw,
       
       // Win/Loss
       totalWin: Number(transactionStats[0]?.totalWin || 0),
@@ -111,6 +144,9 @@ export const getDashboardStats = asyncHandler(async (req: Request, res: Response
       // Player Stats
       totalPlayers: Number(playerStats[0]?.totalPlayers || 0),
       totalOnlinePlayers: Number(playerStats[0]?.totalOnlinePlayers || 0),
+      totalPlayerKycVerified: Number(playerStats[0]?.totalPlayerKycVerified || 0),
+      totalPlayerKycUnverified: Number(playerStats[0]?.totalPlayerKycUnverified || 0),
+      totalPlayerKycRequired: Number(playerStats[0]?.totalPlayerKycRequired || 0),
       
       // Bet Stats
       totalBetPlaced: Number(betStats[0]?.totalBetPlaced || 0),
@@ -123,9 +159,22 @@ export const getDashboardStats = asyncHandler(async (req: Request, res: Response
       gameProviderPendingPayment: 0,
       sportsProviderPendingPayment: 0,
       totalAffiliateWithdrawal: Number(affiliateAgentStats[0]?.totalAffiliateWithdrawal || 0),
-      
+      // totalParentGameProvider:
       // Total Games
       totalGames: Number(gamesCount?.totalGames || 0),
+      totalActiveGames: Number(gamesCount?.totalActiveGames || 0),
+      totalInactiveGames: Number(gamesCount?.totalInactiveGames || 0),
+      totalGameProviders: Number(gameProvidersCount?.totalGameProviders || 0),
+      totalActiveGameProviders: Number(gameProvidersCount?.totalActiveGameProviders || 0),
+      totalInactiveGameProviders: Number(gameProvidersCount?.totalInactiveGameProviders || 0),
+      totalParentGameProviders: Number(gameProvidersCount?.totalParentGameProviders || 0),
+      totalSubGameProviders: Number(gameProvidersCount?.totalSubGameProviders || 0),
+
+      totalSportsProviders: Number(sportsProvidersCount?.totalSportsProviders || 0),
+      totalActiveSportsProviders: Number(sportsProvidersCount?.totalActiveSportsProviders || 0),
+      totalInactiveSportsProviders: Number(sportsProvidersCount?.totalInactiveSportsProviders || 0),
+      totalParentSportsProviders: Number(sportsProvidersCount?.totalParentSportsProviders || 0),
+      totalSubSportsProviders: Number(sportsProvidersCount?.totalSubSportsProviders || 0),
     };
 
       console.log("✅ Dashboard statistics fetched successfully");
