@@ -130,7 +130,23 @@ export const PaymentGatewayModel = {
     if (!country || country.length === 0) {
       throw new Error("Invalid country id");
     }
-    return db.insert(paymentGateway).values(data);
+    return db.insert(paymentGateway).values({
+  name: data.name,
+  methodId: data.methodId,
+  paymentMethodTypeIds: data.paymentMethodTypeIds, // JSON handled by Drizzle
+  iconUrl: data.iconUrl,
+  minDeposit: data.minDeposit,
+  maxDeposit: data.maxDeposit,
+  minWithdraw: data.minWithdraw,
+  maxWithdraw: data.maxWithdraw,
+  bonus: data.bonus,
+  status: data.status,               // maps to status
+  // statusDeposit: "active",           // or use data.statusDeposit if your payload includes it
+  countryId: data.countryId,
+  network: data.network,
+  currencyConversionRate: data.currencyConversionRate,
+});
+
   },
   async update(id: number, data: any) {
     return db
