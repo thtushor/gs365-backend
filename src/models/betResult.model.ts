@@ -104,11 +104,17 @@ export interface GameWiseStatsFilters {
   gameName?: string;
   providerId?: number;
   categoryId?: number;
-  userId?:number;
+  userId?: number;
   status?: string;
   limit?: number;
   offset?: number;
-  sortBy?: "totalBets" | "totalBetAmount" | "totalWinAmount" | "totalLossAmount" | "totalPlayers" | "winRate";
+  sortBy?:
+    | "totalBets"
+    | "totalBetAmount"
+    | "totalWinAmount"
+    | "totalLossAmount"
+    | "totalPlayers"
+    | "winRate";
   sortOrder?: "asc" | "desc";
 }
 
@@ -118,14 +124,14 @@ export interface GameWiseStatsData {
   gameLogo: string;
   gameUrl: string;
   gameStatus: string;
-  categoryId?: number|null;
-  categoryTitle?: string|null;
-  categoryImgUrl?: string|null;
-  providerId?: number|null;
+  categoryId?: number | null;
+  categoryTitle?: string | null;
+  categoryImgUrl?: string | null;
+  providerId?: number | null;
   providerName?: string;
   providerLogo?: string;
   providerCountry?: string;
-  
+
   // Statistics
   totalBets: number;
   totalBetAmount: number;
@@ -136,12 +142,12 @@ export interface GameWiseStatsData {
   winRate: number;
   averageBetAmount: number;
   totalProfit: number;
-  
+
   // Recent activity
   lastBetPlaced?: Date;
   lastWinAmount?: number;
   lastLossAmount?: number;
-  
+
   // Player distribution
   uniquePlayersToday?: number;
   uniquePlayersThisWeek?: number;
@@ -221,7 +227,7 @@ export const BetResultModel = {
       const whereConditions = [];
 
       if (userId) {
-        whereConditions.push(eq(betResults.userId, userId));
+        whereConditions.push(eq(betResults.userId, Number(userId)));
       }
 
       if (gameId) {
@@ -291,7 +297,7 @@ export const BetResultModel = {
 
       const totalResult = await countQuery;
       const total = totalResult[0]?.count || 0;
-      
+
       // Apply sorting
       const sortField =
         sortBy === "betAmount"
@@ -362,72 +368,76 @@ export const BetResultModel = {
       const results = await query;
 
       // Transform results to include parsed provider info and structured data
-      const transformedResults: BetResultWithDetails[] = await Promise.all(results.map(async (row) => {
-        // Parse provider info from JSON if available
-        let parsedProviderInfo = null;
-        if (row.gameProvider) {
-          try {
-            parsedProviderInfo = JSON.parse(row.gameProvider);
-          } catch (error) {
-            console.warn(
-              "Failed to parse provider info JSON:",
-              row.gameProvider
-            );
+      const transformedResults: BetResultWithDetails[] = await Promise.all(
+        results.map(async (row) => {
+          // Parse provider info from JSON if available
+          let parsedProviderInfo = null;
+          if (row.gameProvider) {
+            try {
+              parsedProviderInfo = JSON.parse(row.gameProvider);
+            } catch (error) {
+              console.warn(
+                "Failed to parse provider info JSON:",
+                row.gameProvider
+              );
+            }
           }
-        }
 
-        const userBalance = await BalanceModel.calculatePlayerBalance(row.userId)
+          const userBalance = await BalanceModel.calculatePlayerBalance(
+            row.userId
+          );
 
-        return {
-          id: row.id,
-          user: row.user,
-          userBalance,
-          betBalance: row?.betBalance,
-          userId: row.userId,
-          gameId: row.gameId,
-          betAmount: row.betAmount || "",
-          betStatus: row.betStatus || "",
-          playingStatus: row.playingStatus || "",
-          sessionToken: row.sessionToken || "",
-          gameSessionId: row.gameSessionId,
-          winAmount: row.winAmount || "",
-          lossAmount: row.lossAmount || "",
-          multiplier: row.multiplier || "",
-          gameName: row.gameName || "",
-          gameProvider: row.gameProvider || "",
-          gameCategory: row.gameCategory || "",
-          userScore: row.userScore || 0,
-          userLevel: row.userLevel || "",
-          betPlacedAt: row.betPlacedAt || new Date(),
-          gameStartedAt: row.gameStartedAt,
-          gameCompletedAt: row.gameCompletedAt,
-          ipAddress: row.ipAddress,
-          deviceInfo: row.deviceInfo,
-          isMobile: row.isMobile || false,
-          createdBy: row.createdBy,
-          updatedBy: row.updatedBy,
-          createdAt: row.createdAt || new Date(),
-          updatedAt: row.updatedAt || new Date(),
-          gameDetails: row.gameId_join
-            ? {
-            id: row.gameId_join,
-                name: row.gameName_join || row.gameName || "",
-                gameLogo: row.gameLogo || "",
-                gameUrl: row.gameUrl || "",
-                status: row.gameStatus || "unknown",
-              }
-            : undefined,
-          providerDetails: row.providerId
-            ? {
-            id: row.providerId,
-                name: row.providerName || "Unknown Provider",
-                logo: row.providerLogo || "",
-                status: row.providerStatus || "unknown",
-                country: row.providerCountry || "Unknown",
-              }
-            : undefined,
-        };
-      }));
+          return {
+            id: row.id,
+            user: row.user,
+            userBalance,
+            betBalance: row?.betBalance,
+            userId: row.userId,
+            gameId: row.gameId,
+            betAmount: row.betAmount || "",
+            betStatus: row.betStatus || "",
+            playingStatus: row.playingStatus || "",
+            sessionToken: row.sessionToken || "",
+            gameSessionId: row.gameSessionId,
+            winAmount: row.winAmount || "",
+            lossAmount: row.lossAmount || "",
+            multiplier: row.multiplier || "",
+            gameName: row.gameName || "",
+            gameProvider: row.gameProvider || "",
+            gameCategory: row.gameCategory || "",
+            userScore: row.userScore || 0,
+            userLevel: row.userLevel || "",
+            betPlacedAt: row.betPlacedAt || new Date(),
+            gameStartedAt: row.gameStartedAt,
+            gameCompletedAt: row.gameCompletedAt,
+            ipAddress: row.ipAddress,
+            deviceInfo: row.deviceInfo,
+            isMobile: row.isMobile || false,
+            createdBy: row.createdBy,
+            updatedBy: row.updatedBy,
+            createdAt: row.createdAt || new Date(),
+            updatedAt: row.updatedAt || new Date(),
+            gameDetails: row.gameId_join
+              ? {
+                  id: row.gameId_join,
+                  name: row.gameName_join || row.gameName || "",
+                  gameLogo: row.gameLogo || "",
+                  gameUrl: row.gameUrl || "",
+                  status: row.gameStatus || "unknown",
+                }
+              : undefined,
+            providerDetails: row.providerId
+              ? {
+                  id: row.providerId,
+                  name: row.providerName || "Unknown Provider",
+                  logo: row.providerLogo || "",
+                  status: row.providerStatus || "unknown",
+                  country: row.providerCountry || "Unknown",
+                }
+              : undefined,
+          };
+        })
+      );
 
       return {
         data: transformedResults,
@@ -533,7 +543,7 @@ export const BetResultModel = {
         updatedAt: row.updatedAt || new Date(),
         gameDetails: row.gameId_join
           ? {
-          id: row.gameId_join,
+              id: row.gameId_join,
               name: row.gameName_join || row.gameName || "",
               gameLogo: row.gameLogo || "",
               gameUrl: row.gameUrl || "",
@@ -542,7 +552,7 @@ export const BetResultModel = {
           : undefined,
         providerDetails: row.providerId
           ? {
-          id: row.providerId,
+              id: row.providerId,
               name: row.providerName || "Unknown Provider",
               logo: row.providerLogo || "",
               status: row.providerStatus || "unknown",
@@ -723,50 +733,54 @@ export const BetResultModel = {
         .where(and(...whereConditions))
         .groupBy(betResults.userId)
         .having(sql`COUNT(*) >= ${filters.minGames}`)
-        .orderBy(filters.sortOrder === "desc" ? desc(orderByExpr) : asc(orderByExpr))
+        .orderBy(
+          filters.sortOrder === "desc" ? desc(orderByExpr) : asc(orderByExpr)
+        )
         .limit(filters.limit)
         .offset(filters.offset);
-      
-        
-
-      
-
-      
 
       // Transform results and add calculated fields
-      const rankings: PlayerRankingData[] = await Promise.all( results.map(async(row, index) => {
-        const totalBets = row.totalBets || 0;
-        const totalWins = row.totalWins || 0;
-        const totalLosses = row.totalLosses || 0;
-        const totalWinAmount = Number(row.totalWinAmount) || 0;
-        const totalLossAmount = Number(row.totalLossAmount) || 0;
-        const totalBetAmount = Number(row.totalBetAmount) || 0;
-        const winRate = totalBets > 0 ? (totalWins / totalBets) * 100 : 0;
-        const totalProfit = totalWinAmount - totalLossAmount;
-        const avgBetAmount = totalBets > 0 ? totalBetAmount / totalBets : 0;
+      const rankings: PlayerRankingData[] = await Promise.all(
+        results.map(async (row, index) => {
+          const totalBets = row.totalBets || 0;
+          const totalWins = row.totalWins || 0;
+          const totalLosses = row.totalLosses || 0;
+          const totalWinAmount = Number(row.totalWinAmount) || 0;
+          const totalLossAmount = Number(row.totalLossAmount) || 0;
+          const totalBetAmount = Number(row.totalBetAmount) || 0;
+          const winRate = totalBets > 0 ? (totalWins / totalBets) * 100 : 0;
+          const totalProfit = totalWinAmount - totalLossAmount;
+          const avgBetAmount = totalBets > 0 ? totalBetAmount / totalBets : 0;
 
-        const [userData] = await db.select().from(users).where((eq(users.id,row.userId)))
-        const userBalance = await BalanceModel.calculatePlayerBalance(row.userId,userData.currency_id!)
+          const [userData] = await db
+            .select()
+            .from(users)
+            .where(eq(users.id, row.userId));
+          const userBalance = await BalanceModel.calculatePlayerBalance(
+            row.userId,
+            userData.currency_id!
+          );
 
-        return {
-          userId: row.userId,
-          user: {...userData, password: undefined},
-          userBalance,
-          // game: row.game,
-          // provider: row.provider,
-          rank: filters.offset + index + 1,
-          totalBets,
-          totalWins,
-          totalLosses,
-          totalWinAmount,
-          totalLossAmount,
-          totalBetAmount,
-          winRate: Math.round(winRate * 100) / 100, // Round to 2 decimal places
-          totalProfit: Math.round(totalProfit * 100) / 100,
-          avgBetAmount: Math.round(avgBetAmount * 100) / 100,
-          lastPlayed: row.lastPlayed || new Date(),
-        };
-      }));
+          return {
+            userId: row.userId,
+            user: { ...userData, password: undefined },
+            userBalance,
+            // game: row.game,
+            // provider: row.provider,
+            rank: filters.offset + index + 1,
+            totalBets,
+            totalWins,
+            totalLosses,
+            totalWinAmount,
+            totalLossAmount,
+            totalBetAmount,
+            winRate: Math.round(winRate * 100) / 100, // Round to 2 decimal places
+            totalProfit: Math.round(totalProfit * 100) / 100,
+            avgBetAmount: Math.round(avgBetAmount * 100) / 100,
+            lastPlayed: row.lastPlayed || new Date(),
+          };
+        })
+      );
 
       // Add additional stats if requested
       // if (filters.includeStats) {
@@ -837,12 +851,18 @@ export const BetResultModel = {
         })
         .from(betResults);
 
-      const winnersQuery = (whereConditions.length > 0
-        ? winnersBase.where(and(...whereConditions))
-        : winnersBase)
+      const winnersQuery = (
+        whereConditions.length > 0
+          ? winnersBase.where(and(...whereConditions))
+          : winnersBase
+      )
         .groupBy(betResults.userId)
         .having(sql`COUNT(*) >= ${filters.minGames}`)
-        .orderBy(desc(sql`COALESCE(SUM(CASE WHEN ${betResults.betStatus} = 'win' THEN ${betResults.winAmount} ELSE 0 END), 0)`))
+        .orderBy(
+          desc(
+            sql`COALESCE(SUM(CASE WHEN ${betResults.betStatus} = 'win' THEN ${betResults.winAmount} ELSE 0 END), 0)`
+          )
+        )
         .limit(filters.limit)
         .offset(filters.offset);
 
@@ -932,12 +952,18 @@ export const BetResultModel = {
         })
         .from(betResults);
 
-      const losersQuery = (whereConditions.length > 0
-        ? losersBase.where(and(...whereConditions))
-        : losersBase)
+      const losersQuery = (
+        whereConditions.length > 0
+          ? losersBase.where(and(...whereConditions))
+          : losersBase
+      )
         .groupBy(betResults.userId)
         .having(sql`COUNT(*) >= ${filters.minGames}`)
-        .orderBy(desc(sql`COALESCE(SUM(CASE WHEN ${betResults.betStatus} = 'loss' THEN ${betResults.lossAmount} ELSE 0 END), 0)`))
+        .orderBy(
+          desc(
+            sql`COALESCE(SUM(CASE WHEN ${betResults.betStatus} = 'loss' THEN ${betResults.lossAmount} ELSE 0 END), 0)`
+          )
+        )
         .limit(filters.limit)
         .offset(filters.offset);
 
@@ -1200,7 +1226,11 @@ export const BetResultModel = {
         .from(betResults)
         .where(whereClause)
         .groupBy(betResults.userId)
-        .orderBy(desc(sql<number>`COALESCE(SUM(CASE WHEN ${betResults.betStatus} = 'win' THEN ${betResults.winAmount} ELSE 0 END), 0)`))
+        .orderBy(
+          desc(
+            sql<number>`COALESCE(SUM(CASE WHEN ${betResults.betStatus} = 'win' THEN ${betResults.winAmount} ELSE 0 END), 0)`
+          )
+        )
         .limit(5);
 
       // Recent activity (last 10 bets)
@@ -1343,12 +1373,12 @@ export const BetResultModel = {
         whereConditions.push(eq(betResults.gameId, gameId));
       }
 
-      if(userId){
-        whereConditions.push(eq(betResults.userId,userId))
+      if (userId) {
+        whereConditions.push(eq(betResults.userId, userId));
       }
 
-      if(providerId){
-        whereConditions.push(eq(games.providerId,providerId))
+      if (providerId) {
+        whereConditions.push(eq(games.providerId, providerId));
       }
 
       if (gameName) {
@@ -1356,10 +1386,11 @@ export const BetResultModel = {
       }
 
       if (status) {
-        whereConditions.push(eq(games.status, status as "active"|"inactive"));
+        whereConditions.push(eq(games.status, status as "active" | "inactive"));
       }
 
-      const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
+      const whereClause =
+        whereConditions.length > 0 ? and(...whereConditions) : undefined;
 
       // Get total count for pagination
       const countQuery = db
@@ -1421,7 +1452,7 @@ export const BetResultModel = {
           totalLossAmount: sql<number>`COALESCE(SUM(${betResults.lossAmount}), 0)`,
           totalPendingBets: sql<number>`COUNT(CASE WHEN ${betResults.betStatus} = 'pending' THEN 1 END)`,
           totalPlayersPlayed: sql<number>`COUNT(DISTINCT ${betResults.userId})`,
-          
+
           // Recent activity
           lastBetPlaced: sql<Date>`MAX(${betResults.createdAt})`,
           lastWinAmount: sql<number>`MAX(CASE WHEN ${betResults.betStatus} = 'win' THEN ${betResults.winAmount} ELSE 0 END)`,
@@ -1437,18 +1468,26 @@ export const BetResultModel = {
           providerCountry: game_providers.country,
         })
         .from(betResults)
-        .leftJoin(users,eq(betResults.userId,users.id))
+        .leftJoin(users, eq(betResults.userId, users.id))
         .leftJoin(games, eq(betResults.gameId, games.id))
         .leftJoin(dropdownOptions, eq(games.categoryId, dropdownOptions.id))
         .leftJoin(game_providers, eq(games.providerId, game_providers.id))
         .where(whereClause)
-        .groupBy(betResults.gameId, games.id, dropdownOptions.title, dropdownOptions.imgUrl, game_providers.name, game_providers.logo, game_providers.country)
+        .groupBy(
+          betResults.gameId,
+          games.id,
+          dropdownOptions.title,
+          dropdownOptions.imgUrl,
+          game_providers.name,
+          game_providers.logo,
+          game_providers.country
+        )
         .orderBy(sortOrder === "desc" ? desc(orderByExpr) : asc(orderByExpr))
         .limit(limit)
         .offset(offset);
 
       // Get additional time-based player statistics for each game
-      const gameIds = results.map(r => r.gameId);
+      const gameIds = results.map((r) => r.gameId);
       const timeBasedStats = await Promise.all(
         gameIds.map(async (gameId) => {
           const today = new Date();
@@ -1456,21 +1495,42 @@ export const BetResultModel = {
           const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
 
           const [todayStats] = await db
-            .select({ count: sql<number>`COUNT(DISTINCT ${betResults.userId})` })
+            .select({
+              count: sql<number>`COUNT(DISTINCT ${betResults.userId})`,
+            })
             .from(betResults)
-            .where(and(eq(betResults.gameId, gameId), gte(betResults.createdAt, today)))
+            .where(
+              and(
+                eq(betResults.gameId, gameId),
+                gte(betResults.createdAt, today)
+              )
+            )
             .limit(1);
 
           const [weekStats] = await db
-            .select({ count: sql<number>`COUNT(DISTINCT ${betResults.userId})` })
+            .select({
+              count: sql<number>`COUNT(DISTINCT ${betResults.userId})`,
+            })
             .from(betResults)
-            .where(and(eq(betResults.gameId, gameId), gte(betResults.createdAt, weekAgo)))
+            .where(
+              and(
+                eq(betResults.gameId, gameId),
+                gte(betResults.createdAt, weekAgo)
+              )
+            )
             .limit(1);
 
           const [monthStats] = await db
-            .select({ count: sql<number>`COUNT(DISTINCT ${betResults.userId})` })
+            .select({
+              count: sql<number>`COUNT(DISTINCT ${betResults.userId})`,
+            })
             .from(betResults)
-            .where(and(eq(betResults.gameId, gameId), gte(betResults.createdAt, monthAgo)))
+            .where(
+              and(
+                eq(betResults.gameId, gameId),
+                gte(betResults.createdAt, monthAgo)
+              )
+            )
             .limit(1);
 
           return {
@@ -1490,13 +1550,18 @@ export const BetResultModel = {
         const totalLossAmount = Number(row.totalLossAmount) || 0;
         const totalPendingBets = row.totalPendingBets || 0;
         const totalPlayersPlayed = row.totalPlayersPlayed || 0;
-        
-        const winRate = totalBets > 0 ? (totalBets - totalPendingBets > 0 ? (totalWinAmount / (totalBets - totalPendingBets)) * 100 : 0) : 0;
+
+        const winRate =
+          totalBets > 0
+            ? totalBets - totalPendingBets > 0
+              ? (totalWinAmount / (totalBets - totalPendingBets)) * 100
+              : 0
+            : 0;
         const averageBetAmount = totalBets > 0 ? totalBetAmount / totalBets : 0;
         const totalProfit = totalWinAmount - totalLossAmount;
 
         // Find time-based stats for this game
-        const timeStats = timeBasedStats.find(ts => ts.gameId === row.gameId);
+        const timeStats = timeBasedStats.find((ts) => ts.gameId === row.gameId);
 
         return {
           ...row,
@@ -1511,12 +1576,12 @@ export const BetResultModel = {
           winRate: Math.round(winRate * 100) / 100,
           averageBetAmount: Math.round(averageBetAmount * 100) / 100,
           totalProfit: Math.round(totalProfit * 100) / 100,
-          
+
           // Recent activity
           lastBetPlaced: row.lastBetPlaced,
           lastWinAmount: Number(row.lastWinAmount) || 0,
           lastLossAmount: Number(row.lastLossAmount) || 0,
-          
+
           // Player distribution
           uniquePlayersToday: timeStats?.uniquePlayersToday || 0,
           uniquePlayersThisWeek: timeStats?.uniquePlayersThisWeek || 0,
@@ -1528,12 +1593,35 @@ export const BetResultModel = {
       const summary = {
         totalGames: total,
         totalBets: gameStats.reduce((sum, game) => sum + game.totalBets, 0),
-        totalBetAmount: Math.round(gameStats.reduce((sum, game) => sum + game.totalBetAmount, 0) * 100) / 100,
-        totalWinAmount: Math.round(gameStats.reduce((sum, game) => sum + game.totalWinAmount, 0) * 100) / 100,
-        totalLossAmount: Math.round(gameStats.reduce((sum, game) => sum + game.totalLossAmount, 0) * 100) / 100,
-        totalPendingBets: gameStats.reduce((sum, game) => sum + game.totalPendingBets, 0),
-        totalPlayersPlayed: new Set(gameStats.flatMap(game => Array.from({ length: game.totalPlayersPlayed }, () => game.gameId))).size,
-        overallWinRate: gameStats.length > 0 ? Math.round(gameStats.reduce((sum, game) => sum + game.winRate, 0) / gameStats.length * 100) / 100 : 0,
+        totalBetAmount:
+          Math.round(
+            gameStats.reduce((sum, game) => sum + game.totalBetAmount, 0) * 100
+          ) / 100,
+        totalWinAmount:
+          Math.round(
+            gameStats.reduce((sum, game) => sum + game.totalWinAmount, 0) * 100
+          ) / 100,
+        totalLossAmount:
+          Math.round(
+            gameStats.reduce((sum, game) => sum + game.totalLossAmount, 0) * 100
+          ) / 100,
+        totalPendingBets: gameStats.reduce(
+          (sum, game) => sum + game.totalPendingBets,
+          0
+        ),
+        totalPlayersPlayed: new Set(
+          gameStats.flatMap((game) =>
+            Array.from({ length: game.totalPlayersPlayed }, () => game.gameId)
+          )
+        ).size,
+        overallWinRate:
+          gameStats.length > 0
+            ? Math.round(
+                (gameStats.reduce((sum, game) => sum + game.winRate, 0) /
+                  gameStats.length) *
+                  100
+              ) / 100
+            : 0,
       };
 
       // Calculate pagination

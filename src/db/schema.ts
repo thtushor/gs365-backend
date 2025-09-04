@@ -26,3 +26,4 @@ export * from "./schema/userLoginHistory";
 export * from "./schema/kyc";
 export * from "./schema/withdrawalPaymentAccount";
 export * from "./schema/adminMainBalance";
+export * from "./schema/user_favorites";
