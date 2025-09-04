@@ -866,7 +866,7 @@ export const updateTransactionStatus = async (req: Request, res: Response) => {
      }).where(eq(turnover.transactionId, id));
     }
 
-    if(updatePayload.status === "rejected"){
+    if(["rejected","pending"].includes(updatePayload.status)){
       await db.update(turnover) .set({
        status: "inactive",
       }).where(eq(turnover.transactionId, id));
