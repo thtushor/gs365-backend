@@ -23,12 +23,15 @@ export const getDashboardStats = asyncHandler(async (req: Request, res: Response
       .select({
         totalWin: sql<number>`SUM(CASE WHEN transaction_type = 'win' THEN amount ELSE 0 END)`,
         totalLoss: sql<number>`SUM(CASE WHEN transaction_type = 'loss' THEN amount ELSE 0 END)`,
-        totalDeposit: sql<number>`SUM(CASE WHEN transaction_type = 'deposit' THEN amount ELSE 0 END)`,
-        totalWithdraw: sql<number>`SUM(CASE WHEN transaction_type = 'withdraw' THEN amount ELSE 0 END)`,
+        totalDeposit: sql<number>`SUM(CASE WHEN transaction_type = 'deposit' AND transaction_status = 'approved' THEN amount ELSE 0 END)`,
+        totalWithdraw: sql<number>`SUM(CASE WHEN transaction_type = 'withdraw' AND transaction_status = 'approved'  THEN amount ELSE 0 END)`,
         pendingDeposit: sql<number>`SUM(CASE WHEN transaction_type = 'deposit' AND transaction_status = 'pending' THEN amount ELSE 0 END)`,
         pendingWithdraw: sql<number>`SUM(CASE WHEN transaction_type = 'withdraw' AND transaction_status = 'pending' THEN amount ELSE 0 END)`,
         totalBonusCoin: sql<number>`SUM(CASE WHEN promotion_id IS NOT NULL THEN amount ELSE 0 END)`,
         totalBonusAmount: sql<number>`SUM(bonus_amount)`,
+        // affiliate withdrawal
+        totalAffiliateWithdrawal: sql<number>`SUM(CASE WHEN transaction_type = 'withdraw' AND transaction_status = 'approved' AND ${transactions.affiliateId} IS NOT NULL THEN amount ELSE 0 END)`,
+        totalAffiliateWithdrawalPending: sql<number>`SUM(CASE WHEN transaction_type = 'withdraw' AND transaction_status = 'pending' AND ${transactions.affiliateId} IS NOT NULL THEN amount ELSE 0 END)`,
       })
       .from(transactions);
 
@@ -106,6 +109,17 @@ export const getDashboardStats = asyncHandler(async (req: Request, res: Response
          })
         .from(sports_providers);
 
+    
+      const [waggerList] = await db.select(
+          {
+            totalBetAmount: sql<number>`SUM(${betResults.betAmount})`,
+            totalWinAmount: sql<number>`SUM(${betResults.winAmount})`,
+            totalLossAmount: sql<number>`SUM(${betResults.lossAmount})`,
+          }
+        ).from(betResults);
+
+    const totalCompanyProfit = Number(waggerList?.totalBetAmount || 0) - Number(waggerList?.totalWinAmount || 0);
+
     // Prepare dashboard data
     const dashboardData = {
       mainBalance: adminMainBalanceStats.currentMainBalance,
@@ -114,14 +128,21 @@ export const getDashboardStats = asyncHandler(async (req: Request, res: Response
       totalPromotion: adminMainBalanceStats.totalPromotion,
       totalPlayerWithdraw: adminMainBalanceStats.totalPlayerWithdraw,
       totalAdminWithdraw: adminMainBalanceStats.totalAdminWithdraw,
+
+      companyProfit: totalCompanyProfit,
       
       // Win/Loss
       totalWin: Number(transactionStats[0]?.totalWin || 0),
       totalLoss: Number(transactionStats[0]?.totalLoss || 0),
+      totalBetAmount: Number(waggerList?.totalBetAmount || 0),
       
       // Deposit/Withdraw
       totalDeposit: Number(transactionStats[0]?.totalDeposit || 0),
       totalWithdraw: Number(transactionStats[0]?.totalWithdraw || 0),
+
+      // Deposit/Withdraw affiliates
+      totalAffiliateWithdrawal: Number(transactionStats[0]?.totalAffiliateWithdrawal || 0),
+      totalAffiliateWithdrawalPending: Number(transactionStats[0]?.totalAffiliateWithdrawalPending || 0),
       
       // Pending Transactions
       pendingDeposit: Number(transactionStats[0]?.pendingDeposit || 0),
@@ -158,7 +179,7 @@ export const getDashboardStats = asyncHandler(async (req: Request, res: Response
       totalSportsProvidersPayment: 0,
       gameProviderPendingPayment: 0,
       sportsProviderPendingPayment: 0,
-      totalAffiliateWithdrawal: Number(affiliateAgentStats[0]?.totalAffiliateWithdrawal || 0),
+      
       // totalParentGameProvider:
       // Total Games
       totalGames: Number(gamesCount?.totalGames || 0),

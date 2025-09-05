@@ -860,6 +860,18 @@ export const updateTransactionStatus = async (req: Request, res: Response) => {
       .set(updatePayload)
       .where(eq(transactions.id, id));
 
+    if(updatePayload.status === "approved"){
+     await db.update(turnover) .set({
+      status: "active",
+     }).where(eq(turnover.transactionId, id));
+    }
+
+    if(["rejected","pending"].includes(updatePayload.status)){
+      await db.update(turnover) .set({
+       status: "inactive",
+      }).where(eq(turnover.transactionId, id));
+     }
+
     // Update corresponding adminMainBalance records to match transaction status
     await AdminMainBalanceModel.updateByTransactionId(id, {
       status: status as any, // Update status to match transaction
