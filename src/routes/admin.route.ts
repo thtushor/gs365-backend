@@ -67,6 +67,9 @@ import {
   getFeaturedGame,
   getAllSocial,
   createUpdateSocial,
+  createOrUpdateConversion,
+  getConversionList,
+  deleteConversionById,
 } from "../controllers/admin.controller";
 
 const router = Router();
@@ -278,4 +281,15 @@ router.post(
   verifyToken,
   asyncHandler(sendKycVerificationRequest)
 );
+router.post(
+  "/currency-rate",
+  verifyToken,
+  asyncHandler(createOrUpdateConversion)
+);
+router.get("/currency-rate", verifyToken, asyncHandler(getConversionList));
 export default router;
+router.post(
+  "/delete-currency/:id",
+  verifyToken,
+  asyncHandler(deleteConversionById)
+);

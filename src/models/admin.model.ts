@@ -15,6 +15,7 @@ import { sql } from "drizzle-orm";
 import {
   adminUsers,
   announcements,
+  countries,
   currencies,
   dropdownOptions,
   dropdowns,
@@ -26,7 +27,7 @@ import {
 import { db } from "../db/connection";
 import { PromotionDataType } from "../utils/types";
 import { promotionSelectFields } from "../selected_field/promotionSelectFields";
-import { AnyMySqlTable } from "drizzle-orm/mysql-core";
+import { alias, AnyMySqlTable } from "drizzle-orm/mysql-core";
 import { sports } from "../db/schema/sports";
 
 export const findAdminByUsernameOrEmail = async (usernameOrEmail: string) => {
@@ -71,43 +72,33 @@ export const createAdmin = async (data: {
 };
 
 export const getAdminById = async (id: number) => {
+  const referredAdmin = alias(adminUsers, "referred");
+  // Fetch the admin with joined tables
   const [admin] = await db
-    .select()
+    .select({
+      admin: adminUsers,
+      country: countries,
+      currency: currencies,
+      referred: adminUsers, // self-join to get the referred admin
+    })
     .from(adminUsers)
+    .leftJoin(countries, eq(adminUsers.country, countries.id))
+    .leftJoin(currencies, eq(adminUsers.currency, currencies.id))
+    .leftJoin(referredAdmin, eq(adminUsers.referred_by, referredAdmin.id))
     .where(eq(adminUsers.id, id));
 
   if (!admin) return null;
 
-  let currencyInfo = null;
-  let referDetails = null;
-
-  // If admin has a currencyId, fetch the currency info
-  if (admin?.currency) {
-    const [currencyData] = await db
-      .select()
-      .from(currencies)
-      .where(eq(currencies.id, admin.currency));
-
-    if (currencyData) {
-      currencyInfo = currencyData;
-    }
-  }
-  // If admin has a referred_by field, fetch the refer details
-  if (admin?.referred_by) {
-    const [referData] = await db
-      .select()
-      .from(adminUsers)
-      .where(eq(adminUsers.id, admin.referred_by));
-
-    if (referData) {
-      referDetails = referData;
-    }
-  }
+  // Map nested objects
+  const currencyInfo = admin.currency ?? null;
+  const referDetails = admin.referred ?? null;
+  const countryDetails = admin.country ?? null;
 
   return {
-    ...admin,
-    currencyInfo: currencyInfo,
-    referDetails: referDetails,
+    ...admin.admin, // spread main admin fields
+    currencyInfo,
+    referDetails,
+    countryDetails,
   };
 };
 export type AdminRole =

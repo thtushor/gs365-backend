@@ -7,11 +7,22 @@ import { turnover } from "../db/schema/turnover";
 import { users } from "../db/schema/users";
 import { games } from "../db/schema/games";
 import { currencies } from "../db/schema/currency";
-import { eq, and, like, asc, desc, sql, inArray, isNotNull, aliasedTable } from "drizzle-orm";
+import {
+  eq,
+  and,
+  like,
+  asc,
+  desc,
+  sql,
+  inArray,
+  isNotNull,
+  aliasedTable,
+} from "drizzle-orm";
 import { generateUniqueTransactionId } from "../utils/refCode";
 import {
   adminUsers,
   commission,
+  currencyConversion,
   paymentGateway,
   paymentGatewayProvider,
   paymentGatewayProviderAccount,
@@ -40,10 +51,10 @@ export const createDeposit = async (req: Request, res: Response) => {
       paymentGatewayProviderAccountId,
       notes,
       givenTransactionId,
-      attachment
+      attachment,
     } = req.body as CreateDepositBody;
-    
-    const user = (req as unknown as {user: any}).user as any;
+
+    const user = (req as unknown as { user: any }).user as any;
 
     if (!userId || !amount || !currencyId) {
       return res.status(400).json({
@@ -114,7 +125,7 @@ export const createDeposit = async (req: Request, res: Response) => {
         promotionId: promo ? promo.id : null,
         status: "pending" as any,
         customTransactionId,
-        paymentGatewayId:gateWayBonus?.payment_gateway?.id, 
+        paymentGatewayId: gateWayBonus?.payment_gateway?.id,
         paymentGatewayProviderAccountId: paymentGatewayProviderAccountId
           ? Number(paymentGatewayProviderAccountId)
           : null,
@@ -129,8 +140,8 @@ export const createDeposit = async (req: Request, res: Response) => {
         network: gateWayBonus?.gateway_accounts?.network ?? null,
         swiftCode: gateWayBonus?.gateway_accounts?.swiftCode ?? null,
         iban: gateWayBonus?.gateway_accounts?.iban ?? null,
-        processedBy: user?.userType==="admin" ?  user?.id: null,
-        processedByUser: user?.userType==="user" ?  user?.id: null,
+        processedBy: user?.userType === "admin" ? user?.id : null,
+        processedByUser: user?.userType === "user" ? user?.id : null,
       } as any);
 
       const transactionId =
@@ -168,41 +179,50 @@ export const createDeposit = async (req: Request, res: Response) => {
           remainingTurnover: promoTarget as any,
         } as any);
 
-        await tx.update(transactions).set({
-          bonusAmount: bonusAmount.toFixed(2),
-        }).where(eq(transactions.id, transactionId));
+        await tx
+          .update(transactions)
+          .set({
+            bonusAmount: bonusAmount.toFixed(2),
+          })
+          .where(eq(transactions.id, transactionId));
       }
 
       // Create admin main balance record for player deposit
-      await AdminMainBalanceModel.create({
-        amount: baseAmount,
-        type: "player_deposit",
-        status: "pending", // Match transaction status
-        transactionId: transactionId,
-        currencyId: Number(currencyId),  
-        createdByPlayer: user?.userType === "user"  ? user?.id: undefined,
-        createdByAdmin: user?.userType === "admin" ? user?.id : undefined,
-        notes: `Player deposit - Transaction ID: ${customTransactionId}`,
-      },tx);
+      await AdminMainBalanceModel.create(
+        {
+          amount: baseAmount,
+          type: "player_deposit",
+          status: "pending", // Match transaction status
+          transactionId: transactionId,
+          currencyId: Number(currencyId),
+          createdByPlayer: user?.userType === "user" ? user?.id : undefined,
+          createdByAdmin: user?.userType === "admin" ? user?.id : undefined,
+          notes: `Player deposit - Transaction ID: ${customTransactionId}`,
+        },
+        tx
+      );
 
       // If promotion applied, create admin main balance record for promotion
       if (promo) {
         const bonusPercentage = Number(promo.bonus || 0);
         const bonusAmount = (baseAmount * bonusPercentage) / 100;
-        
-        await AdminMainBalanceModel.create({
-          amount: bonusAmount,
-          type: "promotion",
-          status: "pending", // Match transaction status
-          promotionId: promo.id,
-          promotionName: promo.promotionName,
-          transactionId: transactionId,
-          currencyId: Number(currencyId),
-                   
-        createdByPlayer: user?.userType === "user"  ? user?.id: undefined,
-        createdByAdmin: user?.userType === "admin" ? user?.id : undefined,
-          notes: `Promotion bonus - ${promo.promotionName} (${bonusPercentage}%)`,
-        },tx);
+
+        await AdminMainBalanceModel.create(
+          {
+            amount: bonusAmount,
+            type: "promotion",
+            status: "pending", // Match transaction status
+            promotionId: promo.id,
+            promotionName: promo.promotionName,
+            transactionId: transactionId,
+            currencyId: Number(currencyId),
+
+            createdByPlayer: user?.userType === "user" ? user?.id : undefined,
+            createdByAdmin: user?.userType === "admin" ? user?.id : undefined,
+            notes: `Promotion bonus - ${promo.promotionName} (${bonusPercentage}%)`,
+          },
+          tx
+        );
       }
 
       // if (Number(gateWayBonus?.bonus || 0) > 0) {
@@ -278,7 +298,7 @@ export const createAffiliateWithdraw = async (req: Request, res: Response) => {
       network?: string;
     };
 
-    const user = (req as unknown as {user: any}).user as any;
+    const user = (req as unknown as { user: any }).user as any;
 
     // ✅ Validate basic fields
     if (
@@ -371,8 +391,8 @@ export const createAffiliateWithdraw = async (req: Request, res: Response) => {
         status: "pending", // Match transaction status
         transactionId: transactionId,
         currencyId: Number(currencyId),
-        
-        createdByPlayer: user?.userType === "user"  ? user?.id: undefined,
+
+        createdByPlayer: user?.userType === "user" ? user?.id : undefined,
         createdByAdmin: user?.userType === "admin" ? user?.id : undefined,
         notes: `Affiliate withdrawal - Transaction ID: ${customTransactionId}`,
       });
@@ -434,10 +454,10 @@ export const createWithdraw = async (req: Request, res: Response) => {
       iban,
       // Wallet-specific fields
       walletAddress,
-      network
+      network,
     } = req.body as CreateWithdrawBody;
-    
-    const user = (req as unknown as {user: any}).user as any;
+
+    const user = (req as unknown as { user: any }).user as any;
 
     if (!userId || !amount || !currencyId || !paymentGatewayId) {
       return res.status(400).json({
@@ -467,20 +487,23 @@ export const createWithdraw = async (req: Request, res: Response) => {
       });
     }
 
+    const [getGateWayData] = await db
+      .select()
+      .from(paymentGateway)
+      .where(eq(paymentGateway.id, paymentGatewayId));
 
-    const [getGateWayData] = await db.select().from(paymentGateway).where((eq(paymentGateway.id,paymentGatewayId)))
-
-
-    if(!getGateWayData?.id){
+    if (!getGateWayData?.id) {
       return res.status(200).json({
         status: false,
-        message: "Gateway not found"
-      })
+        message: "Gateway not found",
+      });
     }
 
     // Get minimum withdrawable balance from settings
     const [settingsRow] = await db.select().from(settings).limit(1);
-    const minWithdrawableBalance = Number(settingsRow?.minWithdrawableBalance || 25000);
+    const minWithdrawableBalance = Number(
+      settingsRow?.minWithdrawableBalance || 25000
+    );
 
     // Check for pending turnover
     const pendingTurnover = await db
@@ -490,15 +513,9 @@ export const createWithdraw = async (req: Request, res: Response) => {
         targetTurnover: turnover.targetTurnover,
         type: turnover.type,
         status: turnover.status,
-        
       })
       .from(turnover)
-      .where(
-        and(
-          eq(turnover.userId, userId),
-          eq(turnover.status, "active")
-        )
-      );
+      .where(and(eq(turnover.userId, userId), eq(turnover.status, "active")));
 
     // Calculate user's current balance using BalanceModel
     const playerBalance = await BalanceModel.calculatePlayerBalance(userId);
@@ -516,11 +533,18 @@ export const createWithdraw = async (req: Request, res: Response) => {
     if (!canWithdraw) {
       let withdrawReason = "";
       if (!hasSufficientBalance) {
-        withdrawReason = `Insufficient balance. Current balance: ${currentBalance.toFixed(2)}, Minimum required: ${minWithdrawableBalance.toFixed(2)}`;
+        withdrawReason = `Insufficient balance. Current balance: ${currentBalance.toFixed(
+          2
+        )}, Minimum required: ${minWithdrawableBalance.toFixed(2)}`;
       } else if (hasPendingTurnover) {
-        const turnoverDetails = pendingTurnover.map(t => 
-          `${t.type} turnover: ${Number(t.remainingTurnover).toFixed(2)} remaining out of ${Number(t.targetTurnover).toFixed(2)} target`
-        ).join(', ');
+        const turnoverDetails = pendingTurnover
+          .map(
+            (t) =>
+              `${t.type} turnover: ${Number(t.remainingTurnover).toFixed(
+                2
+              )} remaining out of ${Number(t.targetTurnover).toFixed(2)} target`
+          )
+          .join(", ");
         withdrawReason = `Pending turnover requirements: ${turnoverDetails}`;
       }
 
@@ -534,14 +558,14 @@ export const createWithdraw = async (req: Request, res: Response) => {
           hasSufficientBalance,
           hasPendingTurnover,
           withdrawReason,
-          pendingTurnover: pendingTurnover.map(t => ({
+          pendingTurnover: pendingTurnover.map((t) => ({
             id: t.id,
             remainingTurnover: Number(t.remainingTurnover),
             targetTurnover: Number(t.targetTurnover),
             type: t.type,
             status: t.status,
-          }))
-        }
+          })),
+        },
       });
     }
 
@@ -553,8 +577,8 @@ export const createWithdraw = async (req: Request, res: Response) => {
         data: {
           requestedAmount: Number(amount),
           currentBalance: Number(currentBalance.toFixed(2)),
-          availableForWithdrawal: Number(currentBalance.toFixed(2))
-        }
+          availableForWithdrawal: Number(currentBalance.toFixed(2)),
+        },
       });
     }
 
@@ -571,7 +595,7 @@ export const createWithdraw = async (req: Request, res: Response) => {
         status: "pending" as any,
         customTransactionId,
         notes: notes ?? null,
-        
+
         attachment: attachment ?? null,
         // Bank-specific fields
         accountNumber: accountNumber ?? null,
@@ -581,7 +605,7 @@ export const createWithdraw = async (req: Request, res: Response) => {
         branchAddress: branchAddress ?? null,
         swiftCode: swiftCode ?? null,
         iban: iban ?? null,
-        
+
         // Wallet-specific fields
         walletAddress: walletAddress ?? null,
         network: network ?? null,
@@ -589,7 +613,8 @@ export const createWithdraw = async (req: Request, res: Response) => {
         processedByUser: user?.userType === "user" ? user?.id : null,
       } as any);
 
-      const transactionId = (createdTxn as any).insertId ?? (createdTxn as any)?.id;
+      const transactionId =
+        (createdTxn as any).insertId ?? (createdTxn as any)?.id;
 
       // Create admin main balance record for player withdrawal
       await AdminMainBalanceModel.create({
@@ -598,7 +623,7 @@ export const createWithdraw = async (req: Request, res: Response) => {
         status: "pending", // Match transaction status
         transactionId: transactionId,
         currencyId: Number(currencyId),
-        createdByPlayer: user?.userType === "user"  ? user?.id: undefined,
+        createdByPlayer: user?.userType === "user" ? user?.id : undefined,
         createdByAdmin: user?.userType === "admin" ? user?.id : undefined,
         notes: `Player withdrawal - Transaction ID: ${customTransactionId}`,
       });
@@ -614,16 +639,15 @@ export const createWithdraw = async (req: Request, res: Response) => {
         amount: Number(amount),
         status: "pending",
         currentBalance: Number(currentBalance.toFixed(2)),
-        remainingBalance: Number((currentBalance - Number(amount)).toFixed(2))
+        remainingBalance: Number((currentBalance - Number(amount)).toFixed(2)),
       },
     });
-
   } catch (err) {
     console.error("createWithdraw error", err);
     return res.status(500).json({
       status: false,
       message: "Internal Server Error",
-      error: err instanceof Error ? err.message : "Unknown error"
+      error: err instanceof Error ? err.message : "Unknown error",
     });
   }
 };
@@ -670,8 +694,8 @@ export const getTransactions = async (req: Request, res: Response) => {
     if (historyType === "user") {
       whereClauses.push(isNotNull(transactions.userId));
     }
-    if(historyType==="promotion"){
-      whereClauses.push(isNotNull(transactions.promotionId))
+    if (historyType === "promotion") {
+      whereClauses.push(isNotNull(transactions.promotionId));
     }
     if (search && search.trim()) {
       whereClauses.push(like(transactions.customTransactionId, `%${search}%`));
@@ -701,8 +725,8 @@ export const getTransactions = async (req: Request, res: Response) => {
       .where(whereExpr as any)
       .then((rows) => Number((rows as any)[0]?.count || 0));
 
-    const processedByUser = aliasedTable(users,"processedByUser");
-    const processedByAdmin = aliasedTable(adminUsers,"processedByAdmin");
+    const processedByUser = aliasedTable(users, "processedByUser");
+    const processedByAdmin = aliasedTable(adminUsers, "processedByAdmin");
 
     const data = await db
       .select({
@@ -764,10 +788,8 @@ export const getTransactions = async (req: Request, res: Response) => {
         gameUrl: games.gameUrl,
         paymentGateway: paymentGateway,
 
-    
-
-
         // Currency fields
+        usdConversion: currencyConversion.rate,
         currencyCode: currencies.code,
         currencyName: currencies.name,
         currencySymbol: currencies.symbol,
@@ -777,20 +799,32 @@ export const getTransactions = async (req: Request, res: Response) => {
     WHEN ${transactions.processedByUser} IS NOT NULL THEN ${processedByUser.username}
   END
 `,
-processedByRoleType: sql`
+        processedByRoleType: sql`
 CASE 
   WHEN ${transactions.processedBy} IS NOT NULL THEN ${processedByAdmin.role}
-  WHEN ${transactions.processedByUser} IS NOT NULL THEN ${'player'}
+  WHEN ${transactions.processedByUser} IS NOT NULL THEN ${"player"}
 END
-`
-
+`,
       })
       .from(transactions)
-      .leftJoin(paymentGateway, eq(paymentGateway.id, transactions.paymentGatewayId))
+      .leftJoin(
+        paymentGateway,
+        eq(paymentGateway.id, transactions.paymentGatewayId)
+      )
       .leftJoin(promotions, eq(transactions.promotionId, promotions.id))
       .leftJoin(users, eq(transactions.userId, users.id))
-      .leftJoin(processedByAdmin,eq(transactions?.processedBy, processedByAdmin?.id))
-      .leftJoin(processedByUser,eq(transactions.processedByUser,processedByUser.id))
+      .leftJoin(
+        currencyConversion,
+        eq(transactions.currencyId, currencyConversion.toCurrency)
+      )
+      .leftJoin(
+        processedByAdmin,
+        eq(transactions?.processedBy, processedByAdmin?.id)
+      )
+      .leftJoin(
+        processedByUser,
+        eq(transactions.processedByUser, processedByUser.id)
+      )
       .leftJoin(adminUsers, eq(transactions.affiliateId, adminUsers.id))
       .leftJoin(games, eq(transactions.gameId, games.id))
       .leftJoin(currencies, eq(transactions.currencyId, currencies.id))
@@ -860,17 +894,23 @@ export const updateTransactionStatus = async (req: Request, res: Response) => {
       .set(updatePayload)
       .where(eq(transactions.id, id));
 
-    if(updatePayload.status === "approved"){
-     await db.update(turnover) .set({
-      status: "active",
-     }).where(eq(turnover.transactionId, id));
+    if (updatePayload.status === "approved") {
+      await db
+        .update(turnover)
+        .set({
+          status: "active",
+        })
+        .where(eq(turnover.transactionId, id));
     }
 
-    if(["rejected","pending"].includes(updatePayload.status)){
-      await db.update(turnover) .set({
-       status: "inactive",
-      }).where(eq(turnover.transactionId, id));
-     }
+    if (["rejected", "pending"].includes(updatePayload.status)) {
+      await db
+        .update(turnover)
+        .set({
+          status: "inactive",
+        })
+        .where(eq(turnover.transactionId, id));
+    }
 
     // Update corresponding adminMainBalance records to match transaction status
     await AdminMainBalanceModel.updateByTransactionId(id, {
@@ -1000,7 +1040,7 @@ export const updateAffiliateWithdrawStatus = async (
 export const checkWithdrawCapability = async (req: Request, res: Response) => {
   try {
     const userId = Number(req.params.userId);
-    
+
     if (Number.isNaN(userId)) {
       return res.status(400).json({
         status: false,
@@ -1009,10 +1049,7 @@ export const checkWithdrawCapability = async (req: Request, res: Response) => {
     }
 
     // Check if user exists
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, userId));
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
 
     if (!user) {
       return res.status(404).json({
@@ -1023,7 +1060,9 @@ export const checkWithdrawCapability = async (req: Request, res: Response) => {
 
     // Get minimum withdrawable balance from settings
     const [settingsRow] = await db.select().from(settings).limit(1);
-    const minWithdrawableBalance = Number(settingsRow?.minWithdrawableBalance || 25000);
+    const minWithdrawableBalance = Number(
+      settingsRow?.minWithdrawableBalance || 25000
+    );
 
     // Check for pending turnover
     const pendingTurnover = await db
@@ -1035,12 +1074,7 @@ export const checkWithdrawCapability = async (req: Request, res: Response) => {
         status: turnover.status,
       })
       .from(turnover)
-      .where(
-        and(
-          eq(turnover.userId, userId),
-          eq(turnover.status, "active")
-        )
-      );
+      .where(and(eq(turnover.userId, userId), eq(turnover.status, "active")));
 
     // Calculate user's current balance using BalanceModel
     const playerBalance = await BalanceModel.calculatePlayerBalance(userId);
@@ -1053,18 +1087,23 @@ export const checkWithdrawCapability = async (req: Request, res: Response) => {
     const hasPendingTurnover = pendingTurnover.length > 0;
 
     // User can withdraw if: sufficient balance AND no pending turnover
-    const canWithdraw = hasSufficientBalance && !hasPendingTurnover && user.kyc_status==="verified" && user.status==="active";
+    const canWithdraw =
+      hasSufficientBalance &&
+      !hasPendingTurnover &&
+      user.kyc_status === "verified" &&
+      user.status === "active";
 
     // Determine the reason why withdrawal is not allowed
     let withdrawReason = null;
     if (!canWithdraw) {
       if (user.kyc_status==="required") {
         withdrawReason = "KYC is not verified";
-      } else if (user.status!=="active") {
+      } else if (user.status !== "active") {
         withdrawReason = "User is not active";
-      }
-      else if (!hasSufficientBalance) {
-        withdrawReason = `Insufficient balance. Current balance: ${currentBalance.toFixed(2)}, Minimum required: ${minWithdrawableBalance.toFixed(2)}`;
+      } else if (!hasSufficientBalance) {
+        withdrawReason = `Insufficient balance. Current balance: ${currentBalance.toFixed(
+          2
+        )}, Minimum required: ${minWithdrawableBalance.toFixed(2)}`;
       } else if (hasPendingTurnover) {
         withdrawReason = `Turnover has not yet reached`;
       }
@@ -1080,7 +1119,7 @@ export const checkWithdrawCapability = async (req: Request, res: Response) => {
         hasSufficientBalance,
         hasPendingTurnover,
         withdrawReason,
-        pendingTurnover: pendingTurnover.map(t => ({
+        pendingTurnover: pendingTurnover.map((t) => ({
           id: t.id,
           remainingTurnover: Number(t.remainingTurnover),
           targetTurnover: Number(t.targetTurnover),
@@ -1092,16 +1131,15 @@ export const checkWithdrawCapability = async (req: Request, res: Response) => {
           totalWins: playerBalance.totalWins,
           totalWithdrawals: playerBalance.totalWithdrawals,
           totalLosses: playerBalance.totalLosses,
-        }
-      }
+        },
+      },
     });
-
   } catch (error) {
     console.error("Error checking withdraw capability:", error);
     return res.status(500).json({
       status: false,
       message: "Internal Server Error",
-      error: error instanceof Error ? error.message : "Unknown error"
+      error: error instanceof Error ? error.message : "Unknown error",
     });
   }
 };
