@@ -148,11 +148,34 @@ export const adminRegistration = async (
     } = req.body;
 
     const userData = (req as unknown as { user: DecodedUser | null })?.user;
-    if (!username || !fullname || !phone || !email || !password || !role) {
-      res
-        .status(400)
-        .json({ status: false, message: "Missing required fields" });
-      return;
+    if (!username) {
+      res.status(400).json({ status: false, message: "Username is required" });
+      return
+    }
+
+    if (!fullname) {
+      res.status(400).json({ status: false, message: "Full name is required" });
+      return
+    }
+
+    if (!phone) {
+      res.status(400).json({ status: false, message: "Phone number is required" });
+      return
+    }
+
+    if (!email) {
+      res.status(400).json({ status: false, message: "Email is required" });
+      return
+    }
+
+    if (!password) {
+      res.status(400).json({ status: false, message: "Password is required" });
+      return
+    }
+
+    if (!role) {
+      res.status(400).json({ status: false, message: "Role is required" });
+      return
     }
 
     const createdByData = (req as any)?.user?.id ?? createdBy;
@@ -206,10 +229,16 @@ export const adminRegistration = async (
     const existing =
       (await findAdminByUsernameOrEmail(username)) ||
       (await findAdminByUsernameOrEmail(email));
-    if (existing) {
+
+    const existingUser = await findAdminByUsernameOrEmail(username);
+
+    const existingEmail = await findAdminByUsernameOrEmail(email);
+
+
+    if (existingUser) {
       res
         .status(409)
-        .json({ status: false, message: "Admin user already exists" });
+        .json({ status: false, message: `${username}` });
       return;
     }
     // Generate unique refCode for this admin
@@ -240,14 +269,14 @@ export const adminRegistration = async (
             minTrx !== undefined
               ? String(minTrx)
               : referringAdmin?.minTrx
-              ? referringAdmin?.minTrx
-              : undefined,
+                ? referringAdmin?.minTrx
+                : undefined,
           maxTrx:
             maxTrx !== undefined
               ? String(maxTrx)
               : referringAdmin?.maxTrx
-              ? referringAdmin?.maxTrx
-              : undefined,
+                ? referringAdmin?.maxTrx
+                : undefined,
           currency: currency ? currency : referringAdmin?.currency,
           createdBy: Number(createdByData) || undefined,
           refCode: uniqueRefCode,
@@ -256,8 +285,8 @@ export const adminRegistration = async (
           commission_percent: commission_percent
             ? commission_percent
             : referringAdmin?.commission_percent
-            ? referringAdmin?.commission_percent / 2
-            : commission_percent,
+              ? referringAdmin?.commission_percent / 2
+              : commission_percent,
         });
         res.status(201).json({
           status: true,
@@ -3173,8 +3202,8 @@ export const getSportList = async (req: Request, res: Response) => {
       status === "active"
         ? "active"
         : status === "inactive"
-        ? "inactive"
-        : undefined;
+          ? "inactive"
+          : undefined;
 
     const validPublicList = publicList === "true" ? true : false;
     const result = await getPaginatedSportList(

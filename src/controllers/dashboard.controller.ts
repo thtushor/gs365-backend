@@ -6,10 +6,10 @@ import { adminUsers } from "../db/schema/AdminUsers";
 import { users } from "../db/schema/users";
 import { betResults } from "../db/schema/betResults";
 import { games } from "../db/schema/games";
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { asyncHandler } from "../utils/asyncHandler";
 import { AdminMainBalanceModel } from "../models/adminMainBalance.model";
-import { game_providers, sports_providers } from "../db/schema";
+import { countries, game_providers, sports_providers } from "../db/schema";
 
 export const getDashboardStats = asyncHandler(async (req: Request, res: Response) => {
   try {
@@ -69,8 +69,11 @@ export const getDashboardStats = asyncHandler(async (req: Request, res: Response
           totalPlayerKycVerified: sql<number>`COUNT(CASE WHEN ${users.kyc_status} = 'verified' THEN 1 END)`,
           totalPlayerKycUnverified: sql<number>`COUNT(CASE WHEN ${users.kyc_status} = 'unverified' THEN 1 END)`,
           totalPlayerKycRequired: sql<number>`COUNT(CASE WHEN ${users.kyc_status} = 'required' THEN 1 END)`,
+          totalBDUsers: sql<number>`COUNT(CASE WHEN ${countries.code} = 'BD' THEN 1 END)`,
+          totalForeignUsers: sql<number>`COUNT(CASE WHEN ${countries.code} != 'BD' AND ${countries.code} IS NOT NULL THEN 1 END)`,
         })
         .from(users)
+        .leftJoin(countries,eq(users.country_id,countries.id))
         .limit(1);
 
       // Get bet statistics
@@ -168,6 +171,8 @@ export const getDashboardStats = asyncHandler(async (req: Request, res: Response
       totalPlayerKycVerified: Number(playerStats[0]?.totalPlayerKycVerified || 0),
       totalPlayerKycUnverified: Number(playerStats[0]?.totalPlayerKycUnverified || 0),
       totalPlayerKycRequired: Number(playerStats[0]?.totalPlayerKycRequired || 0),
+      totalForeignUsers: Number(playerStats[0]?.totalForeignUsers || 0),
+      totalBDUsers: Number(playerStats[0]?.totalBDUsers || 0),
       
       // Bet Stats
       totalBetPlaced: Number(betStats[0]?.totalBetPlaced || 0),

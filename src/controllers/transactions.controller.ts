@@ -1058,7 +1058,7 @@ export const checkWithdrawCapability = async (req: Request, res: Response) => {
     // Determine the reason why withdrawal is not allowed
     let withdrawReason = null;
     if (!canWithdraw) {
-      if (user.kyc_status!=="verified") {
+      if (user.kyc_status==="required") {
         withdrawReason = "KYC is not verified";
       } else if (user.status!=="active") {
         withdrawReason = "User is not active";

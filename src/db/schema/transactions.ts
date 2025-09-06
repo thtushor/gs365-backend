@@ -38,6 +38,7 @@ export const transactions = mysqlTable("transactions", {
   type: TransactionType.notNull(),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   bonusAmount: decimal("bonus_amount", { precision: 10, scale: 2 }).default("0"),
+  exchangeRate: decimal("exchange_rate", { precision: 10, scale: 4 }).default("1"),
   currencyId: int("currency_id")
     .notNull()
     .references(() => currencies.id, { onDelete: "cascade" }),

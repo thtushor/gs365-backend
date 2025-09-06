@@ -140,9 +140,8 @@ export const getUsersByReferrerTypeController = async (
 
     return res.json({
       status: true,
-      message: `${
-        type.charAt(0).toUpperCase() + type.slice(1)
-      } users fetched successfully`,
+      message: `${type.charAt(0).toUpperCase() + type.slice(1)
+        } users fetched successfully`,
       data: result,
     });
   } catch (error) {
@@ -168,28 +167,56 @@ export const registerUser = async (req: Request, res: Response) => {
       createdBy,
       country_id,
     } = req.body;
-    if (
-      !username ||
-      !fullname ||
-      !phone ||
-      !email ||
-      !password ||
-      !country_id ||
-      !currency_id ||
-      typeof isAgreeWithTerms !== "boolean"
-    ) {
-      return res
-        .status(400)
-        .json({ status: false, message: "Missing required fields" });
+    if (!username) {
+      return res.status(400).json({ status: false, message: "Username is required" });
     }
-    const existing =
-      (await findUserByUsernameOrEmail(username)) ||
-      (await findUserByUsernameOrEmail(email));
-    if (existing) {
-      return res
-        .status(409)
-        .json({ status: false, message: "User already exists" });
+
+    if (!fullname) {
+      return res.status(400).json({ status: false, message: "Full name is required" });
     }
+
+    if (!phone) {
+      return res.status(400).json({ status: false, message: "Phone number is required" });
+    }
+
+    if (!email) {
+      return res.status(400).json({ status: false, message: "Email is required" });
+    }
+
+    if (!password) {
+      return res.status(400).json({ status: false, message: "Password is required" });
+    }
+
+    if (!country_id) {
+      return res.status(400).json({ status: false, message: "Country is required" });
+    }
+
+    if (!currency_id) {
+      return res.status(400).json({ status: false, message: "Currency is required" });
+    }
+
+    if (typeof isAgreeWithTerms !== "boolean" || !isAgreeWithTerms) {
+      return res.status(400).json({ status: false, message: "You must agree with terms" });
+    }
+
+
+    const existingUserName = await findUserByUsernameOrEmail(username);
+
+    const existingEmail = await findUserByUsernameOrEmail(email);
+
+    if (existingUserName) {
+      return res
+        .status(500)
+        .json({ status: false, message: `${username} already exists` });
+    }
+
+    if (existingEmail) {
+      return res
+        .status(500)
+        .json({ status: false, message: `${email} already exists` });
+    }
+
+
     // Generate unique refer_code for this user
     const uniqueReferCode = await generateUniqueRefCode("user");
     // If refer_code is provided, find the referring user
@@ -230,7 +257,7 @@ export const registerUser = async (req: Request, res: Response) => {
   } catch (error) {
     return res
       .status(500)
-      .json({ status: false, message: "Failed to register user" });
+      .json({ status: false, message: "Failed to register user",error });
   }
 };
 
