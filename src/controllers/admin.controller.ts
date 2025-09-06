@@ -49,6 +49,8 @@ import {
   ambassadors,
   announcements,
   banners,
+  currencies,
+  currencyConversion,
   dropdownOptions,
   dropdowns,
   events,
@@ -89,6 +91,7 @@ import { createPromotionRequiredFields } from "../utils/requiredFields";
 import { PromotionDataType } from "../utils/types";
 import { generateUniqueRefCode } from "../utils/refCode";
 import { kyc } from "../db/schema/kyc";
+import { alias } from "drizzle-orm/mysql-core";
 
 export function getClientIp(req: Request): string {
   const ipSource = {
@@ -145,6 +148,7 @@ export const adminRegistration = async (
       status,
       refer_code,
       commission_percent,
+      country_id,
     } = req.body;
 
     const userData = (req as unknown as { user: DecodedUser | null })?.user;
@@ -233,7 +237,7 @@ export const adminRegistration = async (
           email,
           password: password,
           role: "affiliate",
-          country,
+          country: country_id,
           city,
           street,
           minTrx:
@@ -275,7 +279,7 @@ export const adminRegistration = async (
       email,
       password: password,
       role,
-      country,
+      country: country_id,
       city,
       street,
       minTrx: minTrx !== undefined ? String(minTrx) : undefined,
@@ -1613,20 +1617,16 @@ export const createUpdateSocial = async (req: Request, res: Response) => {
 
     if (id) {
       await db.update(socials).set(payload).where(eq(socials.id, id));
-      return res
-        .status(200)
-        .json({
-          status: true,
-          message: "Social platform updated successfully.",
-        });
+      return res.status(200).json({
+        status: true,
+        message: "Social platform updated successfully.",
+      });
     } else {
       await db.insert(socials).values(payload);
-      return res
-        .status(201)
-        .json({
-          status: true,
-          message: "Social platform created successfully.",
-        });
+      return res.status(201).json({
+        status: true,
+        message: "Social platform created successfully.",
+      });
     }
   } catch (error) {
     console.error("social error:", error);
@@ -3803,5 +3803,175 @@ export const getKycList = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Error fetching KYC data:", error);
     return res.status(500).json({ status: false, message: "Server error." });
+  }
+};
+
+export const createOrUpdateConversion = async (req: Request, res: Response) => {
+  try {
+    const { id, fromCurrency, toCurrency, rate } = req.body;
+
+    // ---------------------- Validation ----------------------
+    if (!fromCurrency || typeof fromCurrency !== "number") {
+      return res.status(400).json({
+        status: false,
+        message: "From currency is required and must be a number.",
+      });
+    }
+    if (!toCurrency || typeof toCurrency !== "number") {
+      return res.status(400).json({
+        status: false,
+        message: "To currency is required and must be a number.",
+      });
+    }
+    if (!rate || isNaN(rate)) {
+      return res.status(400).json({
+        status: false,
+        message: "Rate is required and must be a number.",
+      });
+    }
+
+    let conversionToUpdate;
+
+    if (id) {
+      // If ID is provided, find by ID
+      conversionToUpdate = await db
+        .select()
+        .from(currencyConversion)
+        .where(eq(currencyConversion.id, id));
+    } else {
+      // If no ID, check if a record with same fromCurrency and toCurrency exists
+      conversionToUpdate = await db
+        .select()
+        .from(currencyConversion)
+        .where(
+          and(
+            eq(currencyConversion.fromCurrency, fromCurrency),
+            eq(currencyConversion.toCurrency, toCurrency)
+          )
+        );
+    }
+
+    if (conversionToUpdate && conversionToUpdate.length > 0) {
+      // Update existing record
+      await db
+        .update(currencyConversion)
+        .set({
+          rate: Number(rate).toFixed(2),
+          updatedAt: new Date(),
+        })
+        .where(eq(currencyConversion.id, conversionToUpdate[0].id));
+
+      return res
+        .status(200)
+        .json({ status: true, message: "Conversion updated successfully." });
+    } else {
+      // Create new record
+      await db.insert(currencyConversion).values({
+        fromCurrency,
+        toCurrency,
+        rate: Number(rate).toFixed(2),
+      });
+
+      return res
+        .status(200)
+        .json({ status: true, message: "Conversion created successfully." });
+    }
+  } catch (error) {
+    console.error("Error creating/updating conversion:", error);
+    return res.status(500).json({ status: false, message: "Server error." });
+  }
+};
+export const deleteConversionById = async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+
+    if (!id) {
+      return res.status(400).json({
+        status: false,
+        message: "ID is required to delete a conversion.",
+      });
+    }
+
+    // Check if record exists
+    const existing = await db
+      .select()
+      .from(currencyConversion)
+      .where(eq(currencyConversion.id, Number(id)));
+
+    if (!existing || existing.length === 0) {
+      return res.status(404).json({
+        status: false,
+        message: "Conversion not found.",
+      });
+    }
+
+    // Delete record
+    await db
+      .delete(currencyConversion)
+      .where(eq(currencyConversion.id, Number(id)));
+
+    return res.status(200).json({
+      status: true,
+      message: "Conversion deleted successfully.",
+    });
+  } catch (error) {
+    console.error("Error deleting conversion:", error);
+    return res.status(500).json({ status: false, message: "Server error." });
+  }
+};
+export const getConversionList = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.query;
+
+    // Aliases for joining currencies twice
+    const fromCurrency = alias(currencies, "fromCurrency");
+    const toCurrency = alias(currencies, "toCurrency");
+
+    // Base query builder
+    const baseQuery = db
+      .select({
+        id: currencyConversion.id,
+        rate: currencyConversion.rate,
+        createdAt: currencyConversion.createdAt,
+        updatedAt: currencyConversion.updatedAt,
+
+        // from currency details
+        fromId: fromCurrency.id,
+        fromCode: fromCurrency.code,
+        fromSymbol: fromCurrency.symbol,
+        fromName: fromCurrency.name,
+
+        // to currency details
+        toId: toCurrency.id,
+        toCode: toCurrency.code,
+        toSymbol: toCurrency.symbol,
+        toName: toCurrency.name,
+      })
+      .from(currencyConversion)
+      .leftJoin(
+        fromCurrency,
+        eq(currencyConversion.fromCurrency, fromCurrency.id)
+      )
+      .leftJoin(toCurrency, eq(currencyConversion.toCurrency, toCurrency.id));
+
+    if (id) {
+      // Add where clause directly before execution
+      const [single] = await baseQuery.where(
+        eq(currencyConversion.id, Number(id))
+      );
+
+      if (!single) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Conversion not found" });
+      }
+      return res.json({ success: true, data: single });
+    }
+
+    const result = await baseQuery; // fetch all
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    console.error("Error fetching conversions:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 };

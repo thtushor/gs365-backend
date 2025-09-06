@@ -10,6 +10,8 @@ import bcrypt from "bcryptjs";
 import { db } from "../db/connection";
 import { BalanceModel } from "./balance.model";
 import { desc } from "drizzle-orm";
+import { currencyConversion } from "../db/schema";
+import { alias } from "drizzle-orm/mysql-core";
 
 export const findUserByUsernameOrEmail = async (usernameOrEmail: string) => {
   const [user] = await db
@@ -547,6 +549,7 @@ export const getUserProfileById = async (id: number): Promise<any> => {
         isLoggedIn: users.isLoggedIn,
         kyc_status: users.kyc_status,
         // Currency info
+        currencyId: users.currency_id,
         currencyCode: currencies.code,
         currencyName: currencies.name,
         currencySymbol: currencies.symbol,
@@ -652,6 +655,20 @@ export const getUserProfileById = async (id: number): Promise<any> => {
     let userType = "player";
     let referrerType = null;
     let referrerDetails = null;
+    let userCurrencyConversion = null;
+    if (user.currencyId) {
+      [userCurrencyConversion] = await db
+        .select({
+          id: currencyConversion.id,
+          rate: currencyConversion.rate,
+          fromId: currencyConversion.fromCurrency,
+          toId: currencyConversion.toCurrency,
+        })
+        .from(currencyConversion)
+        .where(eq(currencyConversion.toCurrency, user.currencyId))
+        .limit(1);
+    }
+    console.log("currency conversion: ", userCurrencyConversion);
 
     if (user.adminReferrerRole) {
       if (["superAffiliate", "affiliate"].includes(user.adminReferrerRole)) {
@@ -710,9 +727,11 @@ export const getUserProfileById = async (id: number): Promise<any> => {
 
       // Currency information
       currency: {
+        id: user.currencyId,
         code: user.currencyCode,
         name: user.currencyName,
         symbol: user.currencySymbol,
+        conversion: userCurrencyConversion,
       },
 
       // User type and referrer information
