@@ -12,6 +12,7 @@ import {
   addFavorite,
   removeFavorite,
   getFavorites,
+  logoutUser,
 } from "../controllers/user.controller";
 import { verifyToken } from "../middlewares/verifyToken";
 import { asyncHandler } from "../utils/asyncHandler";
@@ -27,6 +28,11 @@ router.post("/register", (req, res, next) => {
 router.post("/login", (req, res, next) => {
   console.log("hit login page...");
   loginUser(req, res).catch(next);
+});
+
+router.post("/logout",verifyToken, (req, res, next) => {
+  console.log("hit login page...");
+  logoutUser(req, res).catch(next);
 });
 
 // Protected routes (require authentication)

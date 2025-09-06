@@ -371,6 +371,28 @@ export const loginUser = async (req: Request, res: Response) => {
   }
 };
 
+export const logoutUser = async (req: Request, res: Response) => {
+  try {
+    const user = (req as unknown as { user: JwtPayload }).user;
+    if (!Boolean(user.id) || user.userType !== "user") {
+      res.status(401).json({ status: false, message: "Unauthorized" });
+      return;
+    }
+
+    
+    user.id && await db
+      .update(users)
+      .set({ isLoggedIn: false })
+      .where(eq(users.id, user.id));
+
+      return res.status(200).json({ status: true, message: "Logged out successfully" });
+    
+  } catch (error) {
+
+
+  }
+}
+
 export const updateUser = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;

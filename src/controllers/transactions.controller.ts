@@ -125,6 +125,7 @@ export const createDeposit = async (req: Request, res: Response) => {
         promotionId: promo ? promo.id : null,
         status: "pending" as any,
         customTransactionId,
+        conversionRate: settingsRow?.conversionRate||100,
         paymentGatewayId: gateWayBonus?.payment_gateway?.id,
         paymentGatewayProviderAccountId: paymentGatewayProviderAccountId
           ? Number(paymentGatewayProviderAccountId)

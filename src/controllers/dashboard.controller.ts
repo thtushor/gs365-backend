@@ -27,8 +27,8 @@ export const getDashboardStats = asyncHandler(async (req: Request, res: Response
         totalWithdraw: sql<number>`SUM(CASE WHEN transaction_type = 'withdraw' AND transaction_status = 'approved'  THEN amount ELSE 0 END)`,
         pendingDeposit: sql<number>`SUM(CASE WHEN transaction_type = 'deposit' AND transaction_status = 'pending' THEN amount ELSE 0 END)`,
         pendingWithdraw: sql<number>`SUM(CASE WHEN transaction_type = 'withdraw' AND transaction_status = 'pending' THEN amount ELSE 0 END)`,
-        totalBonusCoin: sql<number>`SUM(CASE WHEN promotion_id IS NOT NULL THEN amount ELSE 0 END)`,
-        totalBonusAmount: sql<number>`SUM(bonus_amount)`,
+        totalBonusCoin: sql<number>`SUM(CASE WHEN promotion_id IS NOT NULL AND transaction_status = 'approved' THEN bonus_amount ELSE 0 END)`,
+        totalBonusAmount: sql<number>`SUM(CASE WHEN promotion_id IS NOT NULL AND transaction_status = 'approved' THEN bonus_amount ELSE 0 END)`,
         // affiliate withdrawal
         totalAffiliateWithdrawal: sql<number>`SUM(CASE WHEN transaction_type = 'withdraw' AND transaction_status = 'approved' AND ${transactions.affiliateId} IS NOT NULL THEN amount ELSE 0 END)`,
         totalAffiliateWithdrawalPending: sql<number>`SUM(CASE WHEN transaction_type = 'withdraw' AND transaction_status = 'pending' AND ${transactions.affiliateId} IS NOT NULL THEN amount ELSE 0 END)`,
