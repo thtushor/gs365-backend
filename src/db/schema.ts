@@ -28,3 +28,4 @@ export * from "./schema/withdrawalPaymentAccount";
 export * from "./schema/adminMainBalance";
 export * from "./schema/user_favorites";
 export * from "./schema/currencyConversion";
+export * from "./schema/designation";
