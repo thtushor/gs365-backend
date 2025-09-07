@@ -16,9 +16,9 @@ export const DesignationModel = {
     const [newDesignation] = await db
       .insert(designation)
       .values({
-        adminId: data.adminId,
+        // adminId: data.adminId,
         designationName: data.designationName,
-        adminUserType: data.adminUserType,
+        adminUserType: data.adminUserType as any,
         permissions: data.permissions,
       })
 
@@ -44,7 +44,11 @@ export const DesignationModel = {
   async update(id: number, data: Partial<DesignationInput>) {
     const [updated] = await db
       .update(designation)
-      .set(data)
+      .set({
+        designationName: data.designationName,
+        adminUserType: data.adminUserType as any,
+        permissions: data.permissions,
+      })
       .where(eq(designation.id, id))
 
     return updated || null;

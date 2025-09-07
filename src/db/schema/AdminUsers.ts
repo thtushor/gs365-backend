@@ -11,8 +11,13 @@ import {
 } from "drizzle-orm/mysql-core";
 import { relations, sql } from "drizzle-orm";
 
-export const adminRole = (fieldName: string="role") =>
-  mysqlEnum(fieldName, ["admin", "superAgent", "agent", "subAgent"]);
+export const adminRole = mysqlEnum("role", [
+    "admin",
+    "superAgent",
+    "agent",
+    "superAffiliate",
+    "affiliate",
+  ]);
 
 export const adminUsers = mysqlTable("admin_users", {
   id: int("id").primaryKey().autoincrement(),
@@ -35,7 +40,7 @@ export const adminUsers = mysqlTable("admin_users", {
   maxTrx: decimal("maximum_trx"),
   currency: int("currency"),
 
-  role: adminRole("role"),
+  role: adminRole,
 
   status: mysqlEnum("status", ["active", "inactive"]).default("inactive"),
   refCode: varchar("ref_code", { length: 255 }).unique(),
