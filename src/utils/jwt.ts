@@ -10,6 +10,7 @@ export interface JwtPayload {
   username: string | null;
   role?: string | null;
   userType: "user" | "admin";
+  tokenVersion?: number;
 }
 
 export type Unit =
@@ -62,12 +63,15 @@ export function generateJwtToken(
 }
 
 // Game session JWT functions
-export function generateJWT(payload: any, expiresIn: StringValue = "1h"): string {
+export function generateJWT(
+  payload: any,
+  expiresIn: StringValue = "1h"
+): string {
   return jwt.sign({ ...payload }, process.env.JWT_SECRET || "your_jwt_secret", {
     expiresIn: expiresIn,
   });
 }
 
-generateJWT.verify = function(token: string): any {
+generateJWT.verify = function (token: string): any {
   return jwt.verify(token, process.env.JWT_SECRET || "your_jwt_secret");
 };

@@ -31,6 +31,7 @@ export const users = mysqlTable("users", {
   isVerified: boolean("is_verified").default(false),
   lastIp: varchar("last_ip", { length: 120 }),
   lastLogin: datetime("last_login"),
+  tokenVersion: int("token_version").default(0),
 
   // ✅ Device info fields
   device_type: varchar("device_type", { length: 50 }),

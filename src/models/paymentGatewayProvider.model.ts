@@ -45,7 +45,7 @@ export const PaymentGatewayProviderModel = {
         status: paymentGatewayProvider.status,
         isRecommended: paymentGatewayProvider?.isRecommended,
         licenseKey: paymentGatewayProvider?.licenseKey,
-        commission: paymentGatewayProvider?.commission,
+        commission: paymentGatewayProvider?.commission || 0,
         provider: {
           id: paymentProvider.id,
           name: paymentProvider.name,

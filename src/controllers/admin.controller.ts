@@ -58,6 +58,7 @@ import {
   game_providers,
   games,
   gamingLicenses,
+  promotions,
   responsibleGaming,
   socials,
   sponsors,
@@ -154,32 +155,34 @@ export const adminRegistration = async (
     const userData = (req as unknown as { user: DecodedUser | null })?.user;
     if (!username) {
       res.status(400).json({ status: false, message: "Username is required" });
-      return
+      return;
     }
 
     if (!fullname) {
       res.status(400).json({ status: false, message: "Full name is required" });
-      return
+      return;
     }
 
     if (!phone) {
-      res.status(400).json({ status: false, message: "Phone number is required" });
-      return
+      res
+        .status(400)
+        .json({ status: false, message: "Phone number is required" });
+      return;
     }
 
     if (!email) {
       res.status(400).json({ status: false, message: "Email is required" });
-      return
+      return;
     }
 
     if (!password) {
       res.status(400).json({ status: false, message: "Password is required" });
-      return
+      return;
     }
 
     if (!role) {
       res.status(400).json({ status: false, message: "Role is required" });
-      return
+      return;
     }
 
     const createdByData = (req as any)?.user?.id ?? createdBy;
@@ -238,11 +241,8 @@ export const adminRegistration = async (
 
     const existingEmail = await findAdminByUsernameOrEmail(email);
 
-
     if (existingUser) {
-      res
-        .status(409)
-        .json({ status: false, message: `${username}` });
+      res.status(409).json({ status: false, message: `${username}` });
       return;
     }
     // Generate unique refCode for this admin
@@ -273,14 +273,14 @@ export const adminRegistration = async (
             minTrx !== undefined
               ? String(minTrx)
               : referringAdmin?.minTrx
-                ? referringAdmin?.minTrx
-                : undefined,
+              ? referringAdmin?.minTrx
+              : undefined,
           maxTrx:
             maxTrx !== undefined
               ? String(maxTrx)
               : referringAdmin?.maxTrx
-                ? referringAdmin?.maxTrx
-                : undefined,
+              ? referringAdmin?.maxTrx
+              : undefined,
           currency: currency ? currency : referringAdmin?.currency,
           createdBy: Number(createdByData) || undefined,
           refCode: uniqueRefCode,
@@ -289,8 +289,8 @@ export const adminRegistration = async (
           commission_percent: commission_percent
             ? commission_percent
             : referringAdmin?.commission_percent
-              ? referringAdmin?.commission_percent / 2
-              : commission_percent,
+            ? referringAdmin?.commission_percent / 2
+            : commission_percent,
         });
         res.status(201).json({
           status: true,
@@ -1368,6 +1368,13 @@ export const addOrUpdatePromotion = async (req: Request, res: Response) => {
       isRecommended: isRecommended === true || isRecommended === "true",
     };
 
+    if (promotionPayload.isRecommended) {
+      await db
+        .update(promotions)
+        .set({ isRecommended: false })
+        .where(sql`1=1`);
+    }
+
     if (id) {
       await updatePromotion(id, promotionPayload);
       return res.status(200).json({
@@ -1406,7 +1413,7 @@ export const addOrUpdatePromotion = async (req: Request, res: Response) => {
 
 export const getPromotionsList = async (req: Request, res: Response) => {
   try {
-    const { id, page = 1, pageSize = 10 } = req.query;
+    const { id, page = 1, pageSize = 10, name, status } = req.query;
 
     const promotionId = id ? Number(id) : undefined;
 
@@ -1426,7 +1433,21 @@ export const getPromotionsList = async (req: Request, res: Response) => {
       });
     }
 
-    const result = await getPaginatedPromotions(Number(page), Number(pageSize));
+    // Validate and sanitize status
+    const validStatuses = ["active", "inactive"];
+
+    // Ensure status is valid
+    let statusFilter: "active" | "inactive" | undefined = undefined;
+    if (status && validStatuses.includes(status as any)) {
+      statusFilter = status as "active" | "inactive";
+    }
+
+    const result: any = await getPaginatedPromotions(
+      Number(page),
+      Number(pageSize),
+      String(name),
+      statusFilter
+    );
 
     return res.status(200).json({
       status: true,
@@ -2734,6 +2755,8 @@ export const getGameProvidersList = async (req: Request, res: Response) => {
       publicList,
       isParent,
       parentId,
+      name,
+      status,
     } = req.query;
 
     const providerId = id ? Number(id) : undefined;
@@ -2774,10 +2797,20 @@ export const getGameProvidersList = async (req: Request, res: Response) => {
       });
     }
 
+    // Validate and sanitize status
+    const validStatuses = ["active", "inactive"];
+
+    // Ensure status is valid
+    let statusFilter: "active" | "inactive" | undefined = undefined;
+    if (status && validStatuses.includes(status as any)) {
+      statusFilter = status as "active" | "inactive";
+    }
     const result = await getPaginatedGameProviders(
       Number(page),
       Number(pageSize),
-      Number(parentId)
+      Number(parentId),
+      String(name),
+      statusFilter
     );
 
     return res.status(200).json({
@@ -2879,7 +2912,7 @@ export const addOrUpdateGame = async (req: Request, res: Response) => {
 
 export const getGameList = async (req: Request, res: Response) => {
   try {
-    const { id, page = 1, pageSize = 10 } = req.query;
+    const { id, page = 1, pageSize = 10, name, status } = req.query;
 
     const gameId = id ? Number(id) : undefined;
     if (gameId) {
@@ -2898,7 +2931,21 @@ export const getGameList = async (req: Request, res: Response) => {
       });
     }
 
-    const result = await getPaginatedGameList(Number(page), Number(pageSize));
+    // Validate and sanitize status
+    const validStatuses = ["active", "inactive"];
+
+    // Ensure status is valid
+    let statusFilter: "active" | "inactive" | undefined = undefined;
+    if (status && validStatuses.includes(status as any)) {
+      statusFilter = status as "active" | "inactive";
+    }
+
+    const result = await getPaginatedGameList(
+      Number(page),
+      Number(pageSize),
+      String(name),
+      statusFilter
+    );
 
     return res.status(200).json({
       status: true,
@@ -3032,6 +3079,8 @@ export const getSportsProvidersList = async (req: Request, res: Response) => {
       publicList,
       isParent,
       parentId,
+      name,
+      status,
     } = req.query;
 
     const providerId = id ? Number(id) : undefined;
@@ -3072,10 +3121,21 @@ export const getSportsProvidersList = async (req: Request, res: Response) => {
       });
     }
 
+    // Validate and sanitize status
+    const validStatuses = ["active", "inactive"];
+
+    // Ensure status is valid
+    let statusFilter: "active" | "inactive" | undefined = undefined;
+    if (status && validStatuses.includes(status as any)) {
+      statusFilter = status as "active" | "inactive";
+    }
+
     const result = await getPaginatedSportsProviders(
       Number(page),
       Number(pageSize),
-      parentId
+      parentId,
+      String(name),
+      statusFilter
     );
 
     return res.status(200).json({
@@ -3197,21 +3257,23 @@ export const getSportList = async (req: Request, res: Response) => {
       });
     }
 
-    const validSearchKeyword = (name as string) || "";
-    const validStatus =
-      status === "active"
-        ? "active"
-        : status === "inactive"
-          ? "inactive"
-          : undefined;
+    // Validate and sanitize status
+    const validStatuses = ["active", "inactive"];
+
+    // Ensure status is valid
+    let statusFilter: "active" | "inactive" | undefined = undefined;
+    if (status && validStatuses.includes(status as any)) {
+      statusFilter = status as "active" | "inactive";
+    }
 
     const validPublicList = publicList === "true" ? true : false;
+
     const result = await getPaginatedSportList(
       Number(page),
       Number(pageSize),
-      validSearchKeyword,
-      validStatus,
-      validPublicList
+      validPublicList,
+      String(name),
+      statusFilter
     );
 
     return res.status(200).json({

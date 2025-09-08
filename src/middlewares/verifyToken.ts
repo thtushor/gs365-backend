@@ -1,50 +1,99 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyJwt } from "../utils/jwt";
 import { AdminRole } from "../models/admin.model";
+import { eq } from "drizzle-orm";
+import { db } from "../db/connection";
+import { adminUsers, users } from "../db/schema";
 
 export type DecodedUser = {
   id: number;
   email: string;
   username: string;
-  role: AdminRole;
+  role?: AdminRole | "player"; // admins have AdminRole, players just "player"
+  tokenVersion?: number; // only for players
+  userType?: string;
 };
 
-// ✅ Set your static token (only use in dev!)
 const STATIC_DEV_TOKEN = process.env.DEV_TOKEN;
 const STATIC_USER: DecodedUser = {
   id: 0,
   email: "dev@example.com",
   username: "dev_admin",
-  role: "admin", // Or whatever your AdminRole allows
+  role: "admin",
+  tokenVersion: 0,
 };
 
-export function verifyToken(req: Request, res: Response, next: NextFunction) {
+export async function verifyToken(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   const authHeader = req.headers.authorization;
-
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    const err = new Error("No token provided");
-    (err as any).status = 401;
-    throw err;
+    res.status(401).json({ status: false, message: "No token provided" });
+    return; // ✅ just return
   }
 
   const token = authHeader.split(" ")[1];
 
-  // ✅ Check if static token is used
-  if (token === STATIC_DEV_TOKEN) {
-    (req as any).user = STATIC_USER;
-    return next();
+  if (token === process.env.DEV_TOKEN) {
+    (req as any).user = {
+      id: 0,
+      email: "dev@example.com",
+      username: "dev_admin",
+      role: "admin",
+      tokenVersion: 0,
+    };
+    next();
+    return;
   }
 
-  // ✅ Fall back to verifying real JWT
   try {
-    const decoded = verifyJwt(token);
-    (req as any).user = decoded as DecodedUser;
-    console.log({ decoded });
+    const decoded = verifyJwt(token) as DecodedUser;
+    console.log("decoded user", decoded);
 
-    return next();
+    if (decoded.userType === "user") {
+      const [player] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, decoded.id))
+        .limit(1);
+      if (!player) {
+        res.status(401).json({ status: false, message: "Player not found" });
+        return;
+      }
+
+      console.log(player);
+      if (player.tokenVersion !== decoded.tokenVersion) {
+        res.status(401).json({
+          status: false,
+          message: "Session expired. Please log in again.",
+        });
+        return;
+      }
+
+      (req as any).user = decoded;
+      next();
+      return;
+    } else {
+      const [admin] = await db
+        .select()
+        .from(adminUsers)
+        .where(eq(adminUsers.id, decoded.id))
+        .limit(1);
+      if (!admin) {
+        res.status(401).json({ status: false, message: "Admin not found" });
+        return;
+      }
+
+      (req as any).user = decoded;
+      next();
+      return;
+    }
   } catch {
-    const err = new Error("Invalid or expired token");
-    (err as any).status = 401;
-    throw err;
+    res
+      .status(401)
+      .json({ status: false, message: "Invalid or expired token" });
+    return;
   }
 }
