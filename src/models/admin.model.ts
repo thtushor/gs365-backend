@@ -471,15 +471,35 @@ export const getPromotionById = async (id: number) => {
 
 export const getPaginatedPromotions = async (
   page: number,
-  pageSize: number
+  pageSize: number,
+  name: string,
+  statusFilter?: "active" | "inactive"
 ) => {
   const offset = (page - 1) * pageSize;
+
+  const whereClauses: any[] = [];
+  if (name) {
+    const kw = `%${name}%`;
+    whereClauses.push(or(like(promotions.promotionName, kw)));
+  }
+  if (statusFilter) {
+    whereClauses.push(eq(promotions.status, statusFilter));
+  }
+
+  const filteredWhereClauses = whereClauses.filter(
+    (clause): clause is Exclude<typeof clause, boolean | undefined> =>
+      Boolean(clause)
+  );
+  const where = filteredWhereClauses.length
+    ? and(...filteredWhereClauses)
+    : undefined;
 
   // Step 1: Get paginated promotions
   const rows = await db
     .select()
     .from(promotions)
     .limit(pageSize)
+    .where(where)
     .offset(offset);
 
   // Step 2: Get total count
@@ -645,16 +665,36 @@ export async function getGameProviderById(id: number) {
 export async function getPaginatedGameProviders(
   page: number,
   pageSize: number,
-  parentId: any
+  parentId: any,
+  name: string,
+  statusFilter?: "active" | "inactive"
 ) {
   const offset = (page - 1) * pageSize;
-  const whereClause = parentId
-    ? eq(game_providers.parentId, parentId)
+
+  const whereClauses: any[] = [];
+  if (name) {
+    const kw = `%${name}%`;
+    whereClauses.push(or(like(game_providers.name, kw)));
+  }
+  if (statusFilter) {
+    whereClauses.push(eq(game_providers.status, statusFilter));
+  }
+  if (parentId) {
+    whereClauses.push(eq(game_providers.parentId, parentId));
+  }
+
+  const filteredWhereClauses = whereClauses.filter(
+    (clause): clause is Exclude<typeof clause, boolean | undefined> =>
+      Boolean(clause)
+  );
+  const where = filteredWhereClauses.length
+    ? and(...filteredWhereClauses)
     : undefined;
+
   const rows = await db
     .select()
     .from(game_providers)
-    .where(whereClause)
+    .where(where)
     .limit(pageSize)
     .offset(offset);
 
@@ -722,8 +762,31 @@ export async function updateGame(id: number, data: any) {
 
   await db.update(games).set(data).where(eq(games.id, id));
 }
-export async function getPaginatedGameList(page: number, pageSize: number) {
+export async function getPaginatedGameList(
+  page: number,
+  pageSize: number,
+  name?: string,
+  statusFilter?: "active" | "inactive"
+) {
   const offset = (page - 1) * pageSize;
+
+  const whereClauses: any[] = [];
+  if (name) {
+    const kw = `%${name}%`;
+    whereClauses.push(or(like(games.name, kw)));
+  }
+  if (statusFilter) {
+    whereClauses.push(eq(games.status, statusFilter));
+  }
+
+  const filteredWhereClauses = whereClauses.filter(
+    (clause): clause is Exclude<typeof clause, boolean | undefined> =>
+      Boolean(clause)
+  );
+  const where = filteredWhereClauses.length
+    ? and(...filteredWhereClauses)
+    : undefined;
+
   const rows = await db
     .select({
       // Flatten game fields
@@ -751,6 +814,7 @@ export async function getPaginatedGameList(page: number, pageSize: number) {
     .from(games)
     .leftJoin(dropdownOptions, eq(games.categoryId, dropdownOptions.id))
     .leftJoin(game_providers, eq(games.providerId, game_providers.id))
+    .where(where)
     .limit(pageSize)
     .offset(offset);
 
@@ -855,16 +919,35 @@ export const getSportSubProviderBySportProviderId = async (
 export async function getPaginatedSportsProviders(
   page: number,
   pageSize: number,
-  parentId: any
+  parentId: any,
+  name: string,
+  statusFilter?: "active" | "inactive"
 ) {
   const offset = (page - 1) * pageSize;
-  const whereClause = parentId
-    ? eq(sports_providers.parentId, parentId)
+
+  const whereClauses: any[] = [];
+  if (name) {
+    const kw = `%${name}%`;
+    whereClauses.push(or(like(sports_providers.name, kw)));
+  }
+  if (statusFilter) {
+    whereClauses.push(eq(sports_providers.status, statusFilter));
+  }
+  if (parentId) {
+    whereClauses.push(eq(sports_providers.parentId, parentId));
+  }
+
+  const filteredWhereClauses = whereClauses.filter(
+    (clause): clause is Exclude<typeof clause, boolean | undefined> =>
+      Boolean(clause)
+  );
+  const where = filteredWhereClauses.length
+    ? and(...filteredWhereClauses)
     : undefined;
   const rows = await db
     .select()
     .from(sports_providers)
-    .where(whereClause)
+    .where(where)
     .limit(pageSize)
     .offset(offset);
 
@@ -927,19 +1010,19 @@ export async function updateSport(id: number, data: any) {
 export async function getPaginatedSportList(
   page: number,
   pageSize: number,
-  searchKeyword?: string,
-  status?: "active" | "inactive",
-  publicList?: boolean
+  publicList?: boolean,
+  name?: string,
+  statusFilter?: "active" | "inactive"
 ) {
   const offset = (page - 1) * pageSize;
 
   const whereClauses: any[] = [];
-  if (searchKeyword) {
-    const kw = `%${searchKeyword}%`;
+  if (name) {
+    const kw = `%${name}%`;
     whereClauses.push(or(like(sports.name, kw)));
   }
-  if (status) {
-    whereClauses.push(eq(sports.status, status));
+  if (statusFilter) {
+    whereClauses.push(eq(sports.status, statusFilter));
   }
 
   const filteredWhereClauses = whereClauses.filter(

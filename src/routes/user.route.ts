@@ -30,7 +30,7 @@ router.post("/login", (req, res, next) => {
   loginUser(req, res).catch(next);
 });
 
-router.post("/logout",verifyToken, (req, res, next) => {
+router.post("/logout", verifyToken, (req, res, next) => {
   console.log("hit login page...");
   logoutUser(req, res).catch(next);
 });

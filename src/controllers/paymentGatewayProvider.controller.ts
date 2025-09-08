@@ -120,7 +120,7 @@ export const PaymentGatewayProviderController = {
       providerId: Number(providerId),
       priority: priority || null,
       isRecommended: isRecommended || false,
-      commission: commission,
+      commission: commission || 0,
     });
 
     // If this relationship is set as recommended, update others to false

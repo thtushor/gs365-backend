@@ -1,4 +1,10 @@
-import { mysqlTable, int, datetime, decimal } from "drizzle-orm/mysql-core";
+import {
+  mysqlTable,
+  int,
+  datetime,
+  decimal,
+  json,
+} from "drizzle-orm/mysql-core";
 import { sql } from "drizzle-orm";
 
 export const settings = mysqlTable("settings", {
@@ -7,6 +13,7 @@ export const settings = mysqlTable("settings", {
   adminBalance: decimal("adminBalance").notNull(),
   minWithdrawableBalance: decimal("min_withdrawable_balance").default("25000"),
   conversionRate: decimal("conversion_rate").default("100"),
+  affiliateWithdrawTime: json("affiliate_withdraw_time").$type<string[]>(),
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updated_at").default(
     sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`

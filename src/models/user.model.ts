@@ -609,6 +609,15 @@ export const getUserProfileById = async (id: number): Promise<any> => {
       .from(sql`bet_results`)
       .where(eq(sql`bet_results.user_id`, user.id));
 
+    const [totalBonusAmount] = await db
+      .select({
+        totalBonus: sql<number>`COALESCE(SUM(${transactions.bonusAmount}), 0)`,
+      })
+      .from(transactions)
+      .where(
+        and(eq(transactions.userId, user.id), eq(transactions.type, "deposit"))
+      );
+
     // Get recent transactions (last 10)
     const recentTransactions = await db
       .select({
@@ -620,8 +629,14 @@ export const getUserProfileById = async (id: number): Promise<any> => {
         gameId: transactions.gameId,
         customTransactionId: transactions.customTransactionId,
         givenTransactionId: transactions.givenTransactionId,
+        processedBy: transactions.processedBy,
+        processedByUser: transactions.processedByUser,
+        processedByName: adminUsers.fullname,
+        processedByUserName: users.fullname,
       })
       .from(transactions)
+      .leftJoin(adminUsers, eq(adminUsers.id, transactions.processedBy))
+      .leftJoin(users, eq(users.id, transactions.processedByUser))
       .where(
         and(
           eq(transactions.userId, user.id),
@@ -758,6 +773,7 @@ export const getUserProfileById = async (id: number): Promise<any> => {
         approvedDeposits: balance.approvedDeposits,
         approvedWithdrawals: balance.approvedWithdrawals,
         currencyCode: balance.currencyCode,
+        totalBonusAmount: totalBonusAmount.totalBonus,
       },
 
       // Transaction summary

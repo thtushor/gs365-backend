@@ -140,8 +140,9 @@ export const getUsersByReferrerTypeController = async (
 
     return res.json({
       status: true,
-      message: `${type.charAt(0).toUpperCase() + type.slice(1)
-        } users fetched successfully`,
+      message: `${
+        type.charAt(0).toUpperCase() + type.slice(1)
+      } users fetched successfully`,
       data: result,
     });
   } catch (error) {
@@ -168,40 +169,56 @@ export const registerUser = async (req: Request, res: Response) => {
       country_id,
     } = req.body;
     if (!username) {
-      return res.status(400).json({ status: false, message: "Username is required" });
+      return res
+        .status(400)
+        .json({ status: false, message: "Username is required" });
     }
 
     if (!fullname) {
-      return res.status(400).json({ status: false, message: "Full name is required" });
+      return res
+        .status(400)
+        .json({ status: false, message: "Full name is required" });
     }
 
     if (!phone) {
-      return res.status(400).json({ status: false, message: "Phone number is required" });
+      return res
+        .status(400)
+        .json({ status: false, message: "Phone number is required" });
     }
 
     if (!email) {
-      return res.status(400).json({ status: false, message: "Email is required" });
+      return res
+        .status(400)
+        .json({ status: false, message: "Email is required" });
     }
 
     if (!password) {
-      return res.status(400).json({ status: false, message: "Password is required" });
+      return res
+        .status(400)
+        .json({ status: false, message: "Password is required" });
     }
 
     if (!country_id) {
-      return res.status(400).json({ status: false, message: "Country is required" });
+      return res
+        .status(400)
+        .json({ status: false, message: "Country is required" });
     }
 
     if (!currency_id) {
-      return res.status(400).json({ status: false, message: "Currency is required" });
+      return res
+        .status(400)
+        .json({ status: false, message: "Currency is required" });
     }
 
     if (typeof isAgreeWithTerms !== "boolean" || !isAgreeWithTerms) {
-      return res.status(400).json({ status: false, message: "You must agree with terms" });
+      return res
+        .status(400)
+        .json({ status: false, message: "You must agree with terms" });
     }
-
 
     const existingUserName = await findUserByUsernameOrEmail(username);
 
+    const existingPhone = await findUserByUsernameOrEmail(phone);
     const existingEmail = await findUserByUsernameOrEmail(email);
 
     if (existingUserName) {
@@ -209,25 +226,31 @@ export const registerUser = async (req: Request, res: Response) => {
         .status(500)
         .json({ status: false, message: `${username} already exists` });
     }
-
+    if (existingPhone) {
+      return res
+        .status(500)
+        .json({ status: false, message: `${phone} already exists` });
+    }
     if (existingEmail) {
       return res
         .status(500)
         .json({ status: false, message: `${email} already exists` });
     }
 
-
     // Generate unique refer_code for this user
     const uniqueReferCode = await generateUniqueRefCode("user");
     // If refer_code is provided, find the referring user
     let referred_by = undefined;
     let referred_by_admin_user = undefined;
+    console.log("the refer code", refer_code);
     if (refer_code) {
       const referringUser = await findUserByReferCode(refer_code);
+      console.log("refer by user:", referringUser);
       if (referringUser && referringUser.id) {
         referred_by = referringUser.id;
       } else {
         const referringAdmin = await findAdminByRefCode(refer_code);
+        console.log("refer by admin:", referringAdmin);
         if (referringAdmin && referringAdmin?.id) {
           referred_by_admin_user = referringAdmin.id;
         }
@@ -257,7 +280,7 @@ export const registerUser = async (req: Request, res: Response) => {
   } catch (error) {
     return res
       .status(500)
-      .json({ status: false, message: "Failed to register user",error });
+      .json({ status: false, message: "Failed to register user", error });
   }
 };
 
@@ -313,14 +336,16 @@ export const loginUser = async (req: Request, res: Response) => {
     const browser = uaResult.browser.name || "Unknown";
     const browser_version = uaResult.browser.version || "Unknown";
     const ip_address = getClientIp(req);
+    const tokenVersion = (user.tokenVersion ?? 0) + 1;
     // You can now use device_type, device_name, os_version, browser, browser_version, ip_address as needed (e.g., log, save to DB, etc.)
     const token = generateJwtToken({
       id: user.id,
       email: user.email,
       username: user.username,
+      // token version for new browser or new login
+      tokenVersion: tokenVersion,
       userType: "user",
     });
-
     await db
       .update(users)
       .set({
@@ -332,6 +357,7 @@ export const loginUser = async (req: Request, res: Response) => {
         browser_version,
         lastIp: ip_address,
         lastLogin: new Date(),
+        tokenVersion: (user.tokenVersion || 0) + 1,
       })
       .where(eq(users.id, user.id));
 
@@ -379,19 +405,17 @@ export const logoutUser = async (req: Request, res: Response) => {
       return;
     }
 
-    
-    user.id && await db
-      .update(users)
-      .set({ isLoggedIn: false })
-      .where(eq(users.id, user.id));
+    user.id &&
+      (await db
+        .update(users)
+        .set({ isLoggedIn: false })
+        .where(eq(users.id, user.id)));
 
-      return res.status(200).json({ status: true, message: "Logged out successfully" });
-    
-  } catch (error) {
-
-
-  }
-}
+    return res
+      .status(200)
+      .json({ status: true, message: "Logged out successfully" });
+  } catch (error) {}
+};
 
 export const updateUser = async (req: Request, res: Response) => {
   try {
