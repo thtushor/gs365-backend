@@ -10,8 +10,10 @@ import {
   text,
 } from "drizzle-orm/mysql-core";
 import { relations, sql } from "drizzle-orm";
+import { designation } from "./designation";
 
 export const adminRole = mysqlEnum("role", [
+    "superAdmin",
     "admin",
     "superAgent",
     "agent",
@@ -39,6 +41,7 @@ export const adminUsers = mysqlTable("admin_users", {
   minTrx: decimal("minimum_trx"),
   maxTrx: decimal("maximum_trx"),
   currency: int("currency"),
+  designation: int("admin_designation"), // Foreign key to designations table
 
   role: adminRole,
 
@@ -80,5 +83,11 @@ export const adminUsersRelations = relations(adminUsers, ({ one }) => ({
   createdByUser: one(adminUsers, {
     fields: [adminUsers.createdBy],
     references: [adminUsers.id],
+    
   }),
+
+  // designationRelation: one(designation, {
+  //   fields: [adminUsers.designation],
+  //   references: [designation.id],
+  // }),
 }));

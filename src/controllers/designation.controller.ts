@@ -6,7 +6,7 @@ import { DesignationModel } from "../models/designation.model";
 
 // Validation schemas
 const designationSchema = z.object({
-  adminId: z.number().min(1, "Admin ID must be greater than 0"),
+  // adminId: z.number().min(1, "Admin ID must be greater than 0"),
   designationName: z
     .string()
     .min(2, "Designation name must be at least 2 characters")

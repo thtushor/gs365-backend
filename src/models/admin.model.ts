@@ -17,6 +17,7 @@ import {
   announcements,
   countries,
   currencies,
+  designation,
   dropdownOptions,
   dropdowns,
   game_providers,
@@ -29,6 +30,7 @@ import { PromotionDataType } from "../utils/types";
 import { promotionSelectFields } from "../selected_field/promotionSelectFields";
 import { alias, AnyMySqlTable } from "drizzle-orm/mysql-core";
 import { sports } from "../db/schema/sports";
+import e from "express";
 
 export const findAdminByUsernameOrEmail = async (usernameOrEmail: string) => {
   const [admin] = await db
@@ -62,6 +64,7 @@ export const createAdmin = async (data: {
   refCode?: string;
   referred_by?: number;
   commission_percent: number;
+  designation?: number;
 }) => {
   const [admin] = await db.insert(adminUsers).values({
     ...data,
@@ -79,10 +82,12 @@ export const getAdminById = async (id: number) => {
       admin: adminUsers,
       country: countries,
       currency: currencies,
-      referred: adminUsers, // self-join to get the referred admin
+      referred: referredAdmin, // self-join to get the referred admin
+      designation: designation,
     })
     .from(adminUsers)
     .leftJoin(countries, eq(adminUsers.country, countries.id))
+    .leftJoin(designation,eq(adminUsers.designation, designation.id))
     .leftJoin(currencies, eq(adminUsers.currency, currencies.id))
     .leftJoin(referredAdmin, eq(adminUsers.referred_by, referredAdmin.id))
     .where(eq(adminUsers.id, id));
@@ -219,6 +224,7 @@ export const updateAdmin = async (
     isLoggedIn?: boolean;
     refCode?: string;
     status?: "active" | "inactive";
+    designation?: number;
   }>
 ) => {
   await db.update(adminUsers).set(data).where(eq(adminUsers.id, id));
