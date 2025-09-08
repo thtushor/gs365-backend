@@ -6,7 +6,7 @@ import { db } from "../db/connection";
 export interface DesignationInput {
 //   adminId: number;
   designationName: string;
-  adminUserType: string;
+adminUserType: string;
   permissions: string[]; // array of string permissions
 }
 

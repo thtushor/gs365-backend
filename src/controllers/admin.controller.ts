@@ -149,6 +149,7 @@ export const adminRegistration = async (
       refer_code,
       commission_percent,
       country_id,
+      designation
     } = req.body;
 
     const userData = (req as unknown as { user: DecodedUser | null })?.user;
@@ -241,9 +242,13 @@ export const adminRegistration = async (
 
     if (existingUser) {
       res
-        .status(409)
-        .json({ status: false, message: `${username}` });
+        .status(400)
+        .json({ status: false, message: `${username} - already exist` });
       return;
+    }
+
+    if(existingEmail){
+      res.status(400).json({ status: false, message: `${email} - already exist` });
     }
     // Generate unique refCode for this admin
     const uniqueRefCode = await generateUniqueRefCode("admin");
@@ -291,6 +296,7 @@ export const adminRegistration = async (
             : referringAdmin?.commission_percent
               ? referringAdmin?.commission_percent / 2
               : commission_percent,
+          designation
         });
         res.status(201).json({
           status: true,
@@ -319,6 +325,7 @@ export const adminRegistration = async (
       status,
       referred_by,
       commission_percent,
+      designation
     });
     res.status(201).json({
       status: true,
