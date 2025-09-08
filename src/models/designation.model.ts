@@ -4,7 +4,7 @@ import { designation } from "../db/schema";
 import { db } from "../db/connection";
 
 export interface DesignationInput {
-  adminId: number;
+//   adminId: number;
   designationName: string;
   adminUserType: string;
   permissions: string[]; // array of string permissions
