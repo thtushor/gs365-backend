@@ -34,6 +34,7 @@ import withdrawalPaymentAccountRouter from "./routes/withdrawalPaymentAccount.ro
 import adminMainBalanceRouter from "./routes/adminMainBalance.route";
 import { errorHandler } from "./middlewares/errorHandler";
 import { setupSwagger } from "./utils/swagger";
+import designationRouter from "./routes/designation.route";
 // Ensure process.env.DATABASE_URL is defined and of correct type
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL environment variable is not set.");
@@ -109,6 +110,7 @@ app.use("/api/dashboard", dashboardRouter);
 app.use("/api/game-stats", gameStatsRouter);
 app.use("/api/withdrawal-payment-accounts", withdrawalPaymentAccountRouter);
 app.use("/api/admin-main-balance", adminMainBalanceRouter);
+app.use("/api/designations", designationRouter);
 
 app.get("/", (req, res) => {
   res.send("Welcome to the Fashion Glory API!");
