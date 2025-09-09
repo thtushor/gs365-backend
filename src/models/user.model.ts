@@ -571,6 +571,9 @@ export const getUserProfileById = async (id: number): Promise<any> => {
         createdByName: sql<string>`created_by_user.fullname`,
         createdByUsername: sql<string>`created_by_user.username`,
         createdByRole: sql<string>`created_by_user.role`,
+        createdByPhone: sql<string>`created_by_user.phone`,
+        createdByEmail: sql<string>`created_by_user.email`,
+        createdByStatus: sql<string>`created_by_user.status`,
       })
       .from(users)
       .leftJoin(currencies, eq(users.currency_id, currencies.id))
@@ -759,6 +762,9 @@ export const getUserProfileById = async (id: number): Promise<any> => {
         name: user.createdByName,
         username: user.createdByUsername,
         role: user.createdByRole,
+        phone: user.createdByPhone,
+        email: user.createdByEmail,
+        status: user.createdByStatus,
       },
 
       // Balance information
