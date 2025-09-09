@@ -93,6 +93,7 @@ import { PromotionDataType } from "../utils/types";
 import { generateUniqueRefCode } from "../utils/refCode";
 import { kyc } from "../db/schema/kyc";
 import { alias } from "drizzle-orm/mysql-core";
+import { de } from "zod/v4/locales/index.cjs";
 
 export function getClientIp(req: Request): string {
   const ipSource = {
@@ -625,7 +626,8 @@ export const getAdmins = async (req: Request, res: Response) => {
       page: page ? Number(page) : 1,
       pageSize: pageSize ? Number(pageSize) : 10,
       searchKeyword: keyword as string | undefined,
-      roleList: ["admin"] as AdminRole[],
+      roleList: ["admin","superAdmin"] as AdminRole[],
+      designation: req.query.designation ? Number(req.query.designation) : undefined
     };
     const result = await getAdminsWithFilters(filters);
     res.json({ status: true, ...result });

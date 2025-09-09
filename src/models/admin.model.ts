@@ -107,6 +107,7 @@ export const getAdminById = async (id: number) => {
   };
 };
 export type AdminRole =
+  'superAdmin'
   | "admin"
   | "superAgent"
   | "agent"
@@ -120,6 +121,7 @@ export interface AdminFilters {
   pageSize?: number;
   searchKeyword?: string;
   status?: "active" | "inactive";
+  designation?: number;
 }
 
 export const getAdminsWithFilters = async (filters: AdminFilters) => {
@@ -130,6 +132,7 @@ export const getAdminsWithFilters = async (filters: AdminFilters) => {
     pageSize = 10,
     searchKeyword,
     status,
+    designation: designationData,
   } = filters;
   const whereClauses = [];
   if (role)
@@ -158,6 +161,10 @@ export const getAdminsWithFilters = async (filters: AdminFilters) => {
   if (status) {
     whereClauses.push(eq(adminUsers.status, status));
   }
+
+  if(designationData){
+    whereClauses.push(eq(adminUsers.designation, Number(designationData)));
+  }
   // Filter out any falsey (e.g., false) values from whereClauses to avoid boolean in and()
   const filteredWhereClauses = whereClauses.filter(
     (clause): clause is Exclude<typeof clause, boolean | undefined> =>
@@ -169,20 +176,38 @@ export const getAdminsWithFilters = async (filters: AdminFilters) => {
   // Get total count
   const total = await db
     .select({ count: sql`COUNT(*)` })
-    .from(adminUsers)
+    .from(adminUsers)    
+    .leftJoin(countries, eq(adminUsers.country, countries.id))
+    .leftJoin(designation,eq(adminUsers.designation, designation.id))
+    .leftJoin(currencies, eq(adminUsers.currency, currencies.id))
     .where(where)
     .then((rows) => Number(rows[0]?.count || 0));
   // Get paginated data
   const data = await db
-    .select()
+    .select({
+      admin: adminUsers,
+      country: countries,
+      designation: designation,
+      currency: currencies,
+    })
     .from(adminUsers)
+    .leftJoin(countries, eq(adminUsers.country, countries.id))
+    .leftJoin(currencies, eq(adminUsers.currency, currencies.id))
+    .leftJoin(designation,eq(adminUsers.designation, designation.id))
     .where(where)
     .limit(pageSize)
     .offset((page - 1) * pageSize);
+
   const totalPages = Math.ceil(total / pageSize);
+
   return {
     total,
-    data,
+    data: data.map((item) => ({ 
+      ...item.admin 
+      , countryInfo: item.country ?? null,
+      designationInfo: item.designation ?? null,
+      currencyInfo: item.currency ?? null })),
+
     pagination: {
       page,
       pageSize,
