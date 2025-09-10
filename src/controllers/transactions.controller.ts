@@ -3,7 +3,7 @@ import { db } from "../db/connection";
 import { transactions } from "../db/schema/transactions";
 import { promotions } from "../db/schema/promotions";
 import { settings } from "../db/schema/settings";
-import { turnover } from "../db/schema/turnover";
+import { NewTurnover, turnover } from "../db/schema/turnover";
 import { users } from "../db/schema/users";
 import { games } from "../db/schema/games";
 import { currencies } from "../db/schema/currency";
@@ -54,7 +54,7 @@ export const createDeposit = async (req: Request, res: Response) => {
       attachment,
     } = req.body as CreateDepositBody;
 
-    const user = (req as unknown as { user: any }).user as any;
+    const user = (req as any).user;
 
     if (!userId || !amount || !currencyId) {
       return res.status(400).json({
@@ -65,191 +65,31 @@ export const createDeposit = async (req: Request, res: Response) => {
 
     const customTransactionId = await generateUniqueTransactionId();
 
-    const result = await db.transaction(async (tx) => {
-      // Optional promotion lookup
-      let promo: {
-        id: number;
-        promotionName: string;
-        turnoverMultiply: number;
-        bonus: number;
-      } | null = null;
-      if (promotionId) {
-        const [p] = await tx
-          .select({
-            id: promotions.id,
-            promotionName: promotions.promotionName,
-            turnoverMultiply: promotions.turnoverMultiply,
-            bonus: promotions.bonus,
-          })
-          .from(promotions)
-          .where(eq(promotions.id, Number(promotionId)));
-        if (p) promo = p as any;
-      }
-
-      // Settings lookup for defaultTurnover
-      const [settingsRow] = await tx.select().from(settings).limit(1);
-      const defaultTurnoverMultiply = Number(
-        (settingsRow as any)?.defaultTurnover ?? 1
-      );
-
-      const [gateWayBonus] = paymentGatewayProviderAccountId
-        ? await tx
-            .select()
-            .from(paymentGatewayProviderAccount)
-            .leftJoin(
-              paymentGatewayProvider,
-              eq(
-                paymentGatewayProvider.id,
-                paymentGatewayProviderAccount.paymentGatewayProviderId
-              )
-            )
-            .leftJoin(
-              paymentGateway,
-              eq(paymentGateway.id, paymentGatewayProvider.gatewayId)
-            )
-            .where(
-              eq(
-                paymentGatewayProviderAccount.id,
-                paymentGatewayProviderAccountId
-              )
-            )
-            .limit(1)
-        : [];
-
-      // Create transaction
-      const [createdTxn] = await tx.insert(transactions).values({
-        userId: Number(userId),
-        type: "deposit" as any,
-        amount: Number(amount) as any,
-        currencyId: Number(currencyId),
-        promotionId: promo ? promo.id : null,
-        status: "pending" as any,
-        customTransactionId,
-        conversionRate: settingsRow?.conversionRate||100,
-        paymentGatewayId: gateWayBonus?.payment_gateway?.id,
-        paymentGatewayProviderAccountId: paymentGatewayProviderAccountId
-          ? Number(paymentGatewayProviderAccountId)
-          : null,
-        notes: notes ?? null,
-        givenTransactionId: givenTransactionId ?? null,
-        attachment: attachment ?? null,
-        accountNumber: gateWayBonus?.gateway_accounts?.accountNumber ?? null,
-        accountHolderName: gateWayBonus?.gateway_accounts?.holderName ?? null,
-        bankName: gateWayBonus?.payment_gateway?.name ?? "Cash",
-        branchName: gateWayBonus?.gateway_accounts?.branchName ?? null,
-        branchAddress: gateWayBonus?.gateway_accounts?.branchAddress ?? null,
-        network: gateWayBonus?.gateway_accounts?.network ?? null,
-        swiftCode: gateWayBonus?.gateway_accounts?.swiftCode ?? null,
-        iban: gateWayBonus?.gateway_accounts?.iban ?? null,
-        processedBy: user?.userType === "admin" ? user?.id : null,
-        processedByUser: user?.userType === "user" ? user?.id : null,
-      } as any);
-
-      const transactionId =
-        (createdTxn as any).insertId ?? (createdTxn as any)?.id;
-
-      const baseAmount = Number(amount);
-
-      // Always create default turnover for transaction amount
-      const defaultTarget = baseAmount * defaultTurnoverMultiply;
-      await tx.insert(turnover).values({
-        userId: Number(userId),
-        transactionId: transactionId,
-        type: "default",
-        status: "active",
-        depositAmount: baseAmount,
-        turnoverName: `Deposited for TXN ${customTransactionId}`,
-        targetTurnover: defaultTarget as any,
-        remainingTurnover: defaultTarget as any,
-      } as any);
-
-      // If promotion applied, create promotion turnover
-      if (promo) {
-        const bonusPercentage = Number(promo.bonus || 0);
-        const bonusAmount = (baseAmount * bonusPercentage) / 100;
-        const promoBase = bonusAmount;
-        const promoTarget = promoBase * Number(promo.turnoverMultiply || 1);
-        await tx.insert(turnover).values({
-          userId: Number(userId),
-          transactionId: transactionId,
-          type: "promotion",
-          status: "active",
-          depositAmount: promoBase,
-          turnoverName: `Promotion: ${promo.promotionName}`,
-          targetTurnover: promoTarget as any,
-          remainingTurnover: promoTarget as any,
-        } as any);
-
-        await tx
-          .update(transactions)
-          .set({
-            bonusAmount: bonusAmount.toFixed(2),
-          })
-          .where(eq(transactions.id, transactionId));
-      }
-
-      // Create admin main balance record for player deposit
-      await AdminMainBalanceModel.create(
-        {
-          amount: baseAmount,
-          type: "player_deposit",
-          status: "pending", // Match transaction status
-          transactionId: transactionId,
-          currencyId: Number(currencyId),
-          createdByPlayer: user?.userType === "user" ? user?.id : undefined,
-          createdByAdmin: user?.userType === "admin" ? user?.id : undefined,
-          notes: `Player deposit - Transaction ID: ${customTransactionId}`,
-        },
-        tx
-      );
-
-      // If promotion applied, create admin main balance record for promotion
-      if (promo) {
-        const bonusPercentage = Number(promo.bonus || 0);
-        const bonusAmount = (baseAmount * bonusPercentage) / 100;
-
-        await AdminMainBalanceModel.create(
-          {
-            amount: bonusAmount,
-            type: "promotion",
-            status: "pending", // Match transaction status
-            promotionId: promo.id,
-            promotionName: promo.promotionName,
-            transactionId: transactionId,
-            currencyId: Number(currencyId),
-
-            createdByPlayer: user?.userType === "user" ? user?.id : undefined,
-            createdByAdmin: user?.userType === "admin" ? user?.id : undefined,
-            notes: `Promotion bonus - ${promo.promotionName} (${bonusPercentage}%)`,
-          },
-          tx
-        );
-      }
-
-      // if (Number(gateWayBonus?.bonus || 0) > 0) {
-      //   const bonusPercentage = Number(gateWayBonus?.bonus || 0);
-      //   const bonusAmount = (baseAmount * bonusPercentage) / 100;
-      //   const promoBase = bonusAmount;
-      //   const promoTarget = promoBase * Number(defaultTurnoverMultiply);
-      //   await tx.insert(turnover).values({
-      //     userId: Number(userId),
-      //     transactionId: transactionId,
-      //     type: "promotion",
-      //     status: "active",
-      //     depositAmount: promoBase,
-      //     turnoverName: `Gateway bonus: ${gateWayBonus.bonus}%`,
-      //     targetTurnover: promoTarget as any,
-      //     remainingTurnover: promoTarget as any,
-      //   } as any);
-      // }
-
-      return { transactionId, customTransactionId };
-    });
+    const [createdTxn] = await db.insert(transactions).values({
+      userId: Number(userId),
+      type: "deposit",
+      amount: Number(amount),
+      currencyId: Number(currencyId),
+      promotionId: promotionId ? Number(promotionId) : null,
+      status: "pending",
+      customTransactionId,
+      paymentGatewayProviderAccountId: paymentGatewayProviderAccountId
+        ? Number(paymentGatewayProviderAccountId)
+        : null,
+      notes: notes ?? null,
+      givenTransactionId: givenTransactionId ?? null,
+      attachment: attachment ?? null,
+      processedBy: user?.userType === "admin" ? user?.id : null,
+      processedByUser: user?.userType === "user" ? user?.id : null,
+    } as any);
 
     return res.status(201).json({
       status: true,
-      message: "Deposit created with turnover entries",
-      data: result,
+      message: "Deposit created. Pending approval.",
+      data: {
+        transactionId: (createdTxn as any).insertId,
+        customTransactionId,
+      },
     });
   } catch (err) {
     console.error("createDeposit error", err);
@@ -896,12 +736,75 @@ export const updateTransactionStatus = async (req: Request, res: Response) => {
       .where(eq(transactions.id, id));
 
     if (updatePayload.status === "approved") {
-      await db
-        .update(turnover)
-        .set({
-          status: "active",
-        })
-        .where(eq(turnover.transactionId, id));
+      const baseAmount = Number(existing.amount);
+      const userIdExisting = Number(existing.userId);
+
+      // Settings lookup
+      const [settingsRow] = await db.select().from(settings).limit(1);
+      const defaultTurnoverMultiply = Number(settingsRow?.defaultTurnover ?? 1);
+
+      // --- Create default turnover ---
+      const defaultTarget = baseAmount * defaultTurnoverMultiply;
+      await db.insert(turnover).values({
+        userId: userIdExisting,
+        transactionId: id,
+        type: "default",
+        status: "active",
+        turnoverName: `Deposited for TXN ${existing.customTransactionId}`,
+        depositAmount: baseAmount.toString(),
+        targetTurnover: defaultTarget.toString(),
+        remainingTurnover: defaultTarget.toString(),
+      });
+
+      // --- If promotion applied ---
+      if (existing.promotionId) {
+        const [promo] = await db
+          .select()
+          .from(promotions)
+          .where(eq(promotions.id, existing.promotionId));
+        if (promo) {
+          const bonusAmount = (baseAmount * Number(promo.bonus)) / 100;
+          const promoTarget = bonusAmount * Number(promo.turnoverMultiply ?? 1);
+
+          await db.insert(turnover).values({
+            userId: userIdExisting,
+            transactionId: id,
+            type: "promotion",
+            status: "active",
+            turnoverName: `Promotion: ${promo.promotionName}`,
+            depositAmount: baseAmount.toString(),
+            targetTurnover: defaultTarget.toString(),
+            remainingTurnover: defaultTarget.toString(),
+          });
+
+          await db
+            .update(transactions)
+            .set({ bonusAmount: bonusAmount.toString() })
+            .where(eq(transactions.id, id));
+
+          // Admin main balance for promotion
+          await AdminMainBalanceModel.create({
+            amount: bonusAmount,
+            type: "promotion",
+            status: "approved",
+            promotionId: promo.id,
+            promotionName: promo.promotionName,
+            transactionId: id,
+            currencyId: existing.currencyId,
+            notes: `Promotion bonus - ${promo.promotionName} (${promo.bonus}%)`,
+          });
+        }
+      }
+
+      // --- Admin main balance for deposit ---
+      await AdminMainBalanceModel.create({
+        amount: baseAmount,
+        type: "player_deposit",
+        status: "approved",
+        transactionId: id,
+        currencyId: existing.currencyId,
+        notes: `Player deposit - Transaction ID: ${existing.customTransactionId}`,
+      });
     }
 
     if (["rejected", "pending"].includes(updatePayload.status)) {
@@ -1097,7 +1000,7 @@ export const checkWithdrawCapability = async (req: Request, res: Response) => {
     // Determine the reason why withdrawal is not allowed
     let withdrawReason = null;
     if (!canWithdraw) {
-      if (user.kyc_status==="required") {
+      if (user.kyc_status === "required") {
         withdrawReason = "KYC is not verified";
       } else if (user.status !== "active") {
         withdrawReason = "User is not active";

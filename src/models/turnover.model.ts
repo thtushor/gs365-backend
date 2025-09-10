@@ -2,6 +2,7 @@ import { and, desc, eq, like, sql } from "drizzle-orm";
 import { db } from "../db/connection";
 import { turnover } from "../db/schema/turnover";
 import type { NewTurnover } from "../db/schema/turnover";
+import { promotions, transactions } from "../db/schema";
 
 export type TurnoverFilters = {
   userId?: number;
@@ -46,9 +47,23 @@ export const TurnoverModel = {
       .where(whereConditions.length ? and(...whereConditions) : undefined);
 
     const data = await db
-      .select()
+      .select({
+        id: turnover.id,
+        userId: turnover.userId,
+        transactionId: turnover.transactionId,
+        type: turnover.type,
+        status: turnover.status,
+        turnoverName: turnover.turnoverName,
+        depositAmount: turnover.depositAmount,
+        targetTurnover: turnover.targetTurnover,
+        remainingTurnover: turnover.remainingTurnover,
+        createdAt: turnover.createdAt,
+        updatedAt: turnover.updatedAt,
+        bonusAmount: transactions.bonusAmount, // extra column from transactions
+      })
       .from(turnover)
       .where(whereConditions.length ? and(...whereConditions) : undefined)
+      .leftJoin(transactions, eq(transactions.id, turnover.transactionId))
       .limit(pageSize)
       .offset(offset)
       .orderBy(desc(turnover.id));
