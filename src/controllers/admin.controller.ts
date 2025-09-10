@@ -384,21 +384,21 @@ export const adminLogin = async (
       res.status(401).json({ status: false, message: "User is inactive" });
       return;
     }
-    if (admin.role === "admin" && userType === "affiliate") {
+    if (["admin","superAdmin"].includes(admin.role||"") && userType === "affiliate") {
       res.status(403).json({
         status: false,
         message: "Provide your affiliate credentials!",
       });
       return;
     }
-    if (admin.role === "admin" && userType === "agent") {
+    if (["admin","superAdmin"].includes(admin.role||"") && userType === "agent") {
       res.status(403).json({
         status: false,
         message: "Provide your agent credentials!",
       });
       return;
     }
-    if (admin.role !== "admin" && userType === "admin") {
+    if (!["admin","superAdmin"].includes(admin.role||"") && userType === "admin") {
       res.status(403).json({
         status: false,
         message: "Provide your admin credentials!",

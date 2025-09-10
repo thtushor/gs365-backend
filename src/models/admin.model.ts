@@ -33,9 +33,22 @@ import { sports } from "../db/schema/sports";
 import e from "express";
 
 export const findAdminByUsernameOrEmail = async (usernameOrEmail: string) => {
+  
+   const referredAdmin = alias(adminUsers, "referred");
+  // Fetch the admin with joined tables
   const [admin] = await db
-    .select()
+    .select({
+      admin: adminUsers,
+      country: countries,
+      currency: currencies,
+      referred: referredAdmin, // self-join to get the referred admin
+      designation: designation,
+    })
     .from(adminUsers)
+    .leftJoin(countries, eq(adminUsers.country, countries.id))
+    .leftJoin(designation,eq(adminUsers.designation, designation.id))
+    .leftJoin(currencies, eq(adminUsers.currency, currencies.id))
+    .leftJoin(referredAdmin, eq(adminUsers.referred_by, referredAdmin.id))
     .where(
       or(
         eq(adminUsers.username, usernameOrEmail),
@@ -43,7 +56,13 @@ export const findAdminByUsernameOrEmail = async (usernameOrEmail: string) => {
         eq(adminUsers.phone, usernameOrEmail)
       )
     );
-  return admin;
+  return {
+    ...admin?.admin, // spread main admin fields
+    currencyInfo: admin?.currency ?? null,
+    referDetails: admin?.referred ?? null,
+    countryDetails: admin?.country ?? null,
+    designation: admin.designation ?? null,
+  };
 };
 
 export const createAdmin = async (data: {
@@ -104,6 +123,7 @@ export const getAdminById = async (id: number) => {
     currencyInfo,
     referDetails,
     countryDetails,
+    designation: admin.designation ?? null,
   };
 };
 export type AdminRole =
