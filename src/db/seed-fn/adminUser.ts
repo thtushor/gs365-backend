@@ -20,7 +20,7 @@ export const seedAdminUsers = async () => {
           minTrx: "0",
           maxTrx: "1000",
           currency: 1,
-          role: "admin" as any,
+          role: "superAdmin" as any,
           refCode: "REFADMIN1",
           status: "active",
           isLoggedIn: false,
