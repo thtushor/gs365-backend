@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 
 export const seedDropdowns = async () => {
   try {
-    const dropdownNames = ["Promotion Type", "Categories"];
+    const dropdownNames = ["Promotion Type", "Categories", "FAQ Categories"];
 
     for (const name of dropdownNames) {
       const existing = await db

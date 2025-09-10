@@ -773,8 +773,8 @@ export const updateTransactionStatus = async (req: Request, res: Response) => {
             status: "active",
             turnoverName: `Promotion: ${promo.promotionName}`,
             depositAmount: baseAmount.toString(),
-            targetTurnover: defaultTarget.toString(),
-            remainingTurnover: defaultTarget.toString(),
+            targetTurnover: promoTarget.toString(),
+            remainingTurnover: promoTarget.toString(),
           });
 
           await db

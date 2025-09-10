@@ -54,6 +54,7 @@ import {
   dropdownOptions,
   dropdowns,
   events,
+  faqs,
   featuredGames,
   game_providers,
   games,
@@ -151,7 +152,7 @@ export const adminRegistration = async (
       refer_code,
       commission_percent,
       country_id,
-      designation
+      designation,
     } = req.body;
 
     const userData = (req as unknown as { user: DecodedUser | null })?.user;
@@ -250,8 +251,10 @@ export const adminRegistration = async (
       return;
     }
 
-    if(existingEmail){
-      res.status(400).json({ status: false, message: `${email} - already exist` });
+    if (existingEmail) {
+      res
+        .status(400)
+        .json({ status: false, message: `${email} - already exist` });
     }
     // Generate unique refCode for this admin
     const uniqueRefCode = await generateUniqueRefCode("admin");
@@ -297,9 +300,9 @@ export const adminRegistration = async (
           commission_percent: commission_percent
             ? commission_percent
             : referringAdmin?.commission_percent
-              ? referringAdmin?.commission_percent / 2
-              : commission_percent,
-          designation
+            ? referringAdmin?.commission_percent / 2
+            : commission_percent,
+          designation,
         });
         res.status(201).json({
           status: true,
@@ -328,7 +331,7 @@ export const adminRegistration = async (
       status,
       referred_by,
       commission_percent,
-      designation
+      designation,
     });
     res.status(201).json({
       status: true,
@@ -384,21 +387,30 @@ export const adminLogin = async (
       res.status(401).json({ status: false, message: "User is inactive" });
       return;
     }
-    if (["admin","superAdmin"].includes(admin.role||"") && userType === "affiliate") {
+    if (
+      ["admin", "superAdmin"].includes(admin.role || "") &&
+      userType === "affiliate"
+    ) {
       res.status(403).json({
         status: false,
         message: "Provide your affiliate credentials!",
       });
       return;
     }
-    if (["admin","superAdmin"].includes(admin.role||"") && userType === "agent") {
+    if (
+      ["admin", "superAdmin"].includes(admin.role || "") &&
+      userType === "agent"
+    ) {
       res.status(403).json({
         status: false,
         message: "Provide your agent credentials!",
       });
       return;
     }
-    if (!["admin","superAdmin"].includes(admin.role||"") && userType === "admin") {
+    if (
+      !["admin", "superAdmin"].includes(admin.role || "") &&
+      userType === "admin"
+    ) {
       res.status(403).json({
         status: false,
         message: "Provide your admin credentials!",
@@ -626,8 +638,10 @@ export const getAdmins = async (req: Request, res: Response) => {
       page: page ? Number(page) : 1,
       pageSize: pageSize ? Number(pageSize) : 10,
       searchKeyword: keyword as string | undefined,
-      roleList: ["admin","superAdmin"] as AdminRole[],
-      designation: req.query.designation ? Number(req.query.designation) : undefined
+      roleList: ["admin", "superAdmin"] as AdminRole[],
+      designation: req.query.designation
+        ? Number(req.query.designation)
+        : undefined,
     };
     const result = await getAdminsWithFilters(filters);
     res.json({ status: true, ...result });
@@ -2067,6 +2081,117 @@ export const deletePopup = async (req: Request, res: Response) => {
   }
 
   const result = await deleteById(website_popups, id);
+
+  if (!result.success) {
+    return res.status(404).json({ status: false, message: result.message });
+  }
+
+  return res.status(200).json({ status: true, message: result.message });
+};
+
+export const createOrUpdateWebsiteFaq = async (req: Request, res: Response) => {
+  try {
+    const { id, message, status, title } = req.body;
+
+    if (!message || typeof message !== "string") {
+      return res.status(400).json({
+        status: false,
+        message: "Faq answer is required.",
+      });
+    }
+
+    const validatedStatus = status === "active" ? "active" : "inactive";
+
+    const finalTitle =
+      typeof title === "string" && title.trim().length > 0
+        ? title.trim()
+        : `Faq - ${Math.floor(1000 + Math.random() * 9000)}`;
+
+    if (id) {
+      if (validatedStatus === "active") {
+        await db
+          .update(faqs)
+          .set({ status: "inactive" })
+          .where(ne(faqs.id, id));
+      }
+
+      await db
+        .update(faqs)
+        .set({ message, status: validatedStatus, title: finalTitle })
+        .where(eq(faqs.id, id));
+
+      return res.status(200).json({
+        status: true,
+        message: "Faq updated successfully.",
+      });
+    } else {
+      if (validatedStatus === "active") {
+        await db.update(faqs).set({ status: "inactive" });
+      }
+
+      await db.insert(faqs).values({
+        message,
+        status: validatedStatus,
+        title: finalTitle,
+      });
+
+      return res.status(201).json({
+        status: true,
+        message: "Faq created successfully.",
+      });
+    }
+  } catch (error) {
+    console.error("create or update faq error:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Server error.",
+    });
+  }
+};
+
+export const getAllWebsiteFaq = async (req: Request, res: Response) => {
+  try {
+    const { page = 1, pageSize = 10 } = req.query;
+
+    const offset = (Number(page) - 1) * Number(pageSize);
+
+    const rows = await db
+      .select()
+      .from(faqs)
+      .limit(Number(pageSize))
+      .offset(offset)
+      .orderBy(desc(faqs.id));
+
+    const totalCount = await getTotalCount(faqs);
+
+    return res.status(200).json({
+      status: true,
+      message: "Faq lists fetched successfully.",
+      data: rows,
+      pagination: {
+        page: Number(page),
+        pageSize: Number(pageSize),
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / Number(pageSize)),
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching faqs:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Server error.",
+    });
+  }
+};
+
+export const deleteFaq = async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+
+  if (isNaN(id)) {
+    return res.status(400).json({ status: false, message: "Invalid faq ID." });
+  }
+
+  const result = await deleteById(faqs, id);
 
   if (!result.success) {
     return res.status(404).json({ status: false, message: result.message });

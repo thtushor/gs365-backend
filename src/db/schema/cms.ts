@@ -35,6 +35,13 @@ export const website_popups = mysqlTable("website_popups", {
   dateRange: varchar("date_range", { length: 255 }),
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
+export const faqs = mysqlTable("faqs", {
+  id: int("id").primaryKey().autoincrement(),
+  title: varchar("title", { length: 255 }).notNull(),
+  message: varchar("message", { length: 3000 }).notNull(),
+  status: mysqlEnum("status", ["active", "inactive"]).default("inactive"),
+  createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
+});
 export const video_advertisement = mysqlTable("video_advertisement", {
   id: int("id").primaryKey().autoincrement(),
   title: varchar("title", { length: 255 }).notNull(),

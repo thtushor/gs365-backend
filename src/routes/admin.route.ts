@@ -70,6 +70,9 @@ import {
   createOrUpdateConversion,
   getConversionList,
   deleteConversionById,
+  createOrUpdateWebsiteFaq,
+  getAllWebsiteFaq,
+  deleteFaq,
 } from "../controllers/admin.controller";
 
 const router = Router();
@@ -178,6 +181,14 @@ router.get(
   asyncHandler(getAllWebsitePopups)
 );
 router.post("/delete-popup/:id", verifyToken, asyncHandler(deletePopup));
+
+router.post(
+  "/create-update-faq",
+  verifyToken,
+  asyncHandler(createOrUpdateWebsiteFaq)
+);
+router.get("/get-faqs", verifyToken, asyncHandler(getAllWebsiteFaq));
+router.post("/delete-faq/:id", verifyToken, asyncHandler(deleteFaq));
 
 router.post(
   "/create-update-advertisement",
