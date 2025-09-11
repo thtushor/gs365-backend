@@ -85,10 +85,10 @@ export const createAdmin = async (data: {
   commission_percent: number;
   designation?: number;
 }) => {
+  const { maxTrx, minTrx, commission_percent, ...rest } = data;
   const [admin] = await db.insert(adminUsers).values({
-    ...data,
-    createdBy: data?.createdBy,
-    referred_by: data?.referred_by,
+    ...rest,
+    commission_percent: Number(commission_percent) || 0,
   });
   return admin;
 };
@@ -270,9 +270,18 @@ export const updateAdmin = async (
     refCode?: string;
     status?: "active" | "inactive";
     designation?: number;
+    commission_percent?: number;
   }>
 ) => {
-  await db.update(adminUsers).set(data).where(eq(adminUsers.id, id));
+  const { minTrx, maxTrx, commission_percent, ...rest } = data;
+
+  const dataToUpdate: Record<string, any> = { ...rest };
+
+  if (commission_percent !== undefined) {
+    dataToUpdate.commission_percent = Number(commission_percent);
+  }
+
+  await db.update(adminUsers).set(dataToUpdate).where(eq(adminUsers.id, id));
   return getAdminById(id);
 };
 
