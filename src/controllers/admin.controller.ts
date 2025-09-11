@@ -235,13 +235,12 @@ export const adminRegistration = async (
       return;
     }
 
-    const existing =
-      (await findAdminByUsernameOrEmail(username)) ||
-      (await findAdminByUsernameOrEmail(email));
 
     const existingUser = await findAdminByUsernameOrEmail(username);
 
     const existingEmail = await findAdminByUsernameOrEmail(email);
+
+    const existingPhone = await findAdminByUsernameOrEmail(phone);
 
     if (existingUser) {
       res
@@ -252,6 +251,10 @@ export const adminRegistration = async (
 
     if(existingEmail){
       res.status(400).json({ status: false, message: `${email} - already exist` });
+    }
+
+    if(existingPhone){
+      res.status(400).json({ status: false, message: `${phone} - already exist` });
     }
     // Generate unique refCode for this admin
     const uniqueRefCode = await generateUniqueRefCode("admin");

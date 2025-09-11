@@ -226,11 +226,13 @@ export const registerUser = async (req: Request, res: Response) => {
         .status(500)
         .json({ status: false, message: `${username} already exists` });
     }
+
     if (existingPhone) {
       return res
         .status(500)
         .json({ status: false, message: `${phone} already exists` });
     }
+
     if (existingEmail) {
       return res
         .status(500)
