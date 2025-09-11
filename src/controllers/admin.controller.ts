@@ -326,8 +326,8 @@ export const adminRegistration = async (
       country: country_id,
       city,
       street,
-      minTrx: minTrx !== undefined ? String(minTrx) : undefined,
-      maxTrx: maxTrx !== undefined ? String(maxTrx) : undefined,
+      minTrx: minTrx ? String(minTrx) : undefined,
+      maxTrx: maxTrx ? String(maxTrx) : undefined,
       currency,
       createdBy: Number(createdByData) || undefined,
       refCode: uniqueRefCode,
@@ -342,6 +342,7 @@ export const adminRegistration = async (
       data: admin,
     });
   } catch (error) {
+    console.log(error);
     res
       .status(500)
       .json({ status: false, message: "Failed to register admin", error });
@@ -2094,7 +2095,7 @@ export const deletePopup = async (req: Request, res: Response) => {
 
 export const createOrUpdateWebsiteFaq = async (req: Request, res: Response) => {
   try {
-    const { id, message, status, title } = req.body;
+    const { id, message, status, title, dropdownOptionsId } = req.body;
 
     if (!message || typeof message !== "string") {
       return res.status(400).json({
@@ -2102,7 +2103,12 @@ export const createOrUpdateWebsiteFaq = async (req: Request, res: Response) => {
         message: "Faq answer is required.",
       });
     }
-
+    if (!dropdownOptionsId) {
+      return res.status(400).json({
+        status: false,
+        message: "Category is required.",
+      });
+    }
     const validatedStatus = status === "active" ? "active" : "inactive";
 
     const finalTitle =
@@ -2111,16 +2117,14 @@ export const createOrUpdateWebsiteFaq = async (req: Request, res: Response) => {
         : `Faq - ${Math.floor(1000 + Math.random() * 9000)}`;
 
     if (id) {
-      if (validatedStatus === "active") {
-        await db
-          .update(faqs)
-          .set({ status: "inactive" })
-          .where(ne(faqs.id, id));
-      }
-
       await db
         .update(faqs)
-        .set({ message, status: validatedStatus, title: finalTitle })
+        .set({
+          message,
+          status: validatedStatus,
+          title: finalTitle,
+          dropdownOptionsId: dropdownOptionsId,
+        })
         .where(eq(faqs.id, id));
 
       return res.status(200).json({
@@ -2128,14 +2132,11 @@ export const createOrUpdateWebsiteFaq = async (req: Request, res: Response) => {
         message: "Faq updated successfully.",
       });
     } else {
-      if (validatedStatus === "active") {
-        await db.update(faqs).set({ status: "inactive" });
-      }
-
       await db.insert(faqs).values({
         message,
         status: validatedStatus,
         title: finalTitle,
+        dropdownOptionsId: dropdownOptionsId,
       });
 
       return res.status(201).json({
@@ -2159,8 +2160,17 @@ export const getAllWebsiteFaq = async (req: Request, res: Response) => {
     const offset = (Number(page) - 1) * Number(pageSize);
 
     const rows = await db
-      .select()
+      .select({
+        id: faqs.id,
+        category: dropdownOptions.title,
+        dropdownOptionsId: faqs.dropdownOptionsId,
+        title: faqs.title,
+        createdAt: faqs.createdAt,
+        status: faqs.status,
+        message: faqs.message,
+      })
       .from(faqs)
+      .leftJoin(dropdownOptions, eq(dropdownOptions.id, faqs.dropdownOptionsId))
       .limit(Number(pageSize))
       .offset(offset)
       .orderBy(desc(faqs.id));
