@@ -30,11 +30,9 @@ import { PromotionDataType } from "../utils/types";
 import { promotionSelectFields } from "../selected_field/promotionSelectFields";
 import { alias, AnyMySqlTable } from "drizzle-orm/mysql-core";
 import { sports } from "../db/schema/sports";
-import e from "express";
 
 export const findAdminByUsernameOrEmail = async (usernameOrEmail: string) => {
-  
-   const referredAdmin = alias(adminUsers, "referred");
+  const referredAdmin = alias(adminUsers, "referred");
   // Fetch the admin with joined tables
   const [admin] = await db
     .select({
@@ -46,7 +44,7 @@ export const findAdminByUsernameOrEmail = async (usernameOrEmail: string) => {
     })
     .from(adminUsers)
     .leftJoin(countries, eq(adminUsers.country, countries.id))
-    .leftJoin(designation,eq(adminUsers.designation, designation.id))
+    .leftJoin(designation, eq(adminUsers.designation, designation.id))
     .leftJoin(currencies, eq(adminUsers.currency, currencies.id))
     .leftJoin(referredAdmin, eq(adminUsers.referred_by, referredAdmin.id))
     .where(
@@ -56,6 +54,9 @@ export const findAdminByUsernameOrEmail = async (usernameOrEmail: string) => {
         eq(adminUsers.phone, usernameOrEmail)
       )
     );
+  if (!admin) {
+    return null; // Return null if no admin found
+  }
   return {
     ...admin?.admin, // spread main admin fields
     currencyInfo: admin?.currency ?? null,
@@ -86,9 +87,17 @@ export const createAdmin = async (data: {
   designation?: number;
 }) => {
   const { maxTrx, minTrx, commission_percent, ...rest } = data;
+  console.log("from this", {
+    ...rest,
+    commission_percent: Number(commission_percent) || 0,
+    minTrx: minTrx,
+    maxTrx: maxTrx,
+  });
   const [admin] = await db.insert(adminUsers).values({
     ...rest,
     commission_percent: Number(commission_percent) || 0,
+    minTrx: minTrx,
+    maxTrx: maxTrx,
   });
   return admin;
 };
@@ -106,7 +115,7 @@ export const getAdminById = async (id: number) => {
     })
     .from(adminUsers)
     .leftJoin(countries, eq(adminUsers.country, countries.id))
-    .leftJoin(designation,eq(adminUsers.designation, designation.id))
+    .leftJoin(designation, eq(adminUsers.designation, designation.id))
     .leftJoin(currencies, eq(adminUsers.currency, currencies.id))
     .leftJoin(referredAdmin, eq(adminUsers.referred_by, referredAdmin.id))
     .where(eq(adminUsers.id, id));
@@ -127,7 +136,7 @@ export const getAdminById = async (id: number) => {
   };
 };
 export type AdminRole =
-  'superAdmin'
+  | "superAdmin"
   | "admin"
   | "superAgent"
   | "agent"
@@ -182,7 +191,7 @@ export const getAdminsWithFilters = async (filters: AdminFilters) => {
     whereClauses.push(eq(adminUsers.status, status));
   }
 
-  if(designationData){
+  if (designationData) {
     whereClauses.push(eq(adminUsers.designation, Number(designationData)));
   }
   // Filter out any falsey (e.g., false) values from whereClauses to avoid boolean in and()
@@ -196,9 +205,9 @@ export const getAdminsWithFilters = async (filters: AdminFilters) => {
   // Get total count
   const total = await db
     .select({ count: sql`COUNT(*)` })
-    .from(adminUsers)    
+    .from(adminUsers)
     .leftJoin(countries, eq(adminUsers.country, countries.id))
-    .leftJoin(designation,eq(adminUsers.designation, designation.id))
+    .leftJoin(designation, eq(adminUsers.designation, designation.id))
     .leftJoin(currencies, eq(adminUsers.currency, currencies.id))
     .where(where)
     .then((rows) => Number(rows[0]?.count || 0));
@@ -213,7 +222,7 @@ export const getAdminsWithFilters = async (filters: AdminFilters) => {
     .from(adminUsers)
     .leftJoin(countries, eq(adminUsers.country, countries.id))
     .leftJoin(currencies, eq(adminUsers.currency, currencies.id))
-    .leftJoin(designation,eq(adminUsers.designation, designation.id))
+    .leftJoin(designation, eq(adminUsers.designation, designation.id))
     .where(where)
     .limit(pageSize)
     .offset((page - 1) * pageSize);
@@ -222,11 +231,12 @@ export const getAdminsWithFilters = async (filters: AdminFilters) => {
 
   return {
     total,
-    data: data.map((item) => ({ 
-      ...item.admin 
-      , countryInfo: item.country ?? null,
+    data: data.map((item) => ({
+      ...item.admin,
+      countryInfo: item.country ?? null,
       designationInfo: item.designation ?? null,
-      currencyInfo: item.currency ?? null })),
+      currencyInfo: item.currency ?? null,
+    })),
 
     pagination: {
       page,

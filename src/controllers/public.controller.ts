@@ -27,6 +27,7 @@ import {
   banners,
   dropdownOptions,
   events,
+  faqs,
   featuredGames,
   games,
   gamingLicenses,
@@ -166,6 +167,82 @@ export const getActivePopup = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Error fetching active popup:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Server error.",
+    });
+  }
+};
+
+export const getAllWebsiteFaqCollections = async (
+  req: Request,
+  res: Response
+) => {
+  function getRandomColor() {
+    const colors = ["#FF5733", "#33FF57", "#3357FF", "#FFC300", "#8E44AD"];
+    return colors[Math.floor(Math.random() * colors.length)];
+  }
+  try {
+    // Fetch only active FAQs with their category info
+    const rows = await db
+      .select({
+        id: faqs.id,
+        category: dropdownOptions.title,
+        dropdownOptionsId: faqs.dropdownOptionsId,
+        title: faqs.title,
+        createdAt: faqs.createdAt,
+        status: faqs.status,
+        message: faqs.message,
+      })
+      .from(faqs)
+      .leftJoin(dropdownOptions, eq(dropdownOptions.id, faqs.dropdownOptionsId))
+      .where(eq(faqs.status, "active"))
+      .orderBy(desc(faqs.id));
+
+    // Group by category
+    const collectionsMap: Record<
+      number,
+      {
+        id: number;
+        title: string;
+        articles: number;
+        icon: string;
+        color: string;
+        questions: { id: number; question: string; answer: string }[];
+      }
+    > = {};
+
+    for (const row of rows) {
+      if (!row.category || !row.dropdownOptionsId) continue;
+
+      if (!collectionsMap[row.dropdownOptionsId]) {
+        collectionsMap[row.dropdownOptionsId] = {
+          id: row.dropdownOptionsId,
+          title: row.category,
+          articles: 0,
+          icon: "❓", // ✅ fixed question mark
+          color: getRandomColor(),
+          questions: [],
+        };
+      }
+
+      collectionsMap[row.dropdownOptionsId].articles += 1;
+      collectionsMap[row.dropdownOptionsId].questions.push({
+        id: row.id, // ✅ faq id as question id
+        question: row.title,
+        answer: row.message,
+      });
+    }
+
+    const collections = Object.values(collectionsMap);
+
+    return res.status(200).json({
+      status: true,
+      message: "Active FAQ collections fetched successfully.",
+      data: collections,
+    });
+  } catch (error) {
+    console.error("Error fetching faq collections:", error);
     return res.status(500).json({
       status: false,
       message: "Server error.",

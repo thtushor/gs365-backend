@@ -14,6 +14,7 @@ import {
   getAllGamesByCategoryID,
   getAllPublicEvents,
   getAllPublicSocial,
+  getAllWebsiteFaqCollections,
   getFeaturedGame,
   getGameList,
   getMenuProviders,
@@ -32,6 +33,7 @@ router.get("/promotions", asyncHandler(getPublicPromotionList));
 router.get("/banners-list", asyncHandler(getPublicActiveBannerImages));
 router.get("/announcement", asyncHandler(getActiveAnnouncement));
 router.get("/popup", asyncHandler(getActivePopup));
+router.get("/faqs", asyncHandler(getAllWebsiteFaqCollections));
 router.get("/advertisement", asyncHandler(getActiveVideoAdvertisement));
 router.get("/sponsors", asyncHandler(getActiveSponsor));
 router.get("/ambassador", asyncHandler(getActiveAmbassador));
