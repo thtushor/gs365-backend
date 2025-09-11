@@ -56,12 +56,15 @@ export const findAdminByUsernameOrEmail = async (usernameOrEmail: string) => {
         eq(adminUsers.phone, usernameOrEmail)
       )
     );
+
+    if(!admin) return null;
+
   return {
     ...admin?.admin, // spread main admin fields
     currencyInfo: admin?.currency ?? null,
     referDetails: admin?.referred ?? null,
     countryDetails: admin?.country ?? null,
-    designation: admin.designation ?? null,
+    designation: admin?.designation ?? null,
   };
 };
 
@@ -123,7 +126,7 @@ export const getAdminById = async (id: number) => {
     currencyInfo,
     referDetails,
     countryDetails,
-    designation: admin.designation ?? null,
+    designation: admin?.designation ?? null,
   };
 };
 export type AdminRole =
