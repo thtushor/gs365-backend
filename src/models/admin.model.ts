@@ -283,7 +283,7 @@ export const updateAdmin = async (
     commission_percent?: number;
   }>
 ) => {
-  const { minTrx, maxTrx, commission_percent, ...rest } = data;
+  const { commission_percent, ...rest } = data;
 
   const dataToUpdate: Record<string, any> = { ...rest };
 
@@ -291,6 +291,7 @@ export const updateAdmin = async (
     dataToUpdate.commission_percent = Number(commission_percent);
   }
 
+  console.log("Updated data is", dataToUpdate);
   await db.update(adminUsers).set(dataToUpdate).where(eq(adminUsers.id, id));
   return getAdminById(id);
 };
