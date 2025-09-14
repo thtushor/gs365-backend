@@ -142,13 +142,7 @@ export const createAffiliateWithdraw = async (req: Request, res: Response) => {
     const user = (req as unknown as { user: any }).user as any;
 
     // ✅ Validate basic fields
-    if (
-      !affiliateId ||
-      !amount ||
-      !currencyId ||
-      !withdrawMethod ||
-      !remainingBalance
-    ) {
+    if (!affiliateId || !amount || !currencyId || !withdrawMethod) {
       return res.status(400).json({
         status: false,
         message:

@@ -236,7 +236,6 @@ export const adminRegistration = async (
       return;
     }
 
-
     const existingUser = await findAdminByUsernameOrEmail(username);
 
     const existingEmail = await findAdminByUsernameOrEmail(email);
@@ -256,8 +255,10 @@ export const adminRegistration = async (
         .json({ status: false, message: `${email} - already exist` });
     }
 
-    if(existingPhone){
-      res.status(400).json({ status: false, message: `${phone} - already exist` });
+    if (existingPhone) {
+      res
+        .status(400)
+        .json({ status: false, message: `${phone} - already exist` });
     }
     // Generate unique refCode for this admin
     const uniqueRefCode = await generateUniqueRefCode("admin");
@@ -298,7 +299,7 @@ export const adminRegistration = async (
           currency: currency ? currency : referringAdmin?.currency,
           createdBy: Number(createdByData) || undefined,
           refCode: uniqueRefCode,
-          status,
+          status: "active",
           referred_by: referringAdmin?.id,
           commission_percent: commission_percent
             ? commission_percent
@@ -3649,7 +3650,19 @@ export const createUpdateKyc = async (req: Request, res: Response) => {
         .where(and(eq(kyc.holderId, holderId), eq(kyc.holderType, holderType)));
     }
 
-    console.log(kycToUpdate);
+    const updateKycUserStatus = async () => {
+      if (holderType === "player") {
+        await db
+          .update(users)
+          .set({ kyc_status: "pending" })
+          .where(eq(users.id, holderId));
+      } else {
+        await db
+          .update(adminUsers)
+          .set({ kyc_status: "pending" })
+          .where(eq(adminUsers.id, holderId));
+      }
+    };
 
     if (kycToUpdate && kycToUpdate.length > 0) {
       // Update existing KYC
@@ -3671,6 +3684,7 @@ export const createUpdateKyc = async (req: Request, res: Response) => {
         })
         .where(eq(kyc.id, kycToUpdate[0].id));
 
+      await updateKycUserStatus();
       return res
         .status(200)
         .json({ status: true, message: "KYC updated successfully." });
@@ -3689,7 +3703,7 @@ export const createUpdateKyc = async (req: Request, res: Response) => {
         status: "pending",
         dob,
       });
-
+      await updateKycUserStatus();
       return res
         .status(200)
         .json({ status: true, message: "KYC created successfully." });
@@ -3935,7 +3949,7 @@ export const updateKycStatus = async (req: Request, res: Response) => {
         if (updatedKyc.length) {
           const result = await db
             .update(kyc)
-            .set({ status: "pending" })
+            .set({ status: status })
             .where(
               and(
                 eq(kyc.holderId, Number(holderId)),

@@ -48,6 +48,7 @@ export const users = mysqlTable("users", {
     "verified",
     "unverified",
     "required",
+    "pending",
   ]).default("unverified"),
 });
 
