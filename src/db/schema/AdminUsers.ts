@@ -13,13 +13,13 @@ import { relations, sql } from "drizzle-orm";
 import { designation } from "./designation";
 
 export const adminRole = mysqlEnum("role", [
-    "superAdmin",
-    "admin",
-    "superAgent",
-    "agent",
-    "superAffiliate",
-    "affiliate",
-  ]);
+  "superAdmin",
+  "admin",
+  "superAgent",
+  "agent",
+  "superAffiliate",
+  "affiliate",
+]);
 
 export const adminUsers = mysqlTable("admin_users", {
   id: int("id").primaryKey().autoincrement(),
@@ -75,6 +75,7 @@ export const adminUsers = mysqlTable("admin_users", {
     "verified",
     "unverified",
     "required",
+    "pending",
   ]).default("unverified"),
 });
 
@@ -83,7 +84,6 @@ export const adminUsersRelations = relations(adminUsers, ({ one }) => ({
   createdByUser: one(adminUsers, {
     fields: [adminUsers.createdBy],
     references: [adminUsers.id],
-    
   }),
 
   // designationRelation: one(designation, {

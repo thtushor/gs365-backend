@@ -24,10 +24,13 @@ export interface BalanceFilters {
 }
 
 export const BalanceModel = {
-  async calculatePlayerBalance(userId: number, currencyId?: number): Promise<PlayerBalance> {
+  async calculatePlayerBalance(
+    userId: number,
+    currencyId?: number
+  ): Promise<PlayerBalance> {
     try {
       let whereConditions = [eq(transactions.userId, userId)];
-      
+
       if (currencyId) {
         whereConditions.push(eq(transactions.currencyId, currencyId));
       }
@@ -95,7 +98,8 @@ export const BalanceModel = {
       const pendingWithdrawals = Number(row.pendingWithdrawals);
 
       // Calculate current balance: deposits + wins - withdrawals - losses
-      const currentBalance = totalDeposits + totalWins - totalWithdrawals - totalLosses;
+      const currentBalance =
+        totalDeposits + totalWins - totalWithdrawals - totalLosses;
 
       return {
         currencyCode: "N/A", // Will be updated if currency info is needed
@@ -115,19 +119,22 @@ export const BalanceModel = {
     }
   },
 
-  async calculateAllPlayerBalances(filters: BalanceFilters = {}): Promise<PlayerBalance[]> {
+  async calculateAllPlayerBalances(
+    filters: BalanceFilters = {}
+  ): Promise<PlayerBalance[]> {
     try {
       let whereConditions = [];
-      
+
       if (filters.userId) {
         whereConditions.push(eq(transactions.userId, filters.userId));
       }
-      
+
       if (filters.currencyId) {
         whereConditions.push(eq(transactions.currencyId, filters.currencyId));
       }
 
-      const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
+      const whereClause =
+        whereConditions.length > 0 ? and(...whereConditions) : undefined;
 
       const balanceQuery = sql`
         SELECT 
@@ -148,7 +155,7 @@ export const BalanceModel = {
       `;
 
       const result = await db.execute(balanceQuery);
-      
+
       return result.map((row: any) => {
         const totalDeposits = Number(row.totalDeposits);
         const totalWithdrawals = Number(row.totalWithdrawals);
@@ -158,7 +165,8 @@ export const BalanceModel = {
         const pendingWithdrawals = Number(row.pendingWithdrawals);
 
         // Calculate current balance: deposits + wins - withdrawals - losses
-        const currentBalance = totalDeposits + totalWins - totalWithdrawals - totalLosses;
+        const currentBalance =
+          totalDeposits + totalWins - totalWithdrawals - totalLosses;
 
         return {
           userId: Number(row.userId),
@@ -180,7 +188,50 @@ export const BalanceModel = {
       throw error;
     }
   },
+  async getTotalPlayerCurrentBalance(): Promise<number> {
+    try {
+      const result = await db
+        .select({
+          totalDeposits: sql<number>`
+          COALESCE(SUM(CASE WHEN ${transactions.type} = 'deposit' 
+            AND ${transactions.status} = 'approved' 
+            THEN ${transactions.amount} + COALESCE(${transactions.bonusAmount}, 0) ELSE 0 END), 0)
+        `,
+          totalWithdrawals: sql<number>`
+          COALESCE(SUM(CASE WHEN ${transactions.type} = 'withdraw' 
+            AND ${transactions.status} = 'approved' 
+            THEN ${transactions.amount} ELSE 0 END), 0)
+        `,
+          totalWins: sql<number>`
+          COALESCE(SUM(CASE WHEN ${transactions.type} = 'win' 
+            AND ${transactions.status} = 'approved' 
+            THEN ${transactions.amount} ELSE 0 END), 0)
+        `,
+          totalLosses: sql<number>`
+          COALESCE(SUM(CASE WHEN ${transactions.type} = 'loss' 
+            AND ${transactions.status} = 'approved' 
+            THEN ${transactions.amount} ELSE 0 END), 0)
+        `,
+        })
+        .from(transactions);
 
+      const row = result[0];
+
+      const totalDeposits = Number(row.totalDeposits);
+      const totalWithdrawals = Number(row.totalWithdrawals);
+      const totalWins = Number(row.totalWins);
+      const totalLosses = Number(row.totalLosses);
+
+      // Calculate total balance of all players
+      const totalCurrentBalance =
+        totalDeposits + totalWins - totalWithdrawals - totalLosses;
+
+      return totalCurrentBalance;
+    } catch (error) {
+      console.error("Error calculating total players balance:", error);
+      throw error;
+    }
+  },
   async getBalanceSummary(userId: number): Promise<{
     totalBalance: number;
     currencyBalances: PlayerBalance[];
@@ -195,26 +246,32 @@ export const BalanceModel = {
     try {
       // Get all balances for the user across all currencies
       const balances = await this.calculateAllPlayerBalances({ userId });
-      
-      const summary = balances.reduce((acc, balance) => {
-        acc.totalDeposits += balance.totalDeposits;
-        acc.totalWithdrawals += balance.totalWithdrawals;
-        acc.totalWins += balance.totalWins;
-        acc.totalLosses += balance.totalLosses;
-        return acc;
-      }, {
-        totalDeposits: 0,
-        totalWithdrawals: 0,
-        totalWins: 0,
-        totalLosses: 0,
-        netGamblingResult: 0,
-      });
+
+      const summary = balances.reduce(
+        (acc, balance) => {
+          acc.totalDeposits += balance.totalDeposits;
+          acc.totalWithdrawals += balance.totalWithdrawals;
+          acc.totalWins += balance.totalWins;
+          acc.totalLosses += balance.totalLosses;
+          return acc;
+        },
+        {
+          totalDeposits: 0,
+          totalWithdrawals: 0,
+          totalWins: 0,
+          totalLosses: 0,
+          netGamblingResult: 0,
+        }
+      );
 
       // Calculate net gambling result (wins - losses)
       summary.netGamblingResult = summary.totalWins - summary.totalLosses;
-      
+
       // Calculate total balance across all currencies
-      const totalBalance = balances.reduce((sum, balance) => sum + balance.currentBalance, 0);
+      const totalBalance = balances.reduce(
+        (sum, balance) => sum + balance.currentBalance,
+        0
+      );
 
       return {
         totalBalance,
@@ -227,7 +284,10 @@ export const BalanceModel = {
     }
   },
 
-  async getCurrencyBalance(userId: number, currencyId: number): Promise<PlayerBalance | null> {
+  async getCurrencyBalance(
+    userId: number,
+    currencyId: number
+  ): Promise<PlayerBalance | null> {
     try {
       const balance = await this.calculatePlayerBalance(userId, currencyId);
       return balance;
