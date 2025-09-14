@@ -155,6 +155,7 @@ export const getDashboardStats = asyncHandler(
 
         companyProfit: Number(totalCompanyProfit || 0),
         totalGGRAmount: Number(totalGGRAmount || 0),
+        totalPlayerCurrentBalance: Number(totalPlayerCurrentBalance || 0),
 
         // Win/Loss
         totalWin: Number(transactionStats[0]?.totalWin || 0),
