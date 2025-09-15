@@ -1,0 +1,101 @@
+import { Request, Response, NextFunction } from "express";
+import { ChatModel } from "../models/chat.model";
+import { MessageModel } from "../models/message.model";
+import { asyncHandler } from "../utils/asyncHandler";
+import { NewChat, ChatStatus } from "../db/schema/chats";
+import { NewMessage, MessageSenderType } from "../db/schema/messages";
+
+export class ChatController {
+  static createChat = asyncHandler(
+    async (req: Request, res: Response, next: NextFunction) => {
+      const { userId, initialMessageContent } = req.body;
+
+      const newChat: NewChat = {
+        userId,
+        status: "open",
+      };
+
+      const chatId = await ChatModel.createChat(newChat);
+
+      if (initialMessageContent && chatId) {
+        const initialMessage: NewMessage = {
+          chatId: chatId,
+          senderId: userId,
+          senderType: "user",
+          content: initialMessageContent,
+        };
+        await MessageModel.createMessage(initialMessage);
+      }
+
+      res.status(201).json({
+        success: true,
+        message: "Chat created successfully",
+        data: { id: chatId },
+      });
+    }
+  );
+
+  static getChatById = asyncHandler(
+    async (req: Request, res: Response, next: NextFunction) => {
+      const chatId = parseInt(req.params.id);
+      const chat = await ChatModel.getChatById(chatId);
+
+      if (!chat) {
+        return res.status(404).json({ success: false, message: "Chat not found" });
+      }
+
+      res.status(200).json({ success: true, data: chat });
+    }
+  );
+
+  static getChatsByUserId = asyncHandler(
+    async (req: Request, res: Response, next: NextFunction) => {
+      const userId = parseInt(req.params.userId);
+      const chats = await ChatModel.getChatsByUserId(userId);
+
+      res.status(200).json({ success: true, data: chats });
+    }
+  );
+
+  static updateChatStatus = asyncHandler(
+    async (req: Request, res: Response, next: NextFunction) => {
+      const chatId = parseInt(req.params.id);
+      const { status } = req.body;
+
+      if (!Object.values(ChatStatus).includes(status)) {
+        return res.status(400).json({ success: false, message: "Invalid chat status" });
+      }
+
+      const updatedChat = await ChatModel.updateChatStatus(chatId, status);
+
+      if (!updatedChat) {
+        return res.status(404).json({ success: false, message: "Chat not found" });
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Chat status updated successfully",
+        data: updatedChat,
+      });
+    }
+  );
+
+  static assignAdminToChat = asyncHandler(
+    async (req: Request, res: Response, next: NextFunction) => {
+      const chatId = parseInt(req.params.id);
+      const { adminUserId } = req.body;
+
+      const updatedChat = await ChatModel.assignAdminToChat(chatId, adminUserId);
+
+      if (!updatedChat) {
+        return res.status(404).json({ success: false, message: "Chat not found" });
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Admin assigned to chat successfully",
+        data: updatedChat,
+      });
+    }
+  );
+}

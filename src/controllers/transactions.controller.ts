@@ -230,8 +230,8 @@ export const createAffiliateWithdraw = async (req: Request, res: Response) => {
         createdByPlayer: user?.userType === "user" ? user?.id : undefined,
         createdByAdmin: user?.userType === "admin" ? user?.id : undefined,
         notes: `Affiliate withdrawal - Transaction ID: ${customTransactionId}`,
-      });
-
+      },tx);
+      
       return { transactionId, customTransactionId };
     });
 
