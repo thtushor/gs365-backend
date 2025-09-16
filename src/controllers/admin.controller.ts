@@ -3910,7 +3910,7 @@ export const updateKycStatus = async (req: Request, res: Response) => {
         if (updatedKyc.length) {
           const result = await db
             .update(kyc)
-            .set({ status: "pending" })
+            .set({ status: status })
             .where(
               and(
                 eq(kyc.holderId, Number(holderId)),
