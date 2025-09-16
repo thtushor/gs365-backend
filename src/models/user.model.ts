@@ -94,6 +94,7 @@ export const getUserDetailsById = async (
         // User referrer info (from referred_by column)
         userReferrerName: sql<string>`user_referrer.fullname`,
         userReferrerUsername: sql<string>`user_referrer.username`,
+        currency: currencies,
       })
       .from(users)
       .leftJoin(currencies, eq(users.currency_id, currencies.id))
