@@ -1,4 +1,16 @@
-import { eq, and, sql, desc, asc, count, sum, gte, lte, like, or } from "drizzle-orm";
+import {
+  eq,
+  and,
+  sql,
+  desc,
+  asc,
+  count,
+  sum,
+  gte,
+  lte,
+  like,
+  or,
+} from "drizzle-orm";
 import { db } from "../db/connection";
 import { adminMainBalance } from "../db/schema/adminMainBalance";
 import { users } from "../db/schema/users";
@@ -9,7 +21,12 @@ import { currencies } from "../db/schema/currency";
 
 export interface AdminMainBalanceData {
   amount: number;
-  type: "admin_deposit" | "player_deposit" | "promotion" | "player_withdraw" | "admin_withdraw";
+  type:
+    | "admin_deposit"
+    | "player_deposit"
+    | "promotion"
+    | "player_withdraw"
+    | "admin_withdraw";
   status?: "approved" | "pending" | "rejected";
   promotionId?: number;
   transactionId?: number;
@@ -65,7 +82,7 @@ export interface PaginatedResult<T> {
 
 export const AdminMainBalanceModel = {
   // Create a new admin main balance record
-  async create(data: AdminMainBalanceData,tx?:any): Promise<number> {
+  async create(data: AdminMainBalanceData, tx?: any): Promise<number> {
     try {
       const [result] = await (tx ?? db).insert(adminMainBalance).values({
         amount: data.amount.toString(),
@@ -115,9 +132,15 @@ export const AdminMainBalanceModel = {
         .from(adminMainBalance)
         .leftJoin(currencies, eq(adminMainBalance.currencyId, currencies.id))
         .leftJoin(promotions, eq(adminMainBalance.promotionId, promotions.id))
-        .leftJoin(transactions, eq(adminMainBalance.transactionId, transactions.id))
+        .leftJoin(
+          transactions,
+          eq(adminMainBalance.transactionId, transactions.id)
+        )
         .leftJoin(users, eq(adminMainBalance.createdByPlayer, users.id))
-        .leftJoin(adminUsers, eq(adminMainBalance.createdByAdmin, adminUsers.id))
+        .leftJoin(
+          adminUsers,
+          eq(adminMainBalance.createdByAdmin, adminUsers.id)
+        )
         .where(eq(adminMainBalance.id, id))
         .limit(1);
 
@@ -129,19 +152,28 @@ export const AdminMainBalanceModel = {
   },
 
   // Update admin main balance record
-  async update(id: number, data: Partial<AdminMainBalanceData>): Promise<boolean> {
+  async update(
+    id: number,
+    data: Partial<AdminMainBalanceData>
+  ): Promise<boolean> {
     try {
       const updateData: any = {};
-      
+
       if (data.amount !== undefined) updateData.amount = data.amount.toString();
       if (data.type !== undefined) updateData.type = data.type;
       if (data.status !== undefined) updateData.status = data.status;
-      if (data.promotionId !== undefined) updateData.promotionId = data.promotionId;
-      if (data.transactionId !== undefined) updateData.transactionId = data.transactionId;
-      if (data.promotionName !== undefined) updateData.promotionName = data.promotionName;
-      if (data.currencyId !== undefined) updateData.currencyId = data.currencyId;
-      if (data.createdByPlayer !== undefined) updateData.createdByPlayer = data.createdByPlayer;
-      if (data.createdByAdmin !== undefined) updateData.createdByAdmin = data.createdByAdmin;
+      if (data.promotionId !== undefined)
+        updateData.promotionId = data.promotionId;
+      if (data.transactionId !== undefined)
+        updateData.transactionId = data.transactionId;
+      if (data.promotionName !== undefined)
+        updateData.promotionName = data.promotionName;
+      if (data.currencyId !== undefined)
+        updateData.currencyId = data.currencyId;
+      if (data.createdByPlayer !== undefined)
+        updateData.createdByPlayer = data.createdByPlayer;
+      if (data.createdByAdmin !== undefined)
+        updateData.createdByAdmin = data.createdByAdmin;
       if (data.notes !== undefined) updateData.notes = data.notes;
 
       await db
@@ -157,19 +189,28 @@ export const AdminMainBalanceModel = {
   },
 
   // Update admin main balance records by transaction ID
-  async updateByTransactionId(transactionId: number, data: Partial<AdminMainBalanceData>): Promise<boolean> {
+  async updateByTransactionId(
+    transactionId: number,
+    data: Partial<AdminMainBalanceData>
+  ): Promise<boolean> {
     try {
       const updateData: any = {};
-      
+
       if (data.amount !== undefined) updateData.amount = data.amount.toString();
       if (data.type !== undefined) updateData.type = data.type;
       if (data.status !== undefined) updateData.status = data.status;
-      if (data.promotionId !== undefined) updateData.promotionId = data.promotionId;
-      if (data.transactionId !== undefined) updateData.transactionId = data.transactionId;
-      if (data.promotionName !== undefined) updateData.promotionName = data.promotionName;
-      if (data.currencyId !== undefined) updateData.currencyId = data.currencyId;
-      if (data.createdByPlayer !== undefined) updateData.createdByPlayer = data.createdByPlayer;
-      if (data.createdByAdmin !== undefined) updateData.createdByAdmin = data.createdByAdmin;
+      if (data.promotionId !== undefined)
+        updateData.promotionId = data.promotionId;
+      if (data.transactionId !== undefined)
+        updateData.transactionId = data.transactionId;
+      if (data.promotionName !== undefined)
+        updateData.promotionName = data.promotionName;
+      if (data.currencyId !== undefined)
+        updateData.currencyId = data.currencyId;
+      if (data.createdByPlayer !== undefined)
+        updateData.createdByPlayer = data.createdByPlayer;
+      if (data.createdByAdmin !== undefined)
+        updateData.createdByAdmin = data.createdByAdmin;
       if (data.notes !== undefined) updateData.notes = data.notes;
 
       await db
@@ -179,7 +220,10 @@ export const AdminMainBalanceModel = {
 
       return true;
     } catch (error) {
-      console.error("Error updating admin main balance by transaction ID:", error);
+      console.error(
+        "Error updating admin main balance by transaction ID:",
+        error
+      );
       throw error;
     }
   },
@@ -187,9 +231,7 @@ export const AdminMainBalanceModel = {
   // Delete admin main balance record
   async delete(id: number): Promise<boolean> {
     try {
-      await db
-        .delete(adminMainBalance)
-        .where(eq(adminMainBalance.id, id));
+      await db.delete(adminMainBalance).where(eq(adminMainBalance.id, id));
 
       return true;
     } catch (error) {
@@ -208,7 +250,7 @@ export const AdminMainBalanceModel = {
         page = 1,
         pageSize = 10,
         sortBy = "createdAt",
-        sortOrder = "desc"
+        sortOrder = "desc",
       } = pagination;
 
       const offset = (page - 1) * pageSize;
@@ -217,31 +259,51 @@ export const AdminMainBalanceModel = {
       const whereConditions = [];
 
       if (filters.type) {
+        // If caller specifies type → use it directly
         whereConditions.push(eq(adminMainBalance.type, filters.type as any));
+      } else {
+        // Default case → only admin_deposit
+        whereConditions.push(eq(adminMainBalance.type, "admin_deposit"));
       }
       if (filters.status) {
-        whereConditions.push(eq(adminMainBalance.status, filters.status as any));
+        whereConditions.push(
+          eq(adminMainBalance.status, filters.status as any)
+        );
       }
       if (filters.promotionId) {
-        whereConditions.push(eq(adminMainBalance.promotionId, filters.promotionId));
+        whereConditions.push(
+          eq(adminMainBalance.promotionId, filters.promotionId)
+        );
       }
       if (filters.transactionId) {
-        whereConditions.push(eq(adminMainBalance.transactionId, filters.transactionId));
+        whereConditions.push(
+          eq(adminMainBalance.transactionId, filters.transactionId)
+        );
       }
       if (filters.createdByPlayer) {
-        whereConditions.push(eq(adminMainBalance.createdByPlayer, filters.createdByPlayer));
+        whereConditions.push(
+          eq(adminMainBalance.createdByPlayer, filters.createdByPlayer)
+        );
       }
       if (filters.createdByAdmin) {
-        whereConditions.push(eq(adminMainBalance.createdByAdmin, filters.createdByAdmin));
+        whereConditions.push(
+          eq(adminMainBalance.createdByAdmin, filters.createdByAdmin)
+        );
       }
       if (filters.currencyId) {
-        whereConditions.push(eq(adminMainBalance.currencyId, filters.currencyId));
+        whereConditions.push(
+          eq(adminMainBalance.currencyId, filters.currencyId)
+        );
       }
       if (filters.startDate) {
-        whereConditions.push(gte(adminMainBalance.createdAt, new Date(filters.startDate)));
+        whereConditions.push(
+          gte(adminMainBalance.createdAt, new Date(filters.startDate))
+        );
       }
       if (filters.endDate) {
-        whereConditions.push(lte(adminMainBalance.createdAt, new Date(filters.endDate)));
+        whereConditions.push(
+          lte(adminMainBalance.createdAt, new Date(filters.endDate))
+        );
       }
       if (filters.search) {
         whereConditions.push(
@@ -252,7 +314,8 @@ export const AdminMainBalanceModel = {
         );
       }
 
-      const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
+      const whereClause =
+        whereConditions.length > 0 ? and(...whereConditions) : undefined;
 
       // Get total count
       const [totalResult] = await db
@@ -263,7 +326,10 @@ export const AdminMainBalanceModel = {
       const total = totalResult.count;
 
       // Get paginated data
-      const orderBy = sortOrder === "asc" ? asc(adminMainBalance.createdAt) : desc(adminMainBalance.createdAt);
+      const orderBy =
+        sortOrder === "asc"
+          ? asc(adminMainBalance.createdAt)
+          : desc(adminMainBalance.createdAt);
 
       const data = await db
         .select({
@@ -290,9 +356,15 @@ export const AdminMainBalanceModel = {
         .from(adminMainBalance)
         .leftJoin(currencies, eq(adminMainBalance.currencyId, currencies.id))
         .leftJoin(promotions, eq(adminMainBalance.promotionId, promotions.id))
-        .leftJoin(transactions, eq(adminMainBalance.transactionId, transactions.id))
+        .leftJoin(
+          transactions,
+          eq(adminMainBalance.transactionId, transactions.id)
+        )
         .leftJoin(users, eq(adminMainBalance.createdByPlayer, users.id))
-        .leftJoin(adminUsers, eq(adminMainBalance.createdByAdmin, adminUsers.id))
+        .leftJoin(
+          adminUsers,
+          eq(adminMainBalance.createdByAdmin, adminUsers.id)
+        )
         .where(whereClause)
         .orderBy(orderBy)
         .limit(pageSize)
@@ -307,7 +379,7 @@ export const AdminMainBalanceModel = {
         data,
         pagination: {
           page,
-         pageSize,
+          pageSize,
           total,
           totalPages,
           hasNext: page < totalPages,
@@ -322,29 +394,40 @@ export const AdminMainBalanceModel = {
   },
 
   // Calculate current main balance and stats
-  async calculateStats(filters: AdminMainBalanceFilters = {}): Promise<AdminMainBalanceStats> {
+  async calculateStats(
+    filters: AdminMainBalanceFilters = {}
+  ): Promise<AdminMainBalanceStats> {
     try {
       // Build where conditions for stats
       const whereConditions = [];
 
       if (filters.currencyId) {
-        whereConditions.push(eq(adminMainBalance.currencyId, filters.currencyId));
+        whereConditions.push(
+          eq(adminMainBalance.currencyId, filters.currencyId)
+        );
       }
       if (filters.status) {
-        whereConditions.push(eq(adminMainBalance.status, filters.status as any));
+        whereConditions.push(
+          eq(adminMainBalance.status, filters.status as any)
+        );
       }
       if (filters.startDate) {
-        whereConditions.push(gte(adminMainBalance.createdAt, new Date(filters.startDate)));
+        whereConditions.push(
+          gte(adminMainBalance.createdAt, new Date(filters.startDate))
+        );
       }
       if (filters.endDate) {
-        whereConditions.push(lte(adminMainBalance.createdAt, new Date(filters.endDate)));
+        whereConditions.push(
+          lte(adminMainBalance.createdAt, new Date(filters.endDate))
+        );
       }
 
-      const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
+      const whereClause =
+        whereConditions.length > 0 ? and(...whereConditions) : undefined;
 
-     const [statsResult] = await db
-  .select({
-    totalAdminDeposit: sql<number>`
+      const [statsResult] = await db
+        .select({
+          totalAdminDeposit: sql<number>`
       COALESCE(
         SUM(
           CASE 
@@ -354,7 +437,7 @@ export const AdminMainBalanceModel = {
         ), 0
       )
     `,
-    totalPlayerDeposit: sql<number>`
+          totalPlayerDeposit: sql<number>`
       COALESCE(
         SUM(
           CASE 
@@ -365,7 +448,7 @@ export const AdminMainBalanceModel = {
         ), 0
       )
     `,
-    totalPromotion: sql<number>`
+          totalPromotion: sql<number>`
       COALESCE(
         SUM(
           CASE 
@@ -376,7 +459,7 @@ export const AdminMainBalanceModel = {
         ), 0
       )
     `,
-    totalPlayerWithdraw: sql<number>`
+          totalPlayerWithdraw: sql<number>`
       COALESCE(
         SUM(
           CASE 
@@ -387,7 +470,7 @@ export const AdminMainBalanceModel = {
         ), 0
       )
     `,
-    totalAdminWithdraw: sql<number>`
+          totalAdminWithdraw: sql<number>`
       COALESCE(
         SUM(
           CASE 
@@ -398,12 +481,10 @@ export const AdminMainBalanceModel = {
         ), 0
       )
     `,
-    totalRecords: count(),
-  })
-  .from(adminMainBalance)
-  .where(whereClause);
-
-
+          totalRecords: count(),
+        })
+        .from(adminMainBalance)
+        .where(whereClause);
 
       const {
         totalAdminDeposit,
@@ -411,12 +492,17 @@ export const AdminMainBalanceModel = {
         totalPromotion,
         totalPlayerWithdraw,
         totalAdminWithdraw,
-        totalRecords
+        totalRecords,
       } = statsResult;
 
       // Calculate current main balance
       // current main balance = total admin deposit - total player deposit - total promotion + total player withdraw + total admin withdraw
-      const currentMainBalance = Number(totalAdminDeposit) + Number(totalPlayerWithdraw) + Number(totalAdminWithdraw) - Number(totalPlayerDeposit) - Number(totalPromotion);
+      const currentMainBalance =
+        Number(totalAdminDeposit) +
+        Number(totalPlayerWithdraw) +
+        Number(totalAdminWithdraw) -
+        Number(totalPlayerDeposit) -
+        Number(totalPromotion);
 
       return {
         totalAdminDeposit,
@@ -434,18 +520,27 @@ export const AdminMainBalanceModel = {
   },
 
   // Get balance by type
-  async getBalanceByType(type: string, filters: AdminMainBalanceFilters = {}): Promise<number> {
+  async getBalanceByType(
+    type: string,
+    filters: AdminMainBalanceFilters = {}
+  ): Promise<number> {
     try {
       const whereConditions = [eq(adminMainBalance.type, type as any)];
 
       if (filters.currencyId) {
-        whereConditions.push(eq(adminMainBalance.currencyId, filters.currencyId));
+        whereConditions.push(
+          eq(adminMainBalance.currencyId, filters.currencyId)
+        );
       }
       if (filters.startDate) {
-        whereConditions.push(gte(adminMainBalance.createdAt, new Date(filters.startDate)));
+        whereConditions.push(
+          gte(adminMainBalance.createdAt, new Date(filters.startDate))
+        );
       }
       if (filters.endDate) {
-        whereConditions.push(lte(adminMainBalance.createdAt, new Date(filters.endDate)));
+        whereConditions.push(
+          lte(adminMainBalance.createdAt, new Date(filters.endDate))
+        );
       }
 
       const [result] = await db
@@ -481,7 +576,10 @@ export const AdminMainBalanceModel = {
         .from(adminMainBalance)
         .leftJoin(currencies, eq(adminMainBalance.currencyId, currencies.id))
         .leftJoin(users, eq(adminMainBalance.createdByPlayer, users.id))
-        .leftJoin(adminUsers, eq(adminMainBalance.createdByAdmin, adminUsers.id))
+        .leftJoin(
+          adminUsers,
+          eq(adminMainBalance.createdByAdmin, adminUsers.id)
+        )
         .orderBy(desc(adminMainBalance.createdAt))
         .limit(limit);
 
