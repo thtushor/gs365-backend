@@ -354,7 +354,7 @@ export const createWithdraw = async (req: Request, res: Response) => {
 
     // Calculate user's current balance using BalanceModel
     const playerBalance = await BalanceModel.calculatePlayerBalance(userId);
-    const currentBalance = playerBalance.currentBalance;
+    const currentBalance = playerBalance.currentBalance||0;
 
     // Check if user has sufficient withdrawable balance
     const hasSufficientBalance = currentBalance >= minWithdrawableBalance;
@@ -464,7 +464,7 @@ export const createWithdraw = async (req: Request, res: Response) => {
         createdByPlayer: user?.userType === "user" ? user?.id : undefined,
         createdByAdmin: user?.userType === "admin" ? user?.id : undefined,
         notes: `Player withdrawal - Transaction ID: ${customTransactionId}`,
-      });
+      },tx);
 
       return { transactionId, customTransactionId };
     });
