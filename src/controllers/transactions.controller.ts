@@ -363,11 +363,14 @@ export const createWithdraw = async (req: Request, res: Response) => {
     const hasPendingTurnover = pendingTurnover.length > 0;
 
     // User can withdraw if: sufficient balance AND no pending turnover
-    const canWithdraw = hasSufficientBalance && !hasPendingTurnover;
+    const canWithdraw = hasSufficientBalance && !hasPendingTurnover && userExists.kyc_status!=="required";
 
     if (!canWithdraw) {
       let withdrawReason = "";
-      if (!hasSufficientBalance) {
+      if(userExists.kyc_status==="required"){
+      withdrawReason = "Please verify your KYC status."
+      }
+      else if (!hasSufficientBalance) {
         withdrawReason = `Insufficient balance. Current balance: ${currentBalance.toFixed(
           2
         )}, Minimum required: ${minWithdrawableBalance.toFixed(2)}`;
