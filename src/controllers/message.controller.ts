@@ -5,6 +5,7 @@ import { AutoReplyModel } from "../models/autoReply.model";
 import { asyncHandler } from "../utils/asyncHandler";
 import { NewMessage, MessageSenderType } from "../db/schema/messages";
 import { ChatStatus } from "../db/schema/chats";
+import { io } from "../index"; // Import the Socket.IO instance
 
 export class MessageController {
   static sendMessage = asyncHandler(
@@ -21,6 +22,9 @@ export class MessageController {
 
       const message = await MessageModel.createMessage(newMessage);
 
+      // Emit message via Socket.IO
+      io.to(chatId.toString()).emit("newMessage", message);
+
       // Update chat status based on sender
       if (senderType === "user") {
         await ChatModel.updateChatStatus(chatId, "pending_admin_response");
@@ -33,7 +37,8 @@ export class MessageController {
             senderType: "system",
             content: autoReply.replyMessage,
           };
-          await MessageModel.createMessage(autoReplyMessage);
+          const systemMessage = await MessageModel.createMessage(autoReplyMessage);
+          io.to(chatId.toString()).emit("newMessage", systemMessage); // Emit auto-reply
         }
       } else if (senderType === "admin") {
         await ChatModel.updateChatStatus(chatId, "pending_user_response");

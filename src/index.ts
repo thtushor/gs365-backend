@@ -3,6 +3,8 @@ import { drizzle } from "drizzle-orm/mysql2";
 import type { ConnectionOptions } from "mysql2";
 import process from "process";
 import express from "express";
+import { createServer } from "http";
+import { Server } from "socket.io";
 import mysql from "mysql2/promise";
 import cors from "cors";
 import { pool } from "./db/connection";
@@ -38,6 +40,7 @@ import { autoReplyRoute } from "./routes/autoReply.route";
 import { errorHandler } from "./middlewares/errorHandler";
 import { setupSwagger } from "./utils/swagger";
 import designationRouter from "./routes/designation.route";
+import { setupSocketIO } from "./socket";
 // Ensure process.env.DATABASE_URL is defined and of correct type
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL environment variable is not set.");
@@ -55,6 +58,16 @@ if (!process.env.DATABASE_URL) {
 })();
 
 const app = express();
+const httpServer = createServer(app);
+export const io = new Server(httpServer, {
+  cors: {
+    origin: "*", // Adjust this in production to your client's URL
+    methods: ["GET", "POST"],
+  },
+  pingInterval: 10000, // Send ping every 10 seconds
+  pingTimeout: 5000, // Disconnect if no pong received within 5 seconds
+  transports: ["websocket", "polling"], // Prioritize websocket
+});
 
 // CORS configuration
 app.use(cors());
@@ -126,8 +139,10 @@ app.get("/", (req, res) => {
 app.use(errorHandler);
 setupSwagger(app);
 
+setupSocketIO(io);
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Swagger docs: http://localhost:${PORT}/api-docs`);
 });

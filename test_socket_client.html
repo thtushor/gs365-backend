@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Socket.IO Chat Test</title>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        #messages { list-style-type: none; padding: 0; }
+        #messages li { padding: 5px 10px; border-bottom: 1px solid #eee; }
+        #form { background: #eee; padding: 10px; display: flex; }
+        #input { flex-grow: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; margin-right: 10px; }
+        #form button { background: #007bff; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Socket.IO Chat Test Client</h1>
+    <p>Open this file in your browser. Make sure your backend server is running on port 3000.</p>
+    <p>Enter a Chat ID and Sender ID to join a chat room and send messages.</p>
+
+    <div>
+        <label for="chatId">Chat ID:</label>
+        <input type="text" id="chatId" value="1" />
+        <label for="senderId">Sender ID:</label>
+        <input type="text" id="senderId" value="101" />
+        <button onclick="joinChat()">Join Chat</button>
+    </div>
+    <ul id="messages"></ul>
+    <form id="form" action="">
+        <input id="input" autocomplete="off" /><button>Send</button>
+    </form>
+
+    <script>
+        const socket = io("http://localhost:3000"); // Connect to your backend server
+        const messages = document.getElementById('messages');
+        const form = document.getElementById('form');
+        const input = document.getElementById('input');
+        const chatIdInput = document.getElementById('chatId');
+        const senderIdInput = document.getElementById('senderId');
+        let currentChatId = null;
+        let currentSenderId = null;
+
+        socket.on('connect', () => {
+            console.log('Connected to Socket.IO server');
+            appendMessage('System', 'Connected to server');
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Disconnected from Socket.IO server');
+            appendMessage('System', 'Disconnected from server');
+        });
+
+        socket.on('newMessage', (msg) => {
+            console.log('New message received:', msg);
+            appendMessage(`[Chat ${msg.chatId}] ${msg.senderType === 'user' ? 'User' : msg.senderType === 'admin' ? 'Admin' : 'System'} ${msg.senderId}`, msg.content);
+        });
+
+        function appendMessage(sender, content) {
+            const item = document.createElement('li');
+            item.textContent = `${sender}: ${content}`;
+            messages.appendChild(item);
+            window.scrollTo(0, document.body.scrollHeight);
+        }
+
+        function joinChat() {
+            currentChatId = chatIdInput.value;
+            currentSenderId = senderIdInput.value;
+            if (currentChatId) {
+                socket.emit('joinChat', currentChatId);
+                appendMessage('System', `Joined chat ${currentChatId} as sender ${currentSenderId}`);
+            }
+        }
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (input.value && currentChatId && currentSenderId) {
+                const messageData = {
+                    chatId: parseInt(currentChatId),
+                    senderId: parseInt(currentSenderId),
+                    senderType: parseInt(currentSenderId) === 101 ? 'user' : 'admin', // Simple logic for testing
+                    content: input.value
+                };
+                socket.emit('sendMessage', messageData);
+                input.value = '';
+            } else {
+                alert('Please join a chat and enter a message.');
+            }
+        });
+    </script>
+</body>
+</html>
