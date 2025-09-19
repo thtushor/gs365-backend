@@ -102,7 +102,9 @@ export class ChatController {
 
   static getAllChats = asyncHandler(
     async (req: Request, res: Response, next: NextFunction) => {
-      const chats = await ChatModel.getAllChats();
+      const chatUserType = req.query.chatUserType as "admin" | "user" | undefined;
+      const searchKey = req.query.searchKey as string | undefined;
+      const chats = await ChatModel.getAllChats(chatUserType, searchKey);
       res.status(200).json({ success: true, data: chats });
     }
   );

@@ -11,6 +11,7 @@ import {
 } from "drizzle-orm/mysql-core";
 import { relations, sql } from "drizzle-orm";
 import { designation } from "./designation";
+import { chats } from "./chats"; // Import chats schema
 
 export const adminRole = mysqlEnum("role", [
   "superAdmin",
@@ -80,12 +81,12 @@ export const adminUsers = mysqlTable("admin_users", {
 });
 
 // 🔗 Self-reference for createdBy relationship
-export const adminUsersRelations = relations(adminUsers, ({ one }) => ({
+export const adminUsersRelations = relations(adminUsers, ({ one, many }) => ({
   createdByUser: one(adminUsers, {
     fields: [adminUsers.createdBy],
     references: [adminUsers.id],
   }),
-
+  chats: many(chats),
   // designationRelation: one(designation, {
   //   fields: [adminUsers.designation],
   //   references: [designation.id],

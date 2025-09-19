@@ -1,7 +1,9 @@
 import { db } from "../db/connection";
 import { chats, NewChat } from "../db/schema/chats";
 import { users } from "../db/schema/users"; // Import users schema
-import { eq } from "drizzle-orm";
+import { adminUsers } from "../db/schema/AdminUsers"; // Import adminUsers schema
+import { messages } from "../db/schema/messages"; // Import messages schema
+import { eq, isNotNull, like, or, and, sql } from "drizzle-orm";
 
 export class ChatModel {
   static async createChat(newChat: NewChat) {
@@ -47,30 +49,61 @@ export class ChatModel {
     return updatedChat;
   }
 
-  static async getAllChats() {
-    const allUsersWithChats = await db.query.users.findMany({
-      with: {
-        chats: {
-          with: {
-            messages: true,
-            adminUser: true,
-          },
-        },
-      },
-    });
+  static async getAllChats(chatUserType?: 'user' | 'admin', searchKey?: string) {
+    const searchCondition = searchKey ? `%${searchKey}%` : undefined;
 
-    // Transform the data to match the desired format
-    const formattedUsers = allUsersWithChats.map(user => {
-      const chatsWithMessages = user.chats.map(chat => ({
-        ...chat,
-        messages: chat.messages || [], // Ensure messages is an array, even if empty
-      }));
-      return {
-        ...user,
-        chats: chatsWithMessages,
-      };
-    });
+    const chatQuery = db.select({
+      chat: chats,
+      user: users,
+      adminUser: adminUsers,
+      message: messages,
+    })
+    .from(chats)
+    .leftJoin(users, eq(chats.userId, users.id))
+    .leftJoin(adminUsers, eq(chats.adminUserId, adminUsers.id))
+    .leftJoin(messages, eq(chats.id, messages.chatId))
+    .where(and(
+      chatUserType === 'admin' ? isNotNull(chats.adminUserId) : undefined,
+      searchCondition ? or(
+        like(users.username, searchCondition),
+        like(users.fullname, searchCondition),
+        like(users.email, searchCondition),
+        like(users.phone, searchCondition),
+        like(messages.content, searchCondition)
+      ) : undefined
+    ));
 
-    return formattedUsers;
+    const rawChats = await chatQuery;
+
+    const groupedChats: any = {};
+
+    for (const row of rawChats) {
+      const chat = row.chat;
+      const user = row.user;
+      const adminUser = row.adminUser;
+      const message = row.message;
+
+      const key = chatUserType === 'admin' ? `admin-${adminUser?.id}` : `user-${user?.id}`;
+
+      if (!groupedChats[key]) {
+        groupedChats[key] = {
+          ...(chatUserType === 'admin' ? adminUser : user),
+          chats: [],
+        };
+      }
+
+      let existingChat = groupedChats[key].chats.find((c: any) => c.id === chat.id);
+
+      if (!existingChat) {
+        existingChat = { ...chat, messages: [] };
+        groupedChats[key].chats.push(existingChat);
+      }
+
+      if (message && !existingChat.messages.some((m: any) => m.id === message.id)) {
+        existingChat.messages.push(message);
+      }
+    }
+
+    return Object.values(groupedChats);
   }
 }

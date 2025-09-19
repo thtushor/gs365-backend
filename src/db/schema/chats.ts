@@ -23,7 +23,6 @@ export const ChatType = mysqlEnum("chat_type",[
 export const chats = mysqlTable("chats", {
   id: int("id").primaryKey().autoincrement(),
   userId: int("user_id")
-    .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   adminUserId: int("admin_user_id").references(() => adminUsers.id, {
     onDelete: "set null",
