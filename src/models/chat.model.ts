@@ -3,6 +3,7 @@ import { chats, NewChat } from "../db/schema/chats";
 import { users } from "../db/schema/users"; // Import users schema
 import { adminUsers } from "../db/schema/AdminUsers"; // Import adminUsers schema
 import { messages } from "../db/schema/messages"; // Import messages schema
+import { designation } from "../db/schema/designation"; // Import designations schema
 import { eq, isNotNull, like, or, and, sql } from "drizzle-orm";
 
 export class ChatModel {
@@ -52,58 +53,64 @@ export class ChatModel {
   static async getAllChats(chatUserType?: 'user' | 'admin', searchKey?: string) {
     const searchCondition = searchKey ? `%${searchKey}%` : undefined;
 
-    const chatQuery = db.select({
-      chat: chats,
-      user: users,
-      adminUser: adminUsers,
-      message: messages,
-    })
-    .from(chats)
-    .leftJoin(users, eq(chats.userId, users.id))
-    .leftJoin(adminUsers, eq(chats.adminUserId, adminUsers.id))
-    .leftJoin(messages, eq(chats.id, messages.chatId))
-    .where(and(
-      chatUserType === 'admin' ? isNotNull(chats.adminUserId) : undefined,
-      searchCondition ? or(
-        like(users.username, searchCondition),
-        like(users.fullname, searchCondition),
-        like(users.email, searchCondition),
-        like(users.phone, searchCondition),
-        like(messages.content, searchCondition)
-      ) : undefined
-    ));
-
-    const rawChats = await chatQuery;
-
-    const groupedChats: any = {};
-
-    for (const row of rawChats) {
-      const chat = row.chat;
-      const user = row.user;
-      const adminUser = row.adminUser;
-      const message = row.message;
-
-      const key = chatUserType === 'admin' ? `admin-${adminUser?.id}` : `user-${user?.id}`;
-
-      if (!groupedChats[key]) {
-        groupedChats[key] = {
-          ...(chatUserType === 'admin' ? adminUser : user),
-          chats: [],
+    if (chatUserType === 'admin') {
+      const allAdminUsersWithChats = await db.query.adminUsers.findMany({
+        where: (adminUser, { or, eq }) => or(
+          eq(adminUser.role, 'affiliate'),
+          eq(adminUser.role, 'superAffiliate')
+        ),
+        with: {
+          chats: {
+            where: (chat, { and, or, isNotNull }) => and(
+              isNotNull(chat.adminUserId),
+              searchCondition ? or(
+                sql`EXISTS (SELECT 1 FROM ${users} WHERE ${users.id} = ${chat.userId} AND (${like(users.username, searchCondition)} OR ${like(users.fullname, searchCondition)} OR ${like(users.email, searchCondition)} OR ${like(users.phone, searchCondition)}))`,
+                sql`EXISTS (SELECT 1 FROM ${messages} WHERE ${messages.chatId} = ${chat.id} AND ${like(messages.content, searchCondition)})`
+              ) : undefined
+            ),
+            with: {
+              messages: true,
+              user: true,
+            },
+          },
+        },
+      });
+      return allAdminUsersWithChats.map(adminUser => {
+        const chatsWithMessages = adminUser.chats.map(chat => ({
+          ...chat,
+          messages: chat.messages || [],
+        }));
+        return {
+          ...adminUser,
+          chats: chatsWithMessages,
         };
-      }
+      });
 
-      let existingChat = groupedChats[key].chats.find((c: any) => c.id === chat.id);
-
-      if (!existingChat) {
-        existingChat = { ...chat, messages: [] };
-        groupedChats[key].chats.push(existingChat);
-      }
-
-      if (message && !existingChat.messages.some((m: any) => m.id === message.id)) {
-        existingChat.messages.push(message);
-      }
+    } else { // Default to 'user' if not specified or 'user'
+      const allUsersWithChats = await db.query.users.findMany({
+        with: {
+          chats: {
+            where: (chat, { and, or }) => searchCondition ? or(
+              sql`EXISTS (SELECT 1 FROM ${users} WHERE ${users.id} = ${chat.userId} AND (${like(users.username, searchCondition)} OR ${like(users.fullname, searchCondition)} OR ${like(users.email, searchCondition)} OR ${like(users.phone, searchCondition)}))`,
+              sql`EXISTS (SELECT 1 FROM ${messages} WHERE ${messages.chatId} = ${chat.id} AND ${like(messages.content, searchCondition)})`
+            ) : undefined,
+            with: {
+              messages: true,
+              adminUser: true,
+            },
+          },
+        },
+      });
+      return allUsersWithChats.map(user => {
+        const chatsWithMessages = user.chats.map(chat => ({
+          ...chat,
+          messages: chat.messages || [],
+        }));
+        return {
+          ...user,
+          chats: chatsWithMessages,
+        };
+      });
     }
-
-    return Object.values(groupedChats);
   }
 }
