@@ -13,6 +13,7 @@ export class ChatController {
       const newChat: NewChat = {
         userId,
         status: "open",
+        type: "user"
       };
 
       const chatId = await ChatModel.createChat(newChat);
@@ -95,6 +96,44 @@ export class ChatController {
         success: true,
         message: "Admin assigned to chat successfully",
         data: updatedChat,
+      });
+    }
+  );
+
+  static getAllChats = asyncHandler(
+    async (req: Request, res: Response, next: NextFunction) => {
+      const chats = await ChatModel.getAllChats();
+      res.status(200).json({ success: true, data: chats });
+    }
+  );
+
+  static createChatAdmin = asyncHandler(
+    async (req: Request, res: Response, next: NextFunction) => {
+      const { adminUserId,userId, initialMessageContent } = req.body;
+
+      const newChat: NewChat = {
+        userId,
+        adminUserId,
+        status: "open",
+        type:"admin"
+      };
+
+      const chatId = await ChatModel.createChat(newChat);
+
+      if (initialMessageContent && chatId) {
+        const initialMessage: NewMessage = {
+          chatId: chatId,
+          senderId: adminUserId,
+          senderType: "admin",
+          content: initialMessageContent,
+        };
+        await MessageModel.createMessage(initialMessage);
+      }
+
+      res.status(201).json({
+        success: true,
+        message: "Admin chat created successfully",
+        data: { id: chatId },
       });
     }
   );

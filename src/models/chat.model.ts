@@ -1,5 +1,6 @@
 import { db } from "../db/connection";
 import { chats, NewChat } from "../db/schema/chats";
+import { users } from "../db/schema/users"; // Import users schema
 import { eq } from "drizzle-orm";
 
 export class ChatModel {
@@ -44,5 +45,32 @@ export class ChatModel {
       .set({ adminUserId, updatedAt: new Date() })
       .where(eq(chats.id, chatId));
     return updatedChat;
+  }
+
+  static async getAllChats() {
+    const allUsersWithChats = await db.query.users.findMany({
+      with: {
+        chats: {
+          with: {
+            messages: true,
+            adminUser: true,
+          },
+        },
+      },
+    });
+
+    // Transform the data to match the desired format
+    const formattedUsers = allUsersWithChats.map(user => {
+      const chatsWithMessages = user.chats.map(chat => ({
+        ...chat,
+        messages: chat.messages || [], // Ensure messages is an array, even if empty
+      }));
+      return {
+        ...user,
+        chats: chatsWithMessages,
+      };
+    });
+
+    return formattedUsers;
   }
 }
