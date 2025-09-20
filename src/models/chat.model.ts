@@ -31,6 +31,19 @@ export class ChatModel {
         adminUser: true,
         messages: true,
       },
+      orderBy: (chats, { desc }) => [desc(chats.createdAt)], // Order by creation date to get last chats
+    });
+  }
+
+  static async getChatsByAdminId(adminId: number) {
+    return await db.query.chats.findMany({
+      where: eq(chats.adminUserId, adminId),
+      with: {
+        user: true,
+        adminUser: true,
+        messages: true,
+      },
+      orderBy: (chats, { desc }) => [desc(chats.createdAt)], // Order by creation date to get last chats
     });
   }
 
