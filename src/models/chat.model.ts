@@ -133,7 +133,7 @@ export class ChatModel {
           },
         },
       });
-      return allAdminUsersWithChats.map(adminUser => {
+      const sortedAdminUsers = allAdminUsersWithChats.map(adminUser => {
         const chatsWithMessages = adminUser.chats.map(chat => ({
           ...chat,
           messages: chat.messages || [],
@@ -142,7 +142,17 @@ export class ChatModel {
           ...adminUser,
           chats: chatsWithMessages,
         };
+      }).sort((a, b) => {
+        const latestMessageA = a.chats.flatMap(chat => chat.messages).filter(msg => msg.createdAt).sort((msgA, msgB) => msgB.createdAt!.getTime() - msgA.createdAt!.getTime())[0];
+        const latestMessageB = b.chats.flatMap(chat => chat.messages).filter(msg => msg.createdAt).sort((msgA, msgB) => msgB.createdAt!.getTime() - msgA.createdAt!.getTime())[0];
+        if (latestMessageA && latestMessageB) {
+          return latestMessageB.createdAt!.getTime() - latestMessageA.createdAt!.getTime();
+        }
+        if (latestMessageA) return -1;
+        if (latestMessageB) return 1;
+        return 0;
       });
+      return sortedAdminUsers;
 
     } else { // Default to 'user' if not specified or 'user'
       const allUsersWithChats = await db.query.users.findMany({
@@ -203,7 +213,7 @@ export class ChatModel {
           },
         },
       });
-      return allUsersWithChats.map(user => {
+      const sortedUsers = allUsersWithChats.map(user => {
         const chatsWithMessages = user.chats.map(chat => ({
           ...chat,
           messages: chat.messages || [],
@@ -212,7 +222,17 @@ export class ChatModel {
           ...user,
           chats: chatsWithMessages,
         };
+      }).sort((a, b) => {
+        const latestMessageA = a.chats.flatMap(chat => chat.messages).filter(msg => msg.createdAt).sort((msgA, msgB) => msgB.createdAt!.getTime() - msgA.createdAt!.getTime())[0];
+        const latestMessageB = b.chats.flatMap(chat => chat.messages).filter(msg => msg.createdAt).sort((msgA, msgB) => msgB.createdAt!.getTime() - msgA.createdAt!.getTime())[0];
+        if (latestMessageA && latestMessageB) {
+          return latestMessageB.createdAt!.getTime() - latestMessageA.createdAt!.getTime();
+        }
+        if (latestMessageA) return -1;
+        if (latestMessageB) return 1;
+        return 0;
       });
+      return sortedUsers;
     }
   }
 }
