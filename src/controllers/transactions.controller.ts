@@ -991,7 +991,7 @@ export const checkWithdrawCapability = async (req: Request, res: Response) => {
     const canWithdraw =
       hasSufficientBalance &&
       !hasPendingTurnover &&
-      user.kyc_status === "verified" &&
+      user.kyc_status !== "required" &&
       user.status === "active";
 
     // Determine the reason why withdrawal is not allowed
