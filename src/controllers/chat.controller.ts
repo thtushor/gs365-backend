@@ -8,12 +8,13 @@ import { NewMessage, MessageSenderType } from "../db/schema/messages";
 export class ChatController {
   static createChat = asyncHandler(
     async (req: Request, res: Response, next: NextFunction) => {
-      const { userId, initialMessageContent } = req.body;
+      const { userId: userId,adminUserId,targetAffiliateId,attachmentUrl,senderType, initialMessageContent } = req.body;
 
       const newChat: NewChat = {
-        userId,
+        userId: userId,
+        adminUserId:targetAffiliateId ? targetAffiliateId:  adminUserId,
         status: "open",
-        type: "user"
+        type:  senderType,
       };
 
       const chatId = await ChatModel.createChat(newChat);
@@ -21,9 +22,10 @@ export class ChatController {
       if (initialMessageContent && chatId) {
         const initialMessage: NewMessage = {
           chatId: chatId,
-          senderId: userId,
-          senderType: "user",
-          content: initialMessageContent,
+          senderId: senderType==="admin" ? adminUserId: userId||null,
+          senderType: senderType||"user",
+          content: initialMessageContent||null,
+          attachmentUrl: attachmentUrl||null
         };
         await MessageModel.createMessage(initialMessage);
       }
