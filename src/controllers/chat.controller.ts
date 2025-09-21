@@ -8,11 +8,13 @@ import { NewMessage, MessageSenderType } from "../db/schema/messages";
 export class ChatController {
   static createChat = asyncHandler(
     async (req: Request, res: Response, next: NextFunction) => {
-      const { userId, initialMessageContent } = req.body;
+      const { userId: userId,adminUserId,targetAffiliateId,attachmentUrl,senderType, initialMessageContent } = req.body;
 
       const newChat: NewChat = {
-        userId,
+        userId: userId,
+        adminUserId:targetAffiliateId ? targetAffiliateId:  adminUserId,
         status: "open",
+        type:  senderType,
       };
 
       const chatId = await ChatModel.createChat(newChat);
@@ -20,9 +22,10 @@ export class ChatController {
       if (initialMessageContent && chatId) {
         const initialMessage: NewMessage = {
           chatId: chatId,
-          senderId: userId,
-          senderType: "user",
-          content: initialMessageContent,
+          senderId: senderType==="admin" ? adminUserId: userId||null,
+          senderType: senderType||"user",
+          content: initialMessageContent||null,
+          attachmentUrl: attachmentUrl||null
         };
         await MessageModel.createMessage(initialMessage);
       }
@@ -95,6 +98,46 @@ export class ChatController {
         success: true,
         message: "Admin assigned to chat successfully",
         data: updatedChat,
+      });
+    }
+  );
+
+  static getAllChats = asyncHandler(
+    async (req: Request, res: Response, next: NextFunction) => {
+      const chatUserType = req.query.chatUserType as "admin" | "user" | undefined;
+      const searchKey = req.query.searchKey as string | undefined;
+      const chats = await ChatModel.getAllChats(chatUserType, searchKey);
+      res.status(200).json({ success: true, data: chats });
+    }
+  );
+
+  static createChatAdmin = asyncHandler(
+    async (req: Request, res: Response, next: NextFunction) => {
+      const { adminUserId,userId, initialMessageContent } = req.body;
+
+      const newChat: NewChat = {
+        userId,
+        adminUserId,
+        status: "open",
+        type:"admin"
+      };
+
+      const chatId = await ChatModel.createChat(newChat);
+
+      if (initialMessageContent && chatId) {
+        const initialMessage: NewMessage = {
+          chatId: chatId,
+          senderId: adminUserId,
+          senderType: "admin",
+          content: initialMessageContent,
+        };
+        await MessageModel.createMessage(initialMessage);
+      }
+
+      res.status(201).json({
+        success: true,
+        message: "Admin chat created successfully",
+        data: { id: chatId },
       });
     }
   );

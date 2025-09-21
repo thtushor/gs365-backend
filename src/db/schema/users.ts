@@ -11,6 +11,7 @@ import { relations, sql } from "drizzle-orm";
 
 import { adminUsers } from "./AdminUsers";
 import { currencies } from "./currency";
+import { chats } from "./chats"; // Import chats schema
 
 export const ActivityStatus = mysqlEnum("status", ["active", "inactive"]);
 
@@ -52,7 +53,7 @@ export const users = mysqlTable("users", {
   ]).default("unverified"),
 });
 
-export const usersRelations = relations(users, ({ one }) => ({
+export const usersRelations = relations(users, ({ one, many }) => ({
   currency: one(currencies, {
     fields: [users.currency_id],
     references: [currencies.id],
@@ -61,4 +62,5 @@ export const usersRelations = relations(users, ({ one }) => ({
     fields: [users.created_by],
     references: [adminUsers.id],
   }),
+  chats: many(chats), // Add this line to define the relation
 }));

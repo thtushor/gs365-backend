@@ -5,6 +5,7 @@ import { AutoReplyModel } from "../models/autoReply.model";
 import { asyncHandler } from "../utils/asyncHandler";
 import { NewMessage, MessageSenderType } from "../db/schema/messages";
 import { ChatStatus } from "../db/schema/chats";
+import { io } from "../index"; // Import the Socket.IO instance
 
 export class MessageController {
   static sendMessage = asyncHandler(
@@ -21,6 +22,9 @@ export class MessageController {
 
       const message = await MessageModel.createMessage(newMessage);
 
+      // Emit message via Socket.IO
+      io.to(chatId.toString()).emit("newMessage", message);
+
       // Update chat status based on sender
       if (senderType === "user") {
         await ChatModel.updateChatStatus(chatId, "pending_admin_response");
@@ -33,7 +37,8 @@ export class MessageController {
             senderType: "system",
             content: autoReply.replyMessage,
           };
-          await MessageModel.createMessage(autoReplyMessage);
+          const systemMessage = await MessageModel.createMessage(autoReplyMessage);
+          io.to(chatId.toString()).emit("newMessage", systemMessage); // Emit auto-reply
         }
       } else if (senderType === "admin") {
         await ChatModel.updateChatStatus(chatId, "pending_user_response");
@@ -68,6 +73,36 @@ export class MessageController {
       await MessageModel.markMessagesAsRead(chatId, senderType);
 
       res.status(200).json({ success: true, message: "Messages marked as read" });
+    }
+  );
+
+  static getMessagesBySender = asyncHandler(
+    async (req: Request, res: Response, next: NextFunction) => {
+      const senderId = parseInt(req.params.senderId);
+      const senderType = req.params.senderType as "user" | "admin";
+
+      if (!["user", "admin"].includes(senderType)) {
+        return res.status(400).json({ success: false, message: "Invalid sender type" });
+      }
+
+      const messages = await MessageModel.getMessagesBySenderIdAndType(senderId, senderType);
+
+      res.status(200).json({ success: true, data: messages });
+    }
+  );
+
+  static getMessagesByUserIdOrAdminId = asyncHandler(
+    async (req: Request, res: Response, next: NextFunction) => {
+      const id = parseInt(req.params.id);
+      const type = req.params.type as "user" | "admin";
+
+      if (!["user", "admin"].includes(type)) {
+        return res.status(400).json({ success: false, message: "Invalid type. Must be 'user' or 'admin'." });
+      }
+
+      const messages = await MessageModel.getMessagesByUserOrAdminId(id, type);
+
+      res.status(200).json({ success: true, data: messages });
     }
   );
 }

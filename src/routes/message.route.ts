@@ -4,8 +4,10 @@ import { verifyToken } from "../middlewares/verifyToken";
 
 const router = Router();
 
-router.post("/", verifyToken, MessageController.sendMessage);
 router.get("/chat/:chatId", verifyToken, MessageController.getChatMessages);
-router.put("/read/:chatId", verifyToken, MessageController.markMessagesAsRead);
+router.post("/read/:chatId", verifyToken, MessageController.markMessagesAsRead);
+router.post("/send-message",verifyToken,MessageController.sendMessage)
+router.get("/sender/:senderId/:senderType", verifyToken, MessageController.getMessagesBySender);
+router.get("/user-admin/:id/:type", verifyToken, MessageController.getMessagesByUserIdOrAdminId);
 
 export const messageRoute = router;

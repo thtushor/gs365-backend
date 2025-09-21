@@ -16,15 +16,19 @@ export const ChatStatus = mysqlEnum("chat_status", [
   "pending_user_response",
 ]);
 
+export const ChatType = mysqlEnum("chat_type",[
+  "user","admin"
+])
+
 export const chats = mysqlTable("chats", {
   id: int("id").primaryKey().autoincrement(),
   userId: int("user_id")
-    .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   adminUserId: int("admin_user_id").references(() => adminUsers.id, {
     onDelete: "set null",
   }),
   status: ChatStatus.default("open"),
+  type: ChatType.default("user"),
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updated_at").default(
     sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`

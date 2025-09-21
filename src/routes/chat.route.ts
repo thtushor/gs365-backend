@@ -9,5 +9,7 @@ router.get("/user/:userId", verifyToken, ChatController.getChatsByUserId);
 router.get("/:id", verifyToken, ChatController.getChatById);
 router.put("/:id/status", verifyToken, ChatController.updateChatStatus);
 router.put("/:id/assign-admin", verifyToken, ChatController.assignAdminToChat);
+router.get("/", verifyToken, ChatController.getAllChats);
+router.post("/admin", verifyToken, ChatController.createChatAdmin);
 
 export const chatRoute = router;
