@@ -142,11 +142,11 @@ export const createAffiliateWithdraw = async (req: Request, res: Response) => {
     const user = (req as unknown as { user: any }).user as any;
 
     // ✅ Validate basic fields
-    if (!affiliateId || !amount || !currencyId || !withdrawMethod) {
+    if (!affiliateId || !amount || !withdrawMethod) {
       return res.status(400).json({
         status: false,
         message:
-          "affiliateId, amount, currencyId, withdrawMethod, are required",
+          "Affiliate Id, Amount, Withdraw Method or Currencies are required",
       });
     }
     if (typeof remainingBalance !== "number" || remainingBalance < 0) {
@@ -220,18 +220,21 @@ export const createAffiliateWithdraw = async (req: Request, res: Response) => {
         (createdTxn as any).insertId ?? (createdTxn as any)?.id;
 
       // Create admin main balance record for affiliate withdrawal
-      await AdminMainBalanceModel.create({
-        amount: Number(amount),
-        type: "admin_withdraw",
-        status: "pending", // Match transaction status
-        transactionId: transactionId,
-        currencyId: Number(currencyId),
+      await AdminMainBalanceModel.create(
+        {
+          amount: Number(amount),
+          type: "admin_withdraw",
+          status: "pending", // Match transaction status
+          transactionId: transactionId,
+          currencyId: Number(currencyId),
 
-        createdByPlayer: user?.userType === "user" ? user?.id : undefined,
-        createdByAdmin: user?.userType === "admin" ? user?.id : undefined,
-        notes: `Affiliate withdrawal - Transaction ID: ${customTransactionId}`,
-      },tx);
-      
+          createdByPlayer: user?.userType === "user" ? user?.id : undefined,
+          createdByAdmin: user?.userType === "admin" ? user?.id : undefined,
+          notes: `Affiliate withdrawal - Transaction ID: ${customTransactionId}`,
+        },
+        tx
+      );
+
       return { transactionId, customTransactionId };
     });
 
@@ -354,7 +357,7 @@ export const createWithdraw = async (req: Request, res: Response) => {
 
     // Calculate user's current balance using BalanceModel
     const playerBalance = await BalanceModel.calculatePlayerBalance(userId);
-    const currentBalance = playerBalance.currentBalance||0;
+    const currentBalance = playerBalance.currentBalance || 0;
 
     // Check if user has sufficient withdrawable balance
     const hasSufficientBalance = currentBalance >= minWithdrawableBalance;
@@ -363,14 +366,16 @@ export const createWithdraw = async (req: Request, res: Response) => {
     const hasPendingTurnover = pendingTurnover.length > 0;
 
     // User can withdraw if: sufficient balance AND no pending turnover
-    const canWithdraw = hasSufficientBalance && !hasPendingTurnover && userExists.kyc_status!=="required";
+    const canWithdraw =
+      hasSufficientBalance &&
+      !hasPendingTurnover &&
+      userExists.kyc_status !== "required";
 
     if (!canWithdraw) {
       let withdrawReason = "";
-      if(userExists.kyc_status==="required"){
-      withdrawReason = "Please verify your KYC status."
-      }
-      else if (!hasSufficientBalance) {
+      if (userExists.kyc_status === "required") {
+        withdrawReason = "Please verify your KYC status.";
+      } else if (!hasSufficientBalance) {
         withdrawReason = `Insufficient balance. Current balance: ${currentBalance.toFixed(
           2
         )}, Minimum required: ${minWithdrawableBalance.toFixed(2)}`;
@@ -455,16 +460,19 @@ export const createWithdraw = async (req: Request, res: Response) => {
         (createdTxn as any).insertId ?? (createdTxn as any)?.id;
 
       // Create admin main balance record for player withdrawal
-      await AdminMainBalanceModel.create({
-        amount: Number(amount),
-        type: "player_withdraw",
-        status: "pending", // Match transaction status
-        transactionId: transactionId,
-        currencyId: Number(currencyId),
-        createdByPlayer: user?.userType === "user" ? user?.id : undefined,
-        createdByAdmin: user?.userType === "admin" ? user?.id : undefined,
-        notes: `Player withdrawal - Transaction ID: ${customTransactionId}`,
-      },tx);
+      await AdminMainBalanceModel.create(
+        {
+          amount: Number(amount),
+          type: "player_withdraw",
+          status: "pending", // Match transaction status
+          transactionId: transactionId,
+          currencyId: Number(currencyId),
+          createdByPlayer: user?.userType === "user" ? user?.id : undefined,
+          createdByAdmin: user?.userType === "admin" ? user?.id : undefined,
+          notes: `Player withdrawal - Transaction ID: ${customTransactionId}`,
+        },
+        tx
+      );
 
       return { transactionId, customTransactionId };
     });
@@ -902,22 +910,43 @@ export const updateAffiliateWithdrawStatus = async (
           )
         );
     } else if (status === "rejected") {
-      // ✅ Mark all 'paid' commissions back to 'approved'
-      await tx
-        .update(commission)
-        .set({ status: "approved" })
+      const paidCommissions = await tx
+        .select()
+        .from(commission)
         .where(
           and(
             eq(commission.adminUserId, Number(affiliateId)),
             eq(commission.status, "paid")
           )
         );
+      console.log("paidCommissions", paidCommissions);
+      if (paidCommissions.length > 0) {
+        await tx
+          .update(commission)
+          .set({ status: "approved" })
+          .where(
+            and(
+              eq(commission.adminUserId, Number(affiliateId)),
+              eq(commission.status, "paid")
+            )
+          );
 
-      // ✅ Set remaining balance to 0
-      await tx
-        .update(adminUsers)
-        .set({ remainingBalance: 0 })
-        .where(eq(adminUsers.id, Number(affiliateId)));
+        // ✅ Set remaining balance to 0
+        await tx
+          .update(adminUsers)
+          .set({ remainingBalance: 0 })
+          .where(eq(adminUsers.id, Number(affiliateId)));
+      } else {
+        // ✅ No 'paid' commissions, so restore the amount back to remaining balance
+        await tx
+          .update(adminUsers)
+          .set({
+            remainingBalance: sql`${adminUsers.remainingBalance} + ${Number(
+              existing.amount
+            )}`,
+          })
+          .where(eq(adminUsers.id, Number(affiliateId)));
+      }
     }
 
     const [updated] = await db
@@ -991,7 +1020,7 @@ export const checkWithdrawCapability = async (req: Request, res: Response) => {
     const canWithdraw =
       hasSufficientBalance &&
       !hasPendingTurnover &&
-      user.kyc_status === "verified" &&
+      user.kyc_status !== "required" &&
       user.status === "active";
 
     // Determine the reason why withdrawal is not allowed
