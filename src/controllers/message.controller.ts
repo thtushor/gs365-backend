@@ -94,14 +94,14 @@ export class MessageController {
 
   static getMessagesByUserIdOrAdminId = asyncHandler(
     async (req: Request, res: Response, next: NextFunction) => {
-      const id = parseInt(req.params.id);
-      const type = req.params.type as "user" | "admin";
+      
+      const type = req.params.type as "user" | "admin"|"guest";
 
-      if (!["user", "admin"].includes(type)) {
-        return res.status(400).json({ success: false, message: "Invalid type. Must be 'user' or 'admin'." });
+      if (!["user", "admin","guest"].includes(type)) {
+        return res.status(400).json({ success: false, message: "Invalid type. Must be 'user' or 'admin' or 'guest'." });
       }
 
-      const messages = await MessageModel.getMessagesByUserOrAdminId(id, type);
+      const messages = await MessageModel.getMessagesByUserOrAdminId(req.params.id as number|string, type);
 
       res.status(200).json({ success: true, data: messages });
     }

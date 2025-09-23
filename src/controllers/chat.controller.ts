@@ -38,7 +38,8 @@ export class ChatController {
           senderId: senderType === "admin" ? adminUserId : (userId || null),
           senderType: senderType || (userId ? "user" : "guest"),
           content: initialMessageContent || null,
-          attachmentUrl: attachmentUrl || null
+          attachmentUrl: attachmentUrl || null,
+          guestSenderId:guestId,
         };
         await MessageModel.createMessage(initialMessage);
       }
