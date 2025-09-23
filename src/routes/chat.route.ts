@@ -4,8 +4,9 @@ import { verifyToken } from "../middlewares/verifyToken";
 
 const router = Router();
 
-router.post("/", verifyToken, ChatController.createChat);
+router.post("/", ChatController.createChat); // Removed verifyToken to allow guest users
 router.get("/user/:userId", verifyToken, ChatController.getChatsByUserId);
+router.get("/guest/:guestId", ChatController.getChatsByGuestId);
 router.get("/:id", verifyToken, ChatController.getChatById);
 router.put("/:id/status", verifyToken, ChatController.updateChatStatus);
 router.put("/:id/assign-admin", verifyToken, ChatController.assignAdminToChat);

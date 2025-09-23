@@ -20,7 +20,7 @@ export class MessageModel {
     });
   }
 
-  static async markMessagesAsRead(chatId: number, senderType: "user" | "admin" | "system") {
+  static async markMessagesAsRead(chatId: number, senderType: "user" | "admin" | "guest" | "system") {
     const [updatedMessages] = await db
       .update(messages)
       .set({ isRead: true, updatedAt: new Date() })
@@ -39,12 +39,23 @@ export class MessageModel {
     });
   }
 
-  static async getMessagesByUserOrAdminId(id: number, type: "user" | "admin") {
+  static async getMessagesByGuestSenderId(guestSenderId: string) {
+    return await db.query.messages.findMany({
+      where: eq(messages.guestSenderId, guestSenderId),
+      orderBy: (messages, { asc }) => [asc(messages.createdAt)],
+    });
+  }
+
+  static async getMessagesByUserOrAdminId(id: number|string, type: "user" | "admin"|"guest") {
     let chats;
     if (type === "user") {
-      chats = await ChatModel.getChatsByUserId(id);
-    } else {
-      chats = await ChatModel.getChatsByAdminId(id);
+      chats = await ChatModel.getChatsByUserId(id as number);
+    } 
+    if(type==="guest"){
+      chats = await ChatModel.getChatsByGuestId(id as string)
+    }
+    else {
+      chats = await ChatModel.getChatsByAdminId(id as number);
     }
 
     const chatIds = chats.map(chat => chat.id);

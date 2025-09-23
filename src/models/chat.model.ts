@@ -4,7 +4,7 @@ import { users } from "../db/schema/users"; // Import users schema
 import { adminUsers } from "../db/schema/AdminUsers"; // Import adminUsers schema
 import { messages } from "../db/schema/messages"; // Import messages schema
 import { designation } from "../db/schema/designation"; // Import designations schema
-import { eq, isNotNull, like, or, and, sql, exists } from "drizzle-orm";
+import { eq, isNotNull, like, or, and, sql, exists, isNull } from "drizzle-orm";
 
 export class ChatModel {
   static async createChat(newChat: NewChat) {
@@ -32,6 +32,17 @@ export class ChatModel {
         messages: true,
       },
       orderBy: (chats, { desc }) => [desc(chats.createdAt)], // Order by creation date to get last chats
+    });
+  }
+
+  static async getChatsByGuestId(guestId: string) {
+    return await db.query.chats.findMany({
+      where: eq(chats.guestId, guestId),
+      with: {
+        adminUser: true,
+        messages: true,
+      },
+      orderBy: (chats, { desc }) => [desc(chats.createdAt)],
     });
   }
 
@@ -63,7 +74,7 @@ export class ChatModel {
     return updatedChat;
   }
 
-  static async getAllChats(chatUserType?: 'user' | 'admin', searchKey?: string) {
+  static async getAllChats(chatUserType?: 'user' | 'admin'|'guest', searchKey?: string) {
     const searchPattern = searchKey ? `%${searchKey}%` : undefined;
 
     if (chatUserType === 'admin') {
@@ -133,7 +144,7 @@ export class ChatModel {
           },
         },
       });
-      const sortedAdminUsers = allAdminUsersWithChats.map(adminUser => {
+      return allAdminUsersWithChats.map(adminUser => {
         const chatsWithMessages = adminUser.chats.map(chat => ({
           ...chat,
           messages: chat.messages || [],
@@ -142,19 +153,9 @@ export class ChatModel {
           ...adminUser,
           chats: chatsWithMessages,
         };
-      }).sort((a, b) => {
-        const latestMessageA = a.chats.flatMap(chat => chat.messages).filter(msg => msg.createdAt).sort((msgA, msgB) => msgB.createdAt!.getTime() - msgA.createdAt!.getTime())[0];
-        const latestMessageB = b.chats.flatMap(chat => chat.messages).filter(msg => msg.createdAt).sort((msgA, msgB) => msgB.createdAt!.getTime() - msgA.createdAt!.getTime())[0];
-        if (latestMessageA && latestMessageB) {
-          return latestMessageB.createdAt!.getTime() - latestMessageA.createdAt!.getTime();
-        }
-        if (latestMessageA) return -1;
-        if (latestMessageB) return 1;
-        return 0;
       });
-      return sortedAdminUsers;
 
-    } else { // Default to 'user' if not specified or 'user'
+    } else if (chatUserType === 'user') {
       const allUsersWithChats = await db.query.users.findMany({
         where: (user, { or: drizzleOr, like }) => {
           if (!searchPattern) {
@@ -169,10 +170,10 @@ export class ChatModel {
           );
 
           const chatMatches = exists(db.select().from(chats).where(and(
-            eq(chats.userId, user.id), // Correlate with current user
+            eq(chats.userId, user.id),
             drizzleOr(
               exists(db.select().from(users).where(and(
-                eq(users.id, chats.userId), // This is redundant as chats.userId is already user.id
+                eq(users.id, chats.userId),
                 drizzleOr(
                   like(users.username, searchPattern),
                   like(users.fullname, searchPattern),
@@ -191,29 +192,35 @@ export class ChatModel {
         },
         with: {
           chats: {
-            where: (chat, { and, or }) => searchPattern ? or(
-              exists(db.select().from(users).where(and(
-                eq(users.id, chat.userId),
-                or(
-                  like(users.username, searchPattern),
-                  like(users.fullname, searchPattern),
-                  like(users.email, searchPattern),
-                  like(users.phone, searchPattern)
-                )
-              ))),
-              exists(db.select().from(messages).where(and(
-                eq(messages.chatId, chat.id),
-                like(messages.content, searchPattern)
-              )))
-            ) : undefined,
+            where: (chat, { and, or, isNotNull }) => and(
+              isNotNull(chat.userId),
+              searchPattern ? or(
+                exists(db.select().from(users).where(and(
+                  eq(users.id, chat.userId),
+                  or(
+                    like(users.username, searchPattern),
+                    like(users.fullname, searchPattern),
+                    like(users.email, searchPattern),
+                    like(users.phone, searchPattern)
+                  )
+                ))),
+                exists(db.select().from(messages).where(and(
+                  eq(messages.chatId, chat.id),
+                  like(messages.content, searchPattern)
+                )))
+              ) : undefined
+            ),
             with: {
               messages: true,
               adminUser: true,
             },
+            orderBy: (chats, { desc }) => [desc(chats.createdAt)], // Order chats within each user
           },
         },
       });
-      const sortedUsers = allUsersWithChats.map(user => {
+
+      // Ensure messages are included and sort chats within each user
+      const usersWithSortedChats = allUsersWithChats.map(user => {
         const chatsWithMessages = user.chats.map(chat => ({
           ...chat,
           messages: chat.messages || [],
@@ -222,17 +229,65 @@ export class ChatModel {
           ...user,
           chats: chatsWithMessages,
         };
-      }).sort((a, b) => {
-        const latestMessageA = a.chats.flatMap(chat => chat.messages).filter(msg => msg.createdAt).sort((msgA, msgB) => msgB.createdAt!.getTime() - msgA.createdAt!.getTime())[0];
-        const latestMessageB = b.chats.flatMap(chat => chat.messages).filter(msg => msg.createdAt).sort((msgA, msgB) => msgB.createdAt!.getTime() - msgA.createdAt!.getTime())[0];
-        if (latestMessageA && latestMessageB) {
-          return latestMessageB.createdAt!.getTime() - latestMessageA.createdAt!.getTime();
-        }
-        if (latestMessageA) return -1;
-        if (latestMessageB) return 1;
-        return 0;
       });
-      return sortedUsers;
+
+      return usersWithSortedChats;
+
+    } else if (chatUserType === 'guest') {
+      const allGuestChats = await db.query.chats.findMany({
+        where: (chat, { and, or, isNotNull, like: drizzleLike }) => and(
+          isNotNull(chat.guestId),
+          searchPattern ? or(
+            drizzleLike(chat.guestId, searchPattern),
+            exists(db.select().from(messages).where(and(
+              eq(messages.chatId, chat.id),
+              drizzleLike(messages.content, searchPattern)
+            )))
+          ) : undefined
+        ),
+        with: {
+          messages: true,
+          adminUser: true,
+        },
+        orderBy: (chats, { desc }) => [desc(chats.createdAt)], // Order guest chats
+      });
+
+      const guestChatsWithMessages = allGuestChats.map(chat => ({ ...chat, messages: chat.messages || [], user: null }));
+      return guestChatsWithMessages;
+
+    } else { // Default case if chatUserType is not 'admin', 'user', or 'guest'
+      // This block can be used to return all chats without specific filtering by user type,
+      // or you can choose to throw an error or return an empty array based on requirements.
+      // For now, let's return all chats without user/guest type filtering, but still apply search if present.
+      const allChats = await db.query.chats.findMany({
+        where: (chat, { and, or, isNotNull, like: drizzleLike }) => searchPattern ? or(
+          isNotNull(chat.userId) ? exists(db.select().from(users).where(and(
+            eq(users.id, chat.userId),
+            or(
+              like(users.username, searchPattern),
+              like(users.fullname, searchPattern),
+              like(users.email, searchPattern),
+              like(users.phone, searchPattern)
+            )
+          ))) : undefined,
+          isNotNull(chat.guestId) ? drizzleLike(chat.guestId, searchPattern) : undefined,
+          exists(db.select().from(messages).where(and(
+            eq(messages.chatId, chat.id),
+            drizzleLike(messages.content, searchPattern)
+          )))
+        ) : undefined,
+        with: {
+          messages: true,
+          adminUser: true,
+          user: true,
+        },
+      });
+
+      // Deduplicate and sort by createdAt
+      const uniqueChats = Array.from(new Map(allChats.map(chat => [chat.id, chat])).values());
+      uniqueChats.sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+
+      return uniqueChats;
     }
   }
 }

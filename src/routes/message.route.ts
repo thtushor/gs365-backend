@@ -9,5 +9,6 @@ router.post("/read/:chatId", verifyToken, MessageController.markMessagesAsRead);
 router.post("/send-message",verifyToken,MessageController.sendMessage)
 router.get("/sender/:senderId/:senderType", verifyToken, MessageController.getMessagesBySender);
 router.get("/user-admin/:id/:type", verifyToken, MessageController.getMessagesByUserIdOrAdminId);
+router.get("/guest-sender/:guestSenderId", MessageController.getMessagesByGuestSenderId);
 
 export const messageRoute = router;
