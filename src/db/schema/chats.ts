@@ -3,6 +3,7 @@ import {
   int,
   datetime,
   mysqlEnum,
+  varchar,
 } from "drizzle-orm/mysql-core";
 import { relations, sql } from "drizzle-orm";
 import { users } from "./users";
@@ -17,7 +18,7 @@ export const ChatStatus = mysqlEnum("chat_status", [
 ]);
 
 export const ChatType = mysqlEnum("chat_type",[
-  "user","admin"
+  "user","admin","guest"
 ])
 
 export const chats = mysqlTable("chats", {
@@ -26,6 +27,9 @@ export const chats = mysqlTable("chats", {
     .references(() => users.id, { onDelete: "cascade" }),
   adminUserId: int("admin_user_id").references(() => adminUsers.id, {
     onDelete: "set null",
+  }),
+  guestId: varchar("guestId",{
+    length: 300
   }),
   status: ChatStatus.default("open"),
   type: ChatType.default("user"),

@@ -10,11 +10,12 @@ import { io } from "../index"; // Import the Socket.IO instance
 export class MessageController {
   static sendMessage = asyncHandler(
     async (req: Request, res: Response, next: NextFunction) => {
-      const { chatId, senderId, senderType, content, attachmentUrl } = req.body;
+      const { chatId, senderId, guestSenderId, senderType, content, attachmentUrl } = req.body;
 
       const newMessage: NewMessage = {
         chatId,
         senderId,
+        guestSenderId,
         senderType,
         content,
         attachmentUrl,
@@ -26,7 +27,7 @@ export class MessageController {
       io.to(chatId.toString()).emit("newMessage", message);
 
       // Update chat status based on sender
-      if (senderType === "user") {
+      if (senderType === "user" || senderType === "guest") {
         await ChatModel.updateChatStatus(chatId, "pending_admin_response");
         // Check for auto-reply
         const autoReply = await AutoReplyModel.getAutoReplyByKeyword(content);
@@ -101,6 +102,15 @@ export class MessageController {
       }
 
       const messages = await MessageModel.getMessagesByUserOrAdminId(id, type);
+
+      res.status(200).json({ success: true, data: messages });
+    }
+  );
+
+  static getMessagesByGuestSenderId = asyncHandler(
+    async (req: Request, res: Response, next: NextFunction) => {
+      const guestSenderId = req.params.guestSenderId;
+      const messages = await MessageModel.getMessagesByGuestSenderId(guestSenderId);
 
       res.status(200).json({ success: true, data: messages });
     }
