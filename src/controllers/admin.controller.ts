@@ -79,6 +79,7 @@ import {
   ilike,
   inArray,
   is,
+  like,
   lt,
   lte,
   ne,
@@ -3972,10 +3973,26 @@ export const updateKycStatus = async (req: Request, res: Response) => {
 
 export const getKycList = async (req: Request, res: Response) => {
   try {
-    const { kycId, page = 1, limit = 10 } = req.query;
+    const { kycId, page = 1, limit = 10, status, search } = req.query;
     const pageNum = parseInt(page as string, 10);
     const limitNum = parseInt(limit as string, 10);
     const offset = (pageNum - 1) * limitNum;
+
+    // Filter and sanitize status
+    const validStatuses = ["approved", "rejected", "pending"];
+    let statusFilter: "approved" | "rejected" | "pending" | undefined =
+      undefined;
+    if (status && validStatuses.includes(status as any)) {
+      statusFilter = status as "approved" | "rejected" | "pending";
+    }
+    const whereClauses = [];
+    if (search) {
+      const kw = `%${search}%`;
+      whereClauses.push(or(like(kyc.fullName, kw), like(kyc.documentNo, kw)));
+    }
+    if (statusFilter) {
+      whereClauses.push(eq(kyc.status, statusFilter));
+    }
 
     // Base query with LEFT JOINs for holder details
     const baseQuery = db
@@ -4018,13 +4035,13 @@ export const getKycList = async (req: Request, res: Response) => {
           inArray(kyc.holderType, ["affiliate", "agent"])
         )
       )
+      .where(whereClauses.length ? and(...whereClauses) : undefined)
       .orderBy(desc(kyc.created_at));
 
     // Single KYC by ID
     if (kycId) {
-      const kycData = await baseQuery
-        .where(and(eq(kyc.holderId, Number(kycId))))
-        .limit(1);
+      whereClauses.push(eq(kyc.holderId, Number(kycId)));
+      const kycData = await baseQuery.limit(1);
 
       if (!kycData || kycData.length === 0) {
         return res
