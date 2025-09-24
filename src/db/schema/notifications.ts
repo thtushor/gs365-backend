@@ -37,5 +37,8 @@ export const notifications = mysqlTable("notifications", {
     "active"
   ),
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("updated_at").default(
+    sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`
+  ),
   createdBy: int("created_by").notNull(),
 });

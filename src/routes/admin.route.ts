@@ -73,6 +73,8 @@ import {
   createOrUpdateWebsiteFaq,
   getAllWebsiteFaq,
   deleteFaq,
+  createCustomNotification,
+  getCustomNotifications,
 } from "../controllers/admin.controller";
 import { getUserDetailsController } from "../controllers/user.controller";
 
@@ -306,3 +308,9 @@ router.post(
   verifyToken,
   asyncHandler(deleteConversionById)
 );
+router.post(
+  "/notifications",
+  verifyToken,
+  asyncHandler(createCustomNotification)
+);
+router.get("/notifications", verifyToken, asyncHandler(getCustomNotifications));

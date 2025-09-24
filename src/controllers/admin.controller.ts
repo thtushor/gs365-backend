@@ -59,6 +59,7 @@ import {
   game_providers,
   games,
   gamingLicenses,
+  notifications,
   promotions,
   responsibleGaming,
   socials,
@@ -4243,6 +4244,120 @@ export const getConversionList = async (req: Request, res: Response) => {
     return res.json({ success: true, data: result });
   } catch (error) {
     console.error("Error fetching conversions:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+export const createCustomNotification = async (req: Request, res: Response) => {
+  try {
+    const {
+      notificationType,
+      title,
+      description,
+      posterImg,
+      amount,
+      turnoverMultiply,
+      promotionId,
+      startDate,
+      endDate,
+      status,
+    } = req.body;
+
+    // ===== Validation =====
+    if (!notificationType || !title || !startDate || !endDate) {
+      return res.status(400).json({
+        status: false,
+        message: "Missing required fields",
+      });
+    }
+    const createdByData = (req as any)?.user?.id ?? undefined;
+    // Insert notification
+    const [newNotification] = await db.insert(notifications).values({
+      notificationType,
+      title,
+      description: description || null,
+      posterImg: posterImg || null,
+      amount: amount ?? null,
+      turnoverMultiply: turnoverMultiply ?? null,
+      promotionId: promotionId ?? null,
+      startDate: new Date(startDate),
+      endDate: new Date(endDate),
+      createdBy: Number(createdByData) ?? undefined,
+      status: status || "active",
+    });
+
+    return res.json({
+      status: true,
+      data: newNotification,
+      message: "Notification created successfully",
+    });
+  } catch (error) {
+    console.error("Insert notification error:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+export const getCustomNotifications = async (req: Request, res: Response) => {
+  try {
+    const page = parseInt((req.query.page as string) || "1");
+    const pageSize = parseInt((req.query.pageSize as string) || "20");
+    const status = (req.query.status as string) || "";
+    const type = (req.query.type as string) || "";
+    const search = (req.query.search as string) || "";
+
+    const offset = (page - 1) * pageSize;
+
+    // Query total count
+    const countResult = await db
+      .select({ count: sql`COUNT(*)`.as("count") })
+      .from(notifications);
+
+    const total = Number(countResult[0].count);
+
+    // Query paginated data
+    const data = await db
+      .select()
+      .from(notifications)
+      .limit(Number(pageSize))
+      .offset(offset)
+      .orderBy(desc(notifications.createdAt));
+
+    res.json({
+      success: true,
+      data,
+      pagination: {
+        total: total || 0,
+        page,
+        pageSize,
+      },
+    });
+  } catch (err) {
+    console.error("Error fetching notifications:", err);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+export const updateCustomNotification = async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    const { status } = req.body;
+
+    if (!id || !status) {
+      return res.status(400).json({ success: false, message: "Invalid data" });
+    }
+
+    const updated = await db
+      .update(notifications)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(notifications.id, id));
+
+    res.json({
+      success: true,
+      message: "Status updated successfully",
+      data: updated[0],
+    });
+  } catch (err) {
+    console.error("Error updating notification:", err);
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
