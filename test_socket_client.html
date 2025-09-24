@@ -1,17 +1,50 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Socket.IO Chat Test</title>
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
     <style>
-        body { font-family: sans-serif; margin: 20px; }
-        #messages { list-style-type: none; padding: 0; }
-        #messages li { padding: 5px 10px; border-bottom: 1px solid #eee; }
-        #form { background: #eee; padding: 10px; display: flex; }
-        #input { flex-grow: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; margin-right: 10px; }
-        #form button { background: #007bff; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; }
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+        }
+
+        #messages {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        #messages li {
+            padding: 5px 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        #form {
+            background: #eee;
+            padding: 10px;
+            display: flex;
+        }
+
+        #input {
+            flex-grow: 1;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+
+        #form button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
     </style>
 </head>
+
 <body>
     <h1>Socket.IO Chat Test Client</h1>
     <p>Open this file in your browser. Make sure your backend server is running on port 3000.</p>
@@ -49,9 +82,9 @@
             appendMessage('System', 'Disconnected from server');
         });
 
-        socket.on('newMessage', (msg) => {
-            console.log('New message received:', msg);
-            appendMessage(`[Chat ${msg.chatId}] ${msg.senderType === 'user' ? 'User' : msg.senderType === 'admin' ? 'Admin' : 'System'} ${msg.senderId}`, msg.content);
+        socket.on('newMessage', (data) => {
+            console.log("Received new message:", data);
+            appendMessage(`Sender ${data.senderId}`, data.message);
         });
 
         function appendMessage(sender, content) {
@@ -74,11 +107,13 @@
             e.preventDefault();
             if (input.value && currentChatId && currentSenderId) {
                 const messageData = {
-                    chatId: parseInt(currentChatId),
+                    chatId: parseInt(currentChatId).toString(),
                     senderId: parseInt(currentSenderId),
                     senderType: parseInt(currentSenderId) === 101 ? 'user' : 'admin', // Simple logic for testing
-                    content: input.value
+                    content: input.value,
+                    message: input.value,
                 };
+                console.log({ messageData })
                 socket.emit('sendMessage', messageData);
                 input.value = '';
             } else {
@@ -87,4 +122,5 @@
         });
     </script>
 </body>
+
 </html>

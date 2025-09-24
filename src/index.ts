@@ -41,6 +41,7 @@ import { errorHandler } from "./middlewares/errorHandler";
 import { setupSwagger } from "./utils/swagger";
 import designationRouter from "./routes/designation.route";
 import { setupSocketIO } from "./socket";
+import path from "path";
 // Ensure process.env.DATABASE_URL is defined and of correct type
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL environment variable is not set.");
@@ -133,6 +134,10 @@ app.use("/api/auto-replies", autoReplyRoute);
 
 app.get("/", (req, res) => {
   res.send("Welcome to the Fashion Glory API!");
+});
+
+app.get("/test-message", (req, res) => {
+  res.sendFile(path.join(__dirname, "..", "test_socket_client.html"));
 });
 
 // Global error handler

@@ -24,7 +24,7 @@ export class MessageController {
       const message = await MessageModel.createMessage(newMessage);
 
       // Emit message via Socket.IO
-      io.to(chatId.toString()).emit("newMessage", message);
+      io.to(chatId).emit("newMessage", message);
 
       // Update chat status based on sender
       if (senderType === "user" || senderType === "guest") {
