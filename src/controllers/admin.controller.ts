@@ -3974,7 +3974,14 @@ export const updateKycStatus = async (req: Request, res: Response) => {
 
 export const getKycList = async (req: Request, res: Response) => {
   try {
-    const { kycId, page = 1, limit = 10, status, search } = req.query;
+    const {
+      kycId,
+      page = 1,
+      limit = 10,
+      status,
+      search,
+      holderType,
+    } = req.query;
     const pageNum = parseInt(page as string, 10);
     const limitNum = parseInt(limit as string, 10);
     const offset = (pageNum - 1) * limitNum;
@@ -4040,17 +4047,15 @@ export const getKycList = async (req: Request, res: Response) => {
       .orderBy(desc(kyc.created_at));
 
     // Single KYC by ID
+    // Add kycId and holderType filter if provided
     if (kycId) {
-      whereClauses.push(eq(kyc.holderId, Number(kycId)));
-      const kycData = await baseQuery.limit(1);
-
-      if (!kycData || kycData.length === 0) {
-        return res
-          .status(400)
-          .json({ status: false, message: "KYC not found." });
+      whereClauses.push(eq(kyc.id, Number(kycId)));
+      const holderTypeValidity = ["player", "affiliate", "agent"] as const;
+      if (holderType && holderTypeValidity.includes(holderType as any)) {
+        whereClauses.push(
+          eq(kyc.holderType, holderType as (typeof holderTypeValidity)[number])
+        );
       }
-
-      return res.status(200).json({ status: true, data: kycData[0] });
     }
 
     // Paginated list
@@ -4260,6 +4265,7 @@ export const createCustomNotification = async (req: Request, res: Response) => {
       startDate,
       endDate,
       status,
+      playerIds,
     } = req.body;
 
     // ===== Validation =====
@@ -4267,6 +4273,12 @@ export const createCustomNotification = async (req: Request, res: Response) => {
       return res.status(400).json({
         status: false,
         message: "Missing required fields",
+      });
+    }
+    if (!playerIds) {
+      return res.status(400).json({
+        status: false,
+        message: "Select a player and try again",
       });
     }
     const createdByData = (req as any)?.user?.id ?? undefined;
@@ -4283,6 +4295,7 @@ export const createCustomNotification = async (req: Request, res: Response) => {
       endDate: new Date(endDate),
       createdBy: Number(createdByData) ?? undefined,
       status: status || "active",
+      playerIds: playerIds.join(","),
     });
 
     return res.json({
@@ -4339,7 +4352,7 @@ export const getCustomNotifications = async (req: Request, res: Response) => {
 };
 export const updateCustomNotification = async (req: Request, res: Response) => {
   try {
-    const id = Number(req.params.id);
+    const id = Number(req.params.notifyId);
     const { status } = req.body;
 
     if (!id || !status) {

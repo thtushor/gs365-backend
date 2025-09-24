@@ -14,6 +14,10 @@ export const settings = mysqlTable("settings", {
   minWithdrawableBalance: decimal("min_withdrawable_balance").default("25000"),
   conversionRate: decimal("conversion_rate").default("100"),
   affiliateWithdrawTime: json("affiliate_withdraw_time").$type<string[]>(),
+  systemActiveTime: json("system_active_time").$type<{
+    start: string;
+    end: string;
+  } | null>(),
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updated_at").default(
     sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`

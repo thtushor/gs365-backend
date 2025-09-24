@@ -75,6 +75,7 @@ import {
   deleteFaq,
   createCustomNotification,
   getCustomNotifications,
+  updateCustomNotification,
 } from "../controllers/admin.controller";
 import { getUserDetailsController } from "../controllers/user.controller";
 
@@ -314,3 +315,8 @@ router.post(
   asyncHandler(createCustomNotification)
 );
 router.get("/notifications", verifyToken, asyncHandler(getCustomNotifications));
+router.post(
+  "/:notifyId/status",
+  verifyToken,
+  asyncHandler(updateCustomNotification)
+);

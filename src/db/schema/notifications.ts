@@ -23,6 +23,7 @@ export const notifications = mysqlTable("notifications", {
   // For claimable
   amount: decimal("amount", { precision: 20, scale: 2 }),
   turnoverMultiply: int("turnover_multiply"),
+  playerIds: text("player_ids"), // Comma-separated user IDs
 
   // For linkable
   promotionId: int("promotion_id"), // FK to promotions

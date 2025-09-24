@@ -14,8 +14,8 @@ import bcrypt from "bcryptjs";
 
 import * as UAParser from "ua-parser-js";
 import { db } from "../db/connection";
-import { games, users } from "../db/schema";
-import { and, eq } from "drizzle-orm";
+import { games, notifications, users } from "../db/schema";
+import { and, eq, sql } from "drizzle-orm";
 import { generateUniqueRefCode } from "../utils/refCode";
 import { findUserByReferCode } from "../models/user.model";
 import { findAdminByRefCode } from "../models/admin.model";
@@ -593,5 +593,42 @@ export const getFavorites = async (req: Request, res: Response) => {
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Server error" });
+  }
+};
+export const getMyNotifications = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+
+    if (!userId) {
+      return res.status(400).json({
+        status: false,
+        message: "User ID is required",
+      });
+    }
+
+    // Fetch notifications where status is active
+    // and userId is included in the comma-separated playerIds column
+    const notificationsList = await db
+      .select()
+      .from(notifications)
+      .where(
+        sql`
+        FIND_IN_SET(${userId}, ${notifications.playerIds}) 
+        AND ${notifications.status} = 'active'
+      `
+      )
+      .orderBy(notifications.createdAt);
+
+    return res.json({
+      status: true,
+      data: notificationsList,
+      message: "Notifications fetched successfully",
+    });
+  } catch (error) {
+    console.error("Fetch notifications error:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Internal Server Error",
+    });
   }
 };
