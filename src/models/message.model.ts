@@ -63,7 +63,7 @@ export class MessageModel {
     } 
     if(type==="guest"){
       chats = await ChatModel.getChatsByGuestId(id.toString() as string)
-      console.log({chats,id, type})
+      // console.log({chats,id, type})
     }
     else {
       chats = await ChatModel.getChatsByAdminId(id as number);

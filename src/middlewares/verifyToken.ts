@@ -50,7 +50,7 @@ export async function verifyToken(
 
   try {
     const decoded = verifyJwt(token) as DecodedUser;
-    console.log("decoded user", decoded);
+    // console.log("decoded user", decoded);
 
     if (decoded.userType === "user") {
       const [player] = await db

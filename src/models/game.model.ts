@@ -237,7 +237,7 @@ export const GameModel = {
       // Verify JWT token
       const decoded = verifyJwt(token) as GameSessionToken;
 
-      console.log({ decoded });
+      // console.log({ decoded });
 
       if (!decoded) {
         throw new Error("Invalid token");
