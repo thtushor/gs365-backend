@@ -32,3 +32,4 @@ export * from "./schema/designation";
 export * from "./schema/chats";
 export * from "./schema/messages";
 export * from "./schema/autoReplies";
+export * from "./schema/notifications";
