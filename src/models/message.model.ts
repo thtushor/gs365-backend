@@ -1,7 +1,8 @@
 import { db } from "../db/connection";
 import { messages, NewMessage } from "../db/schema/messages";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { ChatModel } from "./chat.model"; // Import ChatModel
+import { chats } from "../db/schema";
 
 export class MessageModel {
   static async createMessage(newMessage: NewMessage) {
@@ -40,8 +41,17 @@ export class MessageModel {
   }
 
   static async getMessagesByGuestSenderId(guestSenderId: string) {
+    const getChatIds = await db.query.chats.findMany({
+      where: eq(chats.guestId,guestSenderId)
+    }).then((res)=> res.map((item)=>item?.id))
+
+
     return await db.query.messages.findMany({
-      where: eq(messages.guestSenderId, guestSenderId),
+      where: inArray(messages.chatId, getChatIds.filter((item)=>Boolean(item))),
+      with: {
+        senderAdmin: true,
+        senderUser: true,
+      },
       orderBy: (messages, { asc }) => [asc(messages.createdAt)],
     });
   }
@@ -52,7 +62,8 @@ export class MessageModel {
       chats = await ChatModel.getChatsByUserId(id as number);
     } 
     if(type==="guest"){
-      chats = await ChatModel.getChatsByGuestId(id as string)
+      chats = await ChatModel.getChatsByGuestId(id.toString() as string)
+      console.log({chats,id, type})
     }
     else {
       chats = await ChatModel.getChatsByAdminId(id as number);
