@@ -13,15 +13,15 @@ export function setupSocketIO(io: Server) {
       // In a real application, you would save the message to the database here
       // and then emit it to the chat room.
       console.log(`Message received in chat ${data.chatId} from ${data.senderId}: ${data.message}`,{data});
-      io.to(data.chatId).emit("newMessage", data);
+      socket.broadcast.emit("newMessage", data);
     });
 
-    // socket.on("newMessage", (data: { chatId: string; senderId: string; message: string }) => {
-    //   // In a real application, you would save the message to the database here
-    //   // and then emit it to the chat room.
-    //   console.log(`Message received in chat ${data.chatId} from ${data.senderId}: ${data.message}`,{data});
-    //   // io.to(data.chatId).emit("newMessage", data);
-    // });
+    socket.on("newMessage", (data: { chatId: string; senderId: string; message: string }) => {
+      // In a real application, you would save the message to the database here
+      // and then emit it to the chat room.
+      console.log(`NEW Message received in chat ${data.chatId} from ${data.senderId}: ${data.message}`,{data});
+      // io.to(data.chatId).emit("newMessage", data);
+    });
 
     socket.on("disconnect", () => {
       console.log(`User disconnected: ${socket.id}`);

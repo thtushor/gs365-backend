@@ -4,6 +4,7 @@ import { MessageModel } from "../models/message.model";
 import { asyncHandler } from "../utils/asyncHandler";
 import { NewChat, ChatStatus } from "../db/schema/chats";
 import { NewMessage, MessageSenderType } from "../db/schema/messages";
+import { io } from "..";
 
 export class ChatController {
   static createChat = asyncHandler(
@@ -41,6 +42,7 @@ export class ChatController {
           attachmentUrl: attachmentUrl || null,
           guestSenderId:guestId,
         };
+        io.to(chatId.toString()).emit("sendMessage",initialMessage)
         await MessageModel.createMessage(initialMessage);
       }
 

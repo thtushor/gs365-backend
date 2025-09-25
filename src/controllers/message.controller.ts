@@ -24,7 +24,7 @@ export class MessageController {
       const message = await MessageModel.createMessage(newMessage);
 
       // Emit message via Socket.IO
-      io.to(chatId).emit("newMessage", message);
+      io.emit("sendMessage", newMessage);
 
       // Update chat status based on sender
       if (senderType === "user" || senderType === "guest") {
@@ -39,7 +39,8 @@ export class MessageController {
             content: autoReply.replyMessage,
           };
           const systemMessage = await MessageModel.createMessage(autoReplyMessage);
-          io.to(chatId.toString()).emit("newMessage", systemMessage); // Emit auto-reply
+          // io.to(chatId.toString()).emit("newMessage", systemMessage); // Emit auto-reply
+          io.emit("sendMessage", systemMessage);
         }
       } else if (senderType === "admin") {
         await ChatModel.updateChatStatus(chatId, "pending_user_response");
