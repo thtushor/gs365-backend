@@ -9,6 +9,15 @@ export function setupSocketIO(io: Server) {
       console.log(`User ${socket.id} joined chat ${chatId}`);
     });
 
+    socket.on("loggedin-user",(data: {
+      id:number,
+      token: string
+    })=>{
+      console.log("Logged in a user",{data})
+      // socket.join(data.id.toString())
+      socket.broadcast.emit(`logout-user-${data.id.toString()}`,data)
+    })
+
     socket.on("sendMessage", (data: { chatId: string; senderId: string; message: string }) => {
       // In a real application, you would save the message to the database here
       // and then emit it to the chat room.

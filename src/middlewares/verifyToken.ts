@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyJwt } from "../utils/jwt";
 import { AdminRole } from "../models/admin.model";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "../db/connection";
-import { adminUsers, users } from "../db/schema";
+import { adminUsers, users, userTokens } from "../db/schema";
 
 export type DecodedUser = {
   id: number;
@@ -63,6 +63,17 @@ export async function verifyToken(
         return;
       }
 
+      const tokenVerifyDB = await db.query.userTokens.findFirst({
+        where: and(eq(userTokens.token, token), eq(userTokens.user_id, player.id), eq(userTokens.type, "verify"))
+      })
+
+      if (!tokenVerifyDB?.id) {
+        res.status(401).json({
+          status: false,
+          message: "Invalid,logged in ito another devices or expired token",
+        });
+      }
+
       console.log(player);
       if (player.tokenVersion !== decoded.tokenVersion) {
         res.status(401).json({
@@ -84,6 +95,17 @@ export async function verifyToken(
       if (!admin) {
         res.status(401).json({ status: false, message: "Admin not found" });
         return;
+      }
+
+       const tokenVerifyDB = await db.query.userTokens.findFirst({
+        where: and(eq(userTokens.token, token), eq(userTokens.admin_id, admin.id), eq(userTokens.type, "verify"))
+      })
+
+      if (!tokenVerifyDB?.id) {
+        res.status(401).json({
+          status: false,
+          message: "Invalid,logged in ito another devices or expired token",
+        });
       }
 
       (req as any).user = decoded;

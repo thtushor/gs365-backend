@@ -14,7 +14,7 @@ import bcrypt from "bcryptjs";
 
 import * as UAParser from "ua-parser-js";
 import { db } from "../db/connection";
-import { games, notifications, users } from "../db/schema";
+import { games, notifications, users, userTokens } from "../db/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { generateUniqueRefCode } from "../utils/refCode";
 import { findUserByReferCode } from "../models/user.model";
@@ -22,6 +22,7 @@ import { findAdminByRefCode } from "../models/admin.model";
 import { generateJwtToken, JwtPayload, verifyJwt } from "../utils/jwt";
 import { createUserLoginHistory } from "../models/userLoginHistory.model";
 import { user_favorites } from "../db/schema/user_favorites";
+import { io } from "..";
 
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
@@ -140,9 +141,8 @@ export const getUsersByReferrerTypeController = async (
 
     return res.json({
       status: true,
-      message: `${
-        type.charAt(0).toUpperCase() + type.slice(1)
-      } users fetched successfully`,
+      message: `${type.charAt(0).toUpperCase() + type.slice(1)
+        } users fetched successfully`,
       data: result,
     });
   } catch (error) {
@@ -348,6 +348,8 @@ export const loginUser = async (req: Request, res: Response) => {
       tokenVersion: tokenVersion,
       userType: "user",
     });
+
+
     await db
       .update(users)
       .set({
@@ -362,6 +364,33 @@ export const loginUser = async (req: Request, res: Response) => {
         tokenVersion: (user.tokenVersion || 0) + 1,
       })
       .where(eq(users.id, user.id));
+
+
+    const getUserVerifyToken = await db.query.userTokens.findFirst({
+      where: and(eq(userTokens.user_id, user.id), eq(userTokens.type, "verify"))
+    })
+
+
+    if (getUserVerifyToken?.id) {
+      await db.update(userTokens).set({
+        user_id: user.id,
+        token: token,
+        type: "verify"
+      }).where(and(eq(userTokens.user_id, user.id)))
+    }
+    else {
+      await db.insert(userTokens).values({
+        user_id: user.id,
+        token: token,
+        type: "verify",
+        expires_at: new Date(),      
+      })
+    }
+
+    io.emit(`loggedin-user`, {
+      ...user,
+      token: token
+    })
 
     // Record login history
     try {
@@ -416,7 +445,7 @@ export const logoutUser = async (req: Request, res: Response) => {
     return res
       .status(200)
       .json({ status: true, message: "Logged out successfully" });
-  } catch (error) {}
+  } catch (error) { }
 };
 
 export const updateUser = async (req: Request, res: Response) => {
