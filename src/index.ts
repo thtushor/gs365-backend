@@ -61,6 +61,7 @@ if (!process.env.DATABASE_URL) {
 const app = express();
 const httpServer = createServer(app);
 export const io = new Server(httpServer, {
+  path:"/gs-server/socket.io/",
   cors: {
     origin: "*", // Adjust this in production to your client's URL
     methods: ["GET", "POST"],
