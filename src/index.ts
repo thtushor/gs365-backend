@@ -65,8 +65,8 @@ export const io = new Server(httpServer, {
     origin: "*", // Adjust this in production to your client's URL
     methods: ["GET", "POST"],
   },
-  pingInterval: 3000, // Send ping every 10 seconds
-  pingTimeout: 2000, // Disconnect if no pong received within 5 seconds
+  pingInterval: 10*1000, // Send ping every 10 seconds
+  pingTimeout: 3*1000, // Disconnect if no pong received within 5 seconds
   transports: ["websocket", "polling"], // Prioritize websocket
 });
 

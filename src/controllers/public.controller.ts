@@ -520,7 +520,7 @@ export const getActiveCategories = async (req: Request, res: Response) => {
 export const getProvidersByCategory = async (req: Request, res: Response) => {
   try {
     const { categoryId } = req.params; // <-- use params
-    console.log("category id", categoryId);
+    // console.log("category id", categoryId);
 
     if (!categoryId) {
       return res.status(400).json({

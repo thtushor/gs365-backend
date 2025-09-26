@@ -97,6 +97,8 @@ export const AdminMainBalanceModel = {
         notes: data.notes || null,
       });
 
+      console.log("insert admin balance",result)
+
       return result.insertId;
     } catch (error) {
       console.error("Error creating admin main balance record:", error);
@@ -263,7 +265,7 @@ export const AdminMainBalanceModel = {
         whereConditions.push(eq(adminMainBalance.type, filters.type as any));
       } else {
         // Default case → only admin_deposit
-        whereConditions.push(eq(adminMainBalance.type, "admin_deposit"));
+        // whereConditions.push(eq(adminMainBalance.type, "admin_deposit"));
       }
       if (filters.status) {
         whereConditions.push(
@@ -503,6 +505,8 @@ export const AdminMainBalanceModel = {
         Number(totalAdminWithdraw) -
         Number(totalPlayerDeposit) -
         Number(totalPromotion);
+
+        console.log(statsResult,currentMainBalance)
 
       return {
         totalAdminDeposit,

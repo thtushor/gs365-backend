@@ -459,6 +459,7 @@ export const createWithdraw = async (req: Request, res: Response) => {
       const transactionId =
         (createdTxn as any).insertId ?? (createdTxn as any)?.id;
 
+      console.log("hello")
       // Create admin main balance record for player withdrawal
       await AdminMainBalanceModel.create(
         {
@@ -750,7 +751,8 @@ export const updateTransactionStatus = async (req: Request, res: Response) => {
 
       // --- Create default turnover ---
       const defaultTarget = baseAmount * defaultTurnoverMultiply;
-      await db.insert(turnover).values({
+
+     existing.type==="deposit" && await db.insert(turnover).values({
         userId: userIdExisting,
         transactionId: id,
         type: "default",
@@ -771,7 +773,7 @@ export const updateTransactionStatus = async (req: Request, res: Response) => {
           const bonusAmount = (baseAmount * Number(promo.bonus)) / 100;
           const promoTarget = bonusAmount * Number(promo.turnoverMultiply ?? 1);
 
-          await db.insert(turnover).values({
+          existing.type==="deposit" && await db.insert(turnover).values({
             userId: userIdExisting,
             transactionId: id,
             type: "promotion",
@@ -804,11 +806,11 @@ export const updateTransactionStatus = async (req: Request, res: Response) => {
       // --- Admin main balance for deposit ---
       await AdminMainBalanceModel.create({
         amount: baseAmount,
-        type: "player_deposit",
+        type: existing?.type==="deposit" ?  "player_deposit": existing.type==="withdraw" ? "player_withdraw":"promotion",
         status: "approved",
         transactionId: id,
         currencyId: existing.currencyId,
-        notes: `Player deposit - Transaction ID: ${existing.customTransactionId}`,
+        notes: `Player ${existing?.type==="deposit" ?  "player_deposit": existing.type==="withdraw" ? "player_withdraw":"promotion"} - Transaction ID: ${existing.customTransactionId}`,
       });
     }
 

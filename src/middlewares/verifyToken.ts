@@ -97,16 +97,16 @@ export async function verifyToken(
         return;
       }
 
-       const tokenVerifyDB = await db.query.userTokens.findFirst({
-        where: and(eq(userTokens.token, token), eq(userTokens.admin_id, admin.id), eq(userTokens.type, "verify"))
-      })
+      //  const tokenVerifyDB = await db.query.userTokens.findFirst({
+      //   where: and(eq(userTokens.token, token), eq(userTokens.admin_id, admin.id), eq(userTokens.type, "verify"))
+      // })
 
-      if (!tokenVerifyDB?.id) {
-        res.status(401).json({
-          status: false,
-          message: "Invalid,logged in ito another devices or expired token",
-        });
-      }
+      // if (!tokenVerifyDB?.id) {
+      //   res.status(401).json({
+      //     status: false,
+      //     message: "Invalid,logged in ito another devices or expired token",
+      //   });
+      // }
 
       (req as any).user = decoded;
       next();
