@@ -461,19 +461,19 @@ export const createWithdraw = async (req: Request, res: Response) => {
 
       console.log("hello")
       // Create admin main balance record for player withdrawal
-      await AdminMainBalanceModel.create(
-        {
-          amount: Number(amount),
-          type: "player_withdraw",
-          status: "pending", // Match transaction status
-          transactionId: transactionId,
-          currencyId: Number(currencyId),
-          createdByPlayer: user?.userType === "user" ? user?.id : undefined,
-          createdByAdmin: user?.userType === "admin" ? user?.id : undefined,
-          notes: `Player withdrawal - Transaction ID: ${customTransactionId}`,
-        },
-        tx
-      );
+      // await AdminMainBalanceModel.create(
+      //   {
+      //     amount: Number(amount),
+      //     type: "player_withdraw",
+      //     status: "pending", // Match transaction status
+      //     transactionId: transactionId,
+      //     currencyId: Number(currencyId),
+      //     createdByPlayer: user?.userType === "user" ? user?.id : undefined,
+      //     createdByAdmin: user?.userType === "admin" ? user?.id : undefined,
+      //     notes: `Player withdrawal - Transaction ID: ${customTransactionId}`,
+      //   },
+      //   tx
+      // );
 
       return { transactionId, customTransactionId };
     });
