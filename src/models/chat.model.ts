@@ -1,10 +1,46 @@
 import { db } from "../db/connection";
-import { chats, NewChat } from "../db/schema/chats";
+import { Chat, chats, NewChat } from "../db/schema/chats";
 import { users } from "../db/schema/users"; // Import users schema
 import { adminUsers } from "../db/schema/AdminUsers"; // Import adminUsers schema
-import { messages } from "../db/schema/messages"; // Import messages schema
+import { Message, messages } from "../db/schema/messages"; // Import messages schema
 import { designation } from "../db/schema/designation"; // Import designations schema
-import { eq, isNotNull, like, or, and, sql, exists, isNull } from "drizzle-orm";
+import { eq, like, and, exists, isNull } from "drizzle-orm";
+
+
+
+
+type ChatWithMessages =  {
+  chats: (Chat & {
+    messages: Message[]
+  })[]
+};
+
+function sortByLatestIds(allUsersWithChats: ChatWithMessages[]) {
+  return allUsersWithChats
+    .map(user => {
+      // 1. Sort messages inside each chat by message.id (latest first)
+      const chatsWithSortedMessages = user.chats.map((chat:ChatWithMessages["chats"][0]) => ({
+        ...chat,
+        messages: [...chat.messages as (Message[])].sort(
+          (m1, m2) => m2.id - m1.id
+        ),
+      }));
+
+      // 2. Sort chats inside each user by chat.id (latest first)
+      const sortedChats = chatsWithSortedMessages.sort(
+        (c1, c2) => c2.id - c1.id
+      );
+
+      return { ...user, chats: sortedChats };
+    })
+    // 3. Sort users by their latest chat’s latest message id
+    .sort((u1, u2) => {
+      const u1LatestMsgId = u1.chats[0]?.messages[0]?.id || 0;
+      const u2LatestMsgId = u2.chats[0]?.messages[0]?.id || 0;
+      return u2LatestMsgId - u1LatestMsgId;
+    });
+}
+
 
 export class ChatModel {
   static async createChat(newChat: NewChat) {

@@ -4002,6 +4002,20 @@ export const getKycList = async (req: Request, res: Response) => {
       whereClauses.push(eq(kyc.status, statusFilter));
     }
 
+        // Single KYC by ID
+    // Add kycId and holderType filter if provided
+    if (Boolean(Number(kycId||0))) {
+    
+      whereClauses.push(eq(kyc.holderId, Number(kycId||0)));
+      
+      if (holderType) {
+        whereClauses.push(
+          eq(kyc.holderType, holderType as "player"| "affiliate"|"agent")
+        );
+      }
+    }
+
+
     // Base query with LEFT JOINs for holder details
     const baseQuery = db
       .select({
@@ -4043,20 +4057,9 @@ export const getKycList = async (req: Request, res: Response) => {
           inArray(kyc.holderType, ["affiliate", "agent"])
         )
       )
-      .where(whereClauses.length ? and(...whereClauses) : undefined)
+      .where(and(...whereClauses))
       .orderBy(desc(kyc.created_at));
 
-    // Single KYC by ID
-    // Add kycId and holderType filter if provided
-    if (kycId) {
-      whereClauses.push(eq(kyc.id, Number(kycId)));
-      const holderTypeValidity = ["player", "affiliate", "agent"] as const;
-      if (holderType && holderTypeValidity.includes(holderType as any)) {
-        whereClauses.push(
-          eq(kyc.holderType, holderType as (typeof holderTypeValidity)[number])
-        );
-      }
-    }
 
     // Paginated list
     const [totalCountResult] = await db
