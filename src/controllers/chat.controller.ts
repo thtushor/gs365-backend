@@ -13,7 +13,7 @@ export class ChatController {
 
       let newChat: NewChat;
 
-      if (userId) {
+      if (userId||adminUserId||targetAffiliateId) {
         newChat = {
           userId: userId,
           adminUserId: targetAffiliateId ? targetAffiliateId : adminUserId,
