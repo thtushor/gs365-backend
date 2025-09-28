@@ -66,12 +66,16 @@ export const createDeposit = async (req: Request, res: Response) => {
 
     const customTransactionId = await generateUniqueTransactionId();
 
+    const [promotionData] = promotionId ? await db.select().from(promotions).where((eq(promotions.id,promotionId))):[]
+    const bonusAmount  = promotionId ?  Number(amount)* (promotionData.bonus/100):0
+
     const [createdTxn] = await db.insert(transactions).values({
       userId: Number(userId),
       type: "deposit",
       amount: Number(amount),
       currencyId: Number(currencyId),
       promotionId: promotionId ? Number(promotionId) : null,
+      bonusAmount: Number(bonusAmount?.toFixed(2)),
       status: "pending",
       customTransactionId,
       paymentGatewayProviderAccountId: paymentGatewayProviderAccountId
