@@ -27,6 +27,7 @@ import {
   paymentGateway,
   paymentGatewayProvider,
   paymentGatewayProviderAccount,
+  paymentMethods,
 } from "../db/schema";
 import { BalanceModel } from "../models/balance.model";
 import { AdminMainBalanceModel } from "../models/adminMainBalance.model";
@@ -66,14 +67,35 @@ export const createDeposit = async (req: Request, res: Response) => {
 
     const customTransactionId = await generateUniqueTransactionId();
 
-    const [promotionData] = promotionId ? await db.select().from(promotions).where((eq(promotions.id,promotionId))):[]
-    const bonusAmount  = promotionId ?  Number(amount)* (promotionData.bonus/100):0
+    const [promotionData] = promotionId ? await db.select().from(promotions).where((eq(promotions.id, promotionId))).limit(1) : []
+    const bonusAmount = promotionId ? Number(amount) * (promotionData.bonus / 100) : 0
+
+    const [providerAccounts] = paymentGatewayProviderAccountId ? await db.select({
+      paymentMethod: paymentMethods,
+    })
+      .from(paymentGatewayProviderAccount)
+      .leftJoin(paymentGatewayProvider, eq(paymentGatewayProvider.id, paymentGatewayProviderAccount.paymentGatewayProviderId))
+      .leftJoin(paymentGateway, eq(paymentGateway.id, paymentGatewayProvider.gatewayId))
+      .leftJoin(paymentMethods, eq(paymentMethods.id, paymentGateway.methodId))
+      .where(eq(paymentGatewayProviderAccount.paymentGatewayProviderId, paymentGatewayProviderAccountId)).limit(1) : []
+
+    const paymentMethodName = providerAccounts.paymentMethod?.name?.toLowerCase();
+
+    const [currencyData] = paymentMethodName?.includes("international") || paymentMethodName?.includes("crypto") ?
+      await db.select().from(currencies).where(eq(currencies.code, "USD")).limit(1)
+      : await db.select().from(currencies).where(eq(currencies.code, "BDT")).limit(1);
+
+    console.log({ paymentMethodName })
+
+    // if (paymentMethodName) {
+    //   throw new Error("Data error")
+    // }
 
     const [createdTxn] = await db.insert(transactions).values({
       userId: Number(userId),
       type: "deposit",
       amount: Number(amount),
-      currencyId: Number(currencyId),
+      currencyId: currencyData?.id,
       promotionId: promotionId ? Number(promotionId) : null,
       bonusAmount: Number(bonusAmount?.toFixed(2)),
       status: "pending",
@@ -331,8 +353,13 @@ export const createWithdraw = async (req: Request, res: Response) => {
     }
 
     const [getGateWayData] = await db
-      .select()
+      .select({
+        id: paymentGateway.id,
+        name: paymentGateway.name,
+        paymentMethodName: paymentMethods?.name
+      })
       .from(paymentGateway)
+      .leftJoin(paymentMethods, eq(paymentMethods.id, paymentGateway.methodId))
       .where(eq(paymentGateway.id, paymentGatewayId));
 
     if (!getGateWayData?.id) {
@@ -432,13 +459,19 @@ export const createWithdraw = async (req: Request, res: Response) => {
 
     const customTransactionId = await generateUniqueTransactionId();
 
+    const paymentMethodName = getGateWayData.paymentMethodName;
+
+    const [currencyData] = paymentMethodName?.includes("international") || paymentMethodName?.includes("crypto") ?
+      await db.select().from(currencies).where(eq(currencies.code, "USD")).limit(1)
+      : await db.select().from(currencies).where(eq(currencies.code, "BDT")).limit(1);
+
     const result = await db.transaction(async (tx) => {
       // Create withdrawal transaction
       const [createdTxn] = await tx.insert(transactions).values({
         userId: Number(userId),
         type: "withdraw" as any,
         amount: Number(amount) as any,
-        currencyId: Number(currencyId),
+        currencyId: currencyData?.id || Number(currencyId),
         paymentGatewayId: Number(paymentGatewayId),
         status: "pending" as any,
         customTransactionId,
