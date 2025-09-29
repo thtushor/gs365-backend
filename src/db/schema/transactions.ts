@@ -60,7 +60,7 @@ export const transactions = mysqlTable("transactions", {
   givenTransactionId: varchar("given_transaction_id", { length: 100 }),
   attachment: text("attachment"),
   notes: text("notes"),
-  currencyConversionRate: decimal("currency_conversion_rate"),
+  // currencyConversionRate: decimal("currency_conversion_rate"),
   paymentGatewayProviderAccountId: int("provider_account_id").references(
     () => paymentGatewayProviderAccount.id,
     {

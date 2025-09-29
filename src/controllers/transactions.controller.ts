@@ -41,6 +41,7 @@ type CreateDepositBody = {
   paymentGatewayProviderAccountId?: number;
   notes?: string;
   attachment?: string;
+  gatewayId?: number;
 };
 
 export const createDeposit = async (req: Request, res: Response) => {
@@ -51,6 +52,7 @@ export const createDeposit = async (req: Request, res: Response) => {
       currencyId,
       promotionId,
       paymentGatewayProviderAccountId,
+      gatewayId,
       notes,
       givenTransactionId,
       attachment,
@@ -70,34 +72,44 @@ export const createDeposit = async (req: Request, res: Response) => {
     const [promotionData] = promotionId ? await db.select().from(promotions).where((eq(promotions.id, promotionId))).limit(1) : []
     const bonusAmount = promotionId ? Number(amount) * (promotionData.bonus / 100) : 0
 
-    const [providerAccounts] = paymentGatewayProviderAccountId ? await db.select({
+
+    const [gatewayData] = gatewayId ? await db.select({
       paymentMethod: paymentMethods,
     })
-      .from(paymentGatewayProviderAccount)
-      .leftJoin(paymentGatewayProvider, eq(paymentGatewayProvider.id, paymentGatewayProviderAccount.paymentGatewayProviderId))
-      .leftJoin(paymentGateway, eq(paymentGateway.id, paymentGatewayProvider.gatewayId))
-      .leftJoin(paymentMethods, eq(paymentMethods.id, paymentGateway.methodId))
-      .where(eq(paymentGatewayProviderAccount.paymentGatewayProviderId, paymentGatewayProviderAccountId)).limit(1) : []
+    .from(paymentGateway)
+    .leftJoin(paymentMethods, eq(paymentGateway.methodId, paymentMethods.id))
+    .where(eq(paymentGateway.id, gatewayId)).limit(1) : []
 
-    const paymentMethodName = providerAccounts.paymentMethod?.name?.toLowerCase();
+    const paymentMethodName = gatewayData?.paymentMethod?.name?.toLowerCase();
 
     const [currencyData] = paymentMethodName?.includes("international") || paymentMethodName?.includes("crypto") ?
       await db.select().from(currencies).where(eq(currencies.code, "USD")).limit(1)
       : await db.select().from(currencies).where(eq(currencies.code, "BDT")).limit(1);
 
-    console.log({ paymentMethodName })
+    // console.log({ paymentMethodName })
+
+    const [currentConversionRate] = await db
+      .select({
+        rate: settings.conversionRate,
+      })
+      .from(settings)
+      .limit(1)
+
 
     // if (paymentMethodName) {
     //   throw new Error("Data error")
     // }
 
+    const convertedAmount = currencyData?.code==="BDT" ? Number(amount||0) : Number(amount) * Number(currentConversionRate?.rate ||1);
+    const convertedBonusAmount = currencyData?.code==="BDT" ? Number(bonusAmount||0) : Number(bonusAmount) * Number(currentConversionRate?.rate ||1);
+
     const [createdTxn] = await db.insert(transactions).values({
       userId: Number(userId),
       type: "deposit",
-      amount: Number(amount),
+      amount: Number(convertedAmount),
       currencyId: currencyData?.id,
       promotionId: promotionId ? Number(promotionId) : null,
-      bonusAmount: Number(bonusAmount?.toFixed(2)),
+      bonusAmount: Number(convertedBonusAmount?.toFixed(2)),
       status: "pending",
       customTransactionId,
       paymentGatewayProviderAccountId: paymentGatewayProviderAccountId
@@ -108,6 +120,7 @@ export const createDeposit = async (req: Request, res: Response) => {
       attachment: attachment ?? null,
       processedBy: user?.userType === "admin" ? user?.id : null,
       processedByUser: user?.userType === "user" ? user?.id : null,
+      conversionRate: currentConversionRate.rate ?? null,
     } as any);
 
     return res.status(201).json({
@@ -361,6 +374,7 @@ export const createWithdraw = async (req: Request, res: Response) => {
       .from(paymentGateway)
       .leftJoin(paymentMethods, eq(paymentMethods.id, paymentGateway.methodId))
       .where(eq(paymentGateway.id, paymentGatewayId));
+      console.log({getGateWayData})
 
     if (!getGateWayData?.id) {
       return res.status(200).json({
@@ -459,24 +473,40 @@ export const createWithdraw = async (req: Request, res: Response) => {
 
     const customTransactionId = await generateUniqueTransactionId();
 
-    const paymentMethodName = getGateWayData.paymentMethodName;
+    const paymentMethodName = getGateWayData.paymentMethodName?.toLowerCase();
+
+    
 
     const [currencyData] = paymentMethodName?.includes("international") || paymentMethodName?.includes("crypto") ?
       await db.select().from(currencies).where(eq(currencies.code, "USD")).limit(1)
       : await db.select().from(currencies).where(eq(currencies.code, "BDT")).limit(1);
+
+    const [currentConversionRate] = await db
+      .select({
+        rate: settings.conversionRate,
+      })
+      .from(settings)
+      .limit(1)
+
+    const convertedAmount = currencyData?.code==="BDT" ? Number(amount||0) : Number(amount) * Number(currentConversionRate?.rate ||1);
+
+
+    // console.log({currencyData,paymentMethodName,currentConversionRate})
+
+    // if(true) throw new Error("test")
 
     const result = await db.transaction(async (tx) => {
       // Create withdrawal transaction
       const [createdTxn] = await tx.insert(transactions).values({
         userId: Number(userId),
         type: "withdraw" as any,
-        amount: Number(amount) as any,
+        amount: Number(convertedAmount) as any, // always convert to BDT
         currencyId: currencyData?.id || Number(currencyId),
         paymentGatewayId: Number(paymentGatewayId),
         status: "pending" as any,
         customTransactionId,
         notes: notes ?? null,
-
+        conversionRate: currentConversionRate.rate ?? null,
         attachment: attachment ?? null,
         // Bank-specific fields
         accountNumber: accountNumber ?? null,
@@ -497,7 +527,7 @@ export const createWithdraw = async (req: Request, res: Response) => {
       const transactionId =
         (createdTxn as any).insertId ?? (createdTxn as any)?.id;
 
-      console.log("hello")
+      
       // Create admin main balance record for player withdrawal
       // await AdminMainBalanceModel.create(
       //   {
@@ -674,7 +704,8 @@ export const getTransactions = async (req: Request, res: Response) => {
         paymentGateway: paymentGateway,
 
         // Currency fields
-        usdConversion: currencyConversion.rate,
+        usdConversion: transactions.conversionRate,
+        paymentMethodName: paymentMethods.name,
         currencyCode: currencies.code,
         currencyName: currencies.name,
         currencySymbol: currencies.symbol,
@@ -696,6 +727,7 @@ END
         paymentGateway,
         eq(paymentGateway.id, transactions.paymentGatewayId)
       )
+      .leftJoin(paymentMethods, eq(paymentGateway.methodId, paymentMethods.id))
       .leftJoin(promotions, eq(transactions.promotionId, promotions.id))
       .leftJoin(users, eq(transactions.userId, users.id))
       .leftJoin(

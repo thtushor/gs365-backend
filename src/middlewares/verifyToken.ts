@@ -74,7 +74,7 @@ export async function verifyToken(
         });
       }
 
-      console.log(player);
+      // console.log(player);
       if (player.tokenVersion !== decoded.tokenVersion) {
         res.status(401).json({
           status: false,
