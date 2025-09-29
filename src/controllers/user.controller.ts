@@ -387,9 +387,11 @@ export const loginUser = async (req: Request, res: Response) => {
       })
     }
 
-    io.emit(`loggedin-user`, {
-      ...user,
-      token: token
+    // Notify all connected clients for this user to validate their token.
+    // Clients should compare their stored token with `latestToken`; if mismatched, auto-logout.
+    io.emit(`logout-user-${user.id}`, {
+      userId: user.id,
+      latestToken: token,
     })
 
     // Record login history
