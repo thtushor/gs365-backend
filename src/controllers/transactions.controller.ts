@@ -476,8 +476,6 @@ export const createWithdraw = async (req: Request, res: Response) => {
 
     const paymentMethodName = getGateWayData.paymentMethodName?.toLowerCase();
 
-    
-
     const [currencyData] = paymentMethodName?.includes("international") || paymentMethodName?.includes("crypto") ?
       await db.select().from(currencies).where(eq(currencies.code, "USD")).limit(1)
       : await db.select().from(currencies).where(eq(currencies.code, "BDT")).limit(1);

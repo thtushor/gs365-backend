@@ -143,7 +143,7 @@ export const getDashboardStats = asyncHandler(
 
       const totalCompanyProfit =
         Number(netCompanyHoldingsFromPlayers || 0) -
-        Number(totalPlayerCurrentBalance || 0);
+        Number(totalPlayerCurrentBalance.totalCurrentBalance || 0);
       // Prepare dashboard data
       const dashboardData = {
         mainBalance: adminMainBalanceStats.currentMainBalance,
