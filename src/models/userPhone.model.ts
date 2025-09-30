@@ -106,7 +106,7 @@ export const UserPhoneModel = {
         await db.update(userPhones).set({ isPrimary: false }).where(and(eq(userPhones.userId, current.userId), eq(userPhones.isPrimary, true)));
       }
     }
-    await db.update(userPhones).set({ ...data, updatedAt: new Date() }).where(eq(userPhones.id, id));
+    await db.update(userPhones).set({ ...data }).where(eq(userPhones.id, id));
     return this.getById(id);
   },
 

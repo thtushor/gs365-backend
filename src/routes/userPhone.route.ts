@@ -19,8 +19,8 @@ router.post("/", createUserPhone);
 router.get("/", getUserPhones);
 router.get("/user/:userId", getUserPhonesByUser);
 router.get("/:id", getUserPhoneById);
-router.put("/:id", updateUserPhone);
-router.delete("/:id", deleteUserPhone);
+router.post("/update/:id", updateUserPhone);
+router.post("/delete/:id", deleteUserPhone);
 router.patch("/:id/set-primary", setPrimaryUserPhone);
 router.patch("/:id/verify", verifyUserPhone);
 
