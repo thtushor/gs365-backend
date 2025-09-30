@@ -106,6 +106,7 @@ export const createDeposit = async (req: Request, res: Response) => {
     const [createdTxn] = await db.insert(transactions).values({
       userId: Number(userId),
       type: "deposit",
+      paymentGatewayId: gatewayId,
       amount: Number(convertedAmount),
       currencyId: currencyData?.id,
       promotionId: promotionId ? Number(promotionId) : null,
