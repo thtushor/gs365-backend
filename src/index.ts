@@ -37,6 +37,7 @@ import adminMainBalanceRouter from "./routes/adminMainBalance.route";
 import { chatRoute } from "./routes/chat.route";
 import { messageRoute } from "./routes/message.route";
 import { autoReplyRoute } from "./routes/autoReply.route";
+import userPhoneRouter from "./routes/userPhone.route";
 import { errorHandler } from "./middlewares/errorHandler";
 import { setupSwagger } from "./utils/swagger";
 import designationRouter from "./routes/designation.route";
@@ -132,6 +133,7 @@ app.use("/api/designations", designationRouter);
 app.use("/api/chats", chatRoute);
 app.use("/api/messages", messageRoute);
 app.use("/api/auto-replies", autoReplyRoute);
+app.use("/api/user-phones", userPhoneRouter);
 
 app.get("/", (req, res) => {
   res.send("Welcome to the Fashion Glory API!");

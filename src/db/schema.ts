@@ -34,3 +34,4 @@ export * from "./schema/messages";
 export * from "./schema/autoReplies";
 export * from "./schema/notifications";
 export * from "./schema/usersToken";
+export * from "./schema/userPhones";
