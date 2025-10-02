@@ -6,6 +6,16 @@ export const BetResultController = {
   // Get bet results with comprehensive filtering
   getBetResults: asyncHandler(async (req: Request, res: Response) => {
     try {
+      const startOfDay = (value: any) => {
+        const d = new Date(value as string);
+        d.setHours(0, 0, 0, 0);
+        return d;
+      };
+      const endOfDay = (value: any) => {
+        const d = new Date(value as string);
+        d.setHours(23, 59, 59, 999);
+        return d;
+      };
       const {
         userId,
         gameId,
@@ -59,8 +69,8 @@ export const BetResultController = {
           filters.playingStatus = filteredPlayingStatuses;
         }
       }
-      if (dateFrom) filters.dateFrom = new Date(dateFrom as string);
-      if (dateTo) filters.dateTo = new Date(dateTo as string);
+      if (dateFrom) filters.dateFrom = startOfDay(dateFrom);
+      if (dateTo) filters.dateTo = endOfDay(dateTo);
       if (minBetAmount) filters.minBetAmount = Number(minBetAmount);
       if (maxBetAmount) filters.maxBetAmount = Number(maxBetAmount);
       if (gameName) filters.gameName = gameName as string;
@@ -129,6 +139,16 @@ export const BetResultController = {
   // Get bet result statistics
   getBetResultStats: asyncHandler(async (req: Request, res: Response) => {
     try {
+      const startOfDay = (value: any) => {
+        const d = new Date(value as string);
+        d.setHours(0, 0, 0, 0);
+        return d;
+      };
+      const endOfDay = (value: any) => {
+        const d = new Date(value as string);
+        d.setHours(23, 59, 59, 999);
+        return d;
+      };
       const {
         userId,
         gameId,
@@ -146,8 +166,8 @@ export const BetResultController = {
         const betStatusArray = Array.isArray(betStatus) ? betStatus : [betStatus];
         filters.betStatus = betStatusArray.map(status => String(status));
       }
-      if (dateFrom) filters.dateFrom = new Date(dateFrom as string);
-      if (dateTo) filters.dateTo = new Date(dateTo as string);
+      if (dateFrom) filters.dateFrom = startOfDay(dateFrom);
+      if (dateTo) filters.dateTo = endOfDay(dateTo);
 
       const stats = await BetResultModel.getBetResultStats(filters);
 
@@ -382,6 +402,16 @@ export const BetResultController = {
   // NEW: Get top winners leaderboard
   getTopWinners: asyncHandler(async (req: Request, res: Response) => {
     try {
+      const startOfDay = (value: any) => {
+        const d = new Date(value as string);
+        d.setHours(0, 0, 0, 0);
+        return d;
+      };
+      const endOfDay = (value: any) => {
+        const d = new Date(value as string);
+        d.setHours(23, 59, 59, 999);
+        return d;
+      };
       const {
         limit = 50,
         offset = 0,
@@ -394,8 +424,8 @@ export const BetResultController = {
       const filters = {
         limit: Number(limit),
         offset: Number(offset),
-        dateFrom: dateFrom ? new Date(dateFrom as string) : undefined,
-        dateTo: dateTo ? new Date(dateTo as string) : undefined,
+        dateFrom: dateFrom ? startOfDay(dateFrom) : undefined,
+        dateTo: dateTo ? endOfDay(dateTo) : undefined,
         gameId: gameId ? Number(gameId) : undefined,
         minGames: Number(minGames)
       };
@@ -426,6 +456,16 @@ export const BetResultController = {
   // NEW: Get top losers leaderboard
   getTopLosers: asyncHandler(async (req: Request, res: Response) => {
     try {
+      const startOfDay = (value: any) => {
+        const d = new Date(value as string);
+        d.setHours(0, 0, 0, 0);
+        return d;
+      };
+      const endOfDay = (value: any) => {
+        const d = new Date(value as string);
+        d.setHours(23, 59, 59, 999);
+        return d;
+      };
       const {
         limit = 50,
         offset = 0,
@@ -438,8 +478,8 @@ export const BetResultController = {
       const filters = {
         limit: Number(limit),
         offset: Number(offset),
-        dateFrom: dateFrom ? new Date(dateFrom as string) : undefined,
-        dateTo: dateTo ? new Date(dateTo as string) : undefined,
+        dateFrom: dateFrom ? startOfDay(dateFrom) : undefined,
+        dateTo: dateTo ? endOfDay(dateTo) : undefined,
         gameId: gameId ? Number(gameId) : undefined,
         minGames: Number(minGames)
       };
@@ -470,6 +510,16 @@ export const BetResultController = {
   // NEW: Get player performance analytics
   getPlayerPerformance: asyncHandler(async (req: Request, res: Response) => {
     try {
+      const startOfDay = (value: any) => {
+        const d = new Date(value as string);
+        d.setHours(0, 0, 0, 0);
+        return d;
+      };
+      const endOfDay = (value: any) => {
+        const d = new Date(value as string);
+        d.setHours(23, 59, 59, 999);
+        return d;
+      };
       const {
         userId,
         dateFrom,
@@ -496,8 +546,8 @@ export const BetResultController = {
 
       const filters = {
         userId: Number(userId),
-        dateFrom: dateFrom ? new Date(dateFrom as string) : undefined,
-        dateTo: dateTo ? new Date(dateTo as string) : undefined,
+        dateFrom: dateFrom ? startOfDay(dateFrom) : undefined,
+        dateTo: dateTo ? endOfDay(dateTo) : undefined,
         gameId: gameId ? Number(gameId) : undefined,
         groupBy: groupBy as "day"|"week"|"month"|"game"
       };
@@ -528,6 +578,16 @@ export const BetResultController = {
   // NEW: Get game performance analytics
   getGamePerformance: asyncHandler(async (req: Request, res: Response) => {
     try {
+      const startOfDay = (value: any) => {
+        const d = new Date(value as string);
+        d.setHours(0, 0, 0, 0);
+        return d;
+      };
+      const endOfDay = (value: any) => {
+        const d = new Date(value as string);
+        d.setHours(23, 59, 59, 999);
+        return d;
+      };
       const {
         gameId,
         dateFrom,
@@ -553,8 +613,8 @@ export const BetResultController = {
 
       const filters = {
         gameId: Number(gameId),
-        dateFrom: dateFrom ? new Date(dateFrom as string) : undefined,
-        dateTo: dateTo ? new Date(dateTo as string) : undefined,
+        dateFrom: dateFrom ? startOfDay(dateFrom) : undefined,
+        dateTo: dateTo ? endOfDay(dateTo) : undefined,
         groupBy: groupBy as "day"|"week"|"month"|"user"
       };
 
@@ -583,6 +643,16 @@ export const BetResultController = {
   // NEW: Get comprehensive dashboard stats
   getDashboardStats: asyncHandler(async (req: Request, res: Response) => {
     try {
+      const startOfDay = (value: any) => {
+        const d = new Date(value as string);
+        d.setHours(0, 0, 0, 0);
+        return d;
+      };
+      const endOfDay = (value: any) => {
+        const d = new Date(value as string);
+        d.setHours(23, 59, 59, 999);
+        return d;
+      };
       const {
         dateFrom,
         dateTo,
@@ -591,8 +661,8 @@ export const BetResultController = {
       } = req.query;
 
       const filters = {
-        dateFrom: dateFrom ? new Date(dateFrom as string) : undefined,
-        dateTo: dateTo ? new Date(dateTo as string) : undefined,
+        dateFrom: dateFrom ? startOfDay(dateFrom) : undefined,
+        dateTo: dateTo ? endOfDay(dateTo) : undefined,
         gameId: gameId ? Number(gameId) : undefined,
         userId: userId ? Number(userId) : undefined
       };

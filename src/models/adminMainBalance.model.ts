@@ -298,14 +298,14 @@ export const AdminMainBalanceModel = {
         );
       }
       if (filters.startDate) {
-        whereConditions.push(
-          gte(adminMainBalance.createdAt, new Date(filters.startDate))
-        );
+        const start = new Date(filters.startDate);
+        start.setHours(0, 0, 0, 0);
+        whereConditions.push(gte(adminMainBalance.createdAt, start));
       }
       if (filters.endDate) {
-        whereConditions.push(
-          lte(adminMainBalance.createdAt, new Date(filters.endDate))
-        );
+        const end = new Date(filters.endDate);
+        end.setHours(23, 59, 59, 999);
+        whereConditions.push(lte(adminMainBalance.createdAt, end));
       }
       if (filters.search) {
         whereConditions.push(
@@ -414,14 +414,14 @@ export const AdminMainBalanceModel = {
         );
       }
       if (filters.startDate) {
-        whereConditions.push(
-          gte(adminMainBalance.createdAt, new Date(filters.startDate))
-        );
+        const start = new Date(filters.startDate);
+        start.setHours(0, 0, 0, 0);
+        whereConditions.push(gte(adminMainBalance.createdAt, start));
       }
       if (filters.endDate) {
-        whereConditions.push(
-          lte(adminMainBalance.createdAt, new Date(filters.endDate))
-        );
+        const end = new Date(filters.endDate);
+        end.setHours(23, 59, 59, 999);
+        whereConditions.push(lte(adminMainBalance.createdAt, end));
       }
 
       const whereClause =
@@ -537,14 +537,14 @@ export const AdminMainBalanceModel = {
         );
       }
       if (filters.startDate) {
-        whereConditions.push(
-          gte(adminMainBalance.createdAt, new Date(filters.startDate))
-        );
+        const start = new Date(filters.startDate);
+        start.setHours(0, 0, 0, 0);
+        whereConditions.push(gte(adminMainBalance.createdAt, start));
       }
       if (filters.endDate) {
-        whereConditions.push(
-          lte(adminMainBalance.createdAt, new Date(filters.endDate))
-        );
+        const end = new Date(filters.endDate);
+        end.setHours(23, 59, 59, 999);
+        whereConditions.push(lte(adminMainBalance.createdAt, end));
       }
 
       const [result] = await db

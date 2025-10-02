@@ -310,11 +310,15 @@ export const getUsersWithFilters = async (filters: UserFilters) => {
   }
 
   if (dateFrom) {
-    whereClauses.push(sql`DATE(${users.created_at}) >= ${dateFrom}`);
+    const start = new Date(dateFrom as string);
+    start.setHours(0, 0, 0, 0);
+    whereClauses.push(sql`${users.created_at} >= ${start}`);
   }
 
   if (dateTo) {
-    whereClauses.push(sql`DATE(${users.created_at}) <= ${dateTo}`);
+    const end = new Date(dateTo as string);
+    end.setHours(23, 59, 59, 999);
+    whereClauses.push(sql`${users.created_at} <= ${end}`);
   }
 
   if (keyword) {

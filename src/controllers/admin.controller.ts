@@ -570,6 +570,8 @@ export const getPlayers = async (
     pageSize = 10,
     referred_by_admin_user,
     referred_by,
+    dateFrom,
+    dateTo,
   } = req.query;
 
   const userData = (req as unknown as { user: DecodedUser }).user;
@@ -584,6 +586,8 @@ export const getPlayers = async (
     pageSize: pageSize ? Number(pageSize) : 10,
     referred_by: Number(referred_by || 0),
     referred_by_admin_user: Number(referred_by_admin_user || 0),
+    dateFrom: typeof dateFrom === "string" ? dateFrom : undefined,
+    dateTo: typeof dateTo === "string" ? dateTo : undefined,
   };
   const result = await getUsersWithFilters(filters);
   res.json({ status: true, data: result });
