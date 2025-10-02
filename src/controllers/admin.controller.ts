@@ -88,6 +88,7 @@ import {
   sql,
 } from "drizzle-orm";
 import { generateJwtToken, verifyJwt } from "../utils/jwt";
+import { io } from "..";
 import { getUsersWithFilters, getUserProfileById } from "../models/user.model";
 import * as UAParser from "ua-parser-js";
 import { DecodedUser } from "../middlewares/verifyToken";
@@ -4300,6 +4301,27 @@ export const createCustomNotification = async (req: Request, res: Response) => {
       status: status || "active",
       playerIds: playerIds.join(","),
     });
+
+    // Emit socket events so clients can refresh notifications in real-time
+    try {
+      const targetIds: number[] = Array.isArray(playerIds)
+        ? playerIds
+            .map((v: any) => Number(v))
+            .filter((v: any) => Number.isFinite(v) && v > 0)
+        : [];
+      const uniqueIds = Array.from(new Set(targetIds));
+      uniqueIds.forEach((uid) => {
+        io.emit(`user-notifications-${uid}`, {
+          userId: uid,
+          event: "notification_created",
+          // Clients should call the API to fetch fresh notifications
+          refresh: true,
+        });
+      });
+    } catch (socketErr) {
+      console.error("Socket emit error (createCustomNotification):", socketErr);
+      // Do not fail the request if socket broadcasting fails
+    }
 
     return res.json({
       status: true,
