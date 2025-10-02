@@ -17,19 +17,24 @@ export const UserPhoneModel = {
     isVerified?: boolean;
     isSmsCapable?: boolean;
   }) {
-    // If setting as primary, unset existing primary for user
-    if (data.isPrimary) {
-      await db.update(userPhones).set({ isPrimary: false }).where(eq(userPhones.userId, data.userId));
+    try {
+      // If setting as primary, unset existing primary for user
+      if (data.isPrimary) {
+        await db.update(userPhones).set({ isPrimary: false }).where(eq(userPhones.userId, data.userId));
+      }
+      await db.insert(userPhones).values({
+        userId: data.userId,
+        phoneNumber: data.phoneNumber,
+        isPrimary: data.isPrimary ?? false,
+        isVerified: data.isVerified ?? false,
+        isSmsCapable: data.isSmsCapable ?? true,
+      });
+      const list = await this.getByUserId(data.userId);
+      return list.find((p) => p.phoneNumber === data.phoneNumber) || null;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error during phone create";
+      throw new Error(message);
     }
-    await db.insert(userPhones).values({
-      userId: data.userId,
-      phoneNumber: data.phoneNumber,
-      isPrimary: data.isPrimary ?? false,
-      isVerified: data.isVerified ?? false,
-      isSmsCapable: data.isSmsCapable ?? true,
-    });
-    const list = await this.getByUserId(data.userId);
-    return list.find((p) => p.phoneNumber === data.phoneNumber) || null;
   },
 
   async getById(id: number) {
@@ -100,21 +105,26 @@ export const UserPhoneModel = {
   },
 
   async update(id: number, data: Partial<{ phoneNumber: string; isPrimary: boolean; isVerified: boolean; isSmsCapable: boolean; }>) {
-    // Sanitize input to only allow whitelisted fields
-    const allowed: Partial<{ phoneNumber: string; isPrimary: boolean; isVerified: boolean; isSmsCapable: boolean; }> = {};
-    if (typeof data.phoneNumber === "string") allowed.phoneNumber = data.phoneNumber;
-    if (typeof data.isPrimary === "boolean") allowed.isPrimary = data.isPrimary;
-    if (typeof data.isVerified === "boolean") allowed.isVerified = data.isVerified;
-    if (typeof data.isSmsCapable === "boolean") allowed.isSmsCapable = data.isSmsCapable;
+    try {
+      // Sanitize input to only allow whitelisted fields
+      const allowed: Partial<{ phoneNumber: string; isPrimary: boolean; isVerified: boolean; isSmsCapable: boolean; }> = {};
+      if (typeof data.phoneNumber === "string") allowed.phoneNumber = data.phoneNumber;
+      if (typeof data.isPrimary === "boolean") allowed.isPrimary = data.isPrimary;
+      if (typeof data.isVerified === "boolean") allowed.isVerified = data.isVerified;
+      if (typeof data.isSmsCapable === "boolean") allowed.isSmsCapable = data.isSmsCapable;
 
-    if (allowed.isPrimary) {
-      const current = await this.getById(id);
-      if (current?.userId) {
-        await db.update(userPhones).set({ isPrimary: false }).where(and(eq(userPhones.userId, current.userId), eq(userPhones.isPrimary, true)));
+      if (allowed.isPrimary) {
+        const current = await this.getById(id);
+        if (current?.userId) {
+          await db.update(userPhones).set({ isPrimary: false }).where(and(eq(userPhones.userId, current.userId), eq(userPhones.isPrimary, true)));
+        }
       }
+      await db.update(userPhones).set({ ...allowed, updatedAt: new Date() as unknown as any }).where(eq(userPhones.id, id));
+      return this.getById(id);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error during phone update";
+      throw new Error(message);
     }
-    await db.update(userPhones).set({ ...allowed, updatedAt: new Date() as unknown as any }).where(eq(userPhones.id, id));
-    return this.getById(id);
   },
 
   async delete(id: number) {

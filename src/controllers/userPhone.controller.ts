@@ -4,27 +4,32 @@ import { AuthenticatedRequest } from "../utils/types";
 import { UserPhoneModel } from "../models/userPhone.model";
 
 export const createUserPhone = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const {
-    userId,
-    phoneNumber,
-    isPrimary,
-    isVerified,
-    isSmsCapable,
-  } = req.body;
+  try {
+    const {
+      userId,
+      phoneNumber,
+      isPrimary,
+      isVerified,
+      isSmsCapable,
+    } = req.body;
 
-  if (!userId || !phoneNumber) {
-    return res.status(400).json({ status: false, message: "userId and phoneNumber are required" });
+    if (!userId || !phoneNumber) {
+      return res.status(400).json({ status: false, message: "userId and phoneNumber are required" });
+    }
+
+    const created = await UserPhoneModel.create({
+      userId: Number(userId),
+      phoneNumber,
+      isPrimary,
+      isVerified,
+      isSmsCapable,
+    });
+
+    return res.status(201).json({ status: true, message: "User phone created", data: created });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to create user phone";
+    return res.status(400).json({ status: false, message });
   }
-
-  const created = await UserPhoneModel.create({
-    userId: Number(userId),
-    phoneNumber,
-    isPrimary,
-    isVerified,
-    isSmsCapable,
-  });
-
-  return res.status(201).json({ status: true, message: "User phone created", data: created });
 });
 
 export const getUserPhones = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
@@ -53,16 +58,21 @@ export const getUserPhoneById = asyncHandler(async (req: AuthenticatedRequest, r
 });
 
 export const updateUserPhone = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const { id } = req.params;
-  // Only pass whitelisted fields to the model
-  const payload: any = {};
-  if (typeof req.body.phoneNumber === "string") payload.phoneNumber = req.body.phoneNumber;
-  if (typeof req.body.isPrimary === "boolean") payload.isPrimary = req.body.isPrimary;
-  if (typeof req.body.isVerified === "boolean") payload.isVerified = req.body.isVerified;
-  if (typeof req.body.isSmsCapable === "boolean") payload.isSmsCapable = req.body.isSmsCapable;
+  try {
+    const { id } = req.params;
+    // Only pass whitelisted fields to the model
+    const payload: any = {};
+    if (typeof req.body.phoneNumber === "string") payload.phoneNumber = req.body.phoneNumber;
+    if (typeof req.body.isPrimary === "boolean") payload.isPrimary = req.body.isPrimary;
+    if (typeof req.body.isVerified === "boolean") payload.isVerified = req.body.isVerified;
+    if (typeof req.body.isSmsCapable === "boolean") payload.isSmsCapable = req.body.isSmsCapable;
 
-  const updated = await UserPhoneModel.update(Number(id), payload);
-  return res.json({ status: true, message: "Updated", data: updated });
+    const updated = await UserPhoneModel.update(Number(id), payload);
+    return res.json({ status: true, message: "Updated", data: updated });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to update user phone";
+    return res.status(400).json({ status: false, message });
+  }
 });
 
 export const deleteUserPhone = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
