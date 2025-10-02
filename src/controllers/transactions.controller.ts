@@ -31,6 +31,7 @@ import {
 } from "../db/schema";
 import { BalanceModel } from "../models/balance.model";
 import { AdminMainBalanceModel } from "../models/adminMainBalance.model";
+import { notifications } from "../db/schema/notifications";
 
 type CreateDepositBody = {
   userId: number;
@@ -137,6 +138,120 @@ export const createDeposit = async (req: Request, res: Response) => {
     return res
       .status(500)
       .json({ status: false, message: "Internal Server Error", errors: err });
+  }
+};
+
+export const claimNotification = async (req: Request, res: Response) => {
+  try {
+    const { notificationId, userId } = req.body as { notificationId: number; userId: number };
+
+    if (!notificationId || !userId) {
+      return res.status(400).json({ status: false, message: "notificationId and userId are required" });
+    }
+
+    // Fetch notification and validate
+    const [note] = await db.select().from(notifications).where(eq(notifications.id, Number(notificationId)));
+    if (!note) {
+      return res.status(404).json({ status: false, message: "Notification not found" });
+    }
+
+    if (note.notificationType !== "claimable") {
+      return res.status(400).json({ status: false, message: "Notification is not claimable" });
+    }
+
+    // Check dates are valid to claim
+    const now = new Date();
+    if (note.startDate && now < new Date(note.startDate)) {
+      return res.status(400).json({ status: false, message: "Notification not started yet" });
+    }
+    if (note.endDate && now > new Date(note.endDate)) {
+      return res.status(400).json({ status: false, message: "Notification has expired" });
+    }
+
+    // Check user is targeted
+    if (note.playerIds) {
+      const ids = String(note.playerIds)
+        .split(",")
+        .map((s) => Number(s.trim()))
+        .filter((n) => Number.isFinite(n));
+      if (ids.length && !ids.includes(Number(userId))) {
+        return res.status(403).json({ status: false, message: "User not eligible for this notification" });
+      }
+    }
+
+    const claimAmount = Number(note.amount || 0);
+    const turnoverMultiply = Number(note.turnoverMultiply || 0);
+    if (!(claimAmount > 0) || !(turnoverMultiply >= 0)) {
+      return res.status(400).json({ status: false, message: "Invalid claim configuration" });
+    }
+
+    // Resolve currency: prefer user's currency; fallback to BDT
+    const [userRow] = await db.select({ id: users.id, currencyId: users.currency_id }).from(users).where(eq(users.id, Number(userId)));
+    if (!userRow) {
+      return res.status(404).json({ status: false, message: "User not found" });
+    }
+
+    // We will treat claimed amount as a deposit with promotion-like turnover
+    const customTransactionId = await generateUniqueTransactionId();
+
+    const trxResult = await db.transaction(async (tx) => {
+      // Create transaction (deposit)
+      const [createdTxn] = await tx.insert(transactions).values({
+        userId: Number(userId),
+        type: "deposit" as any,
+        bonusAmount: claimAmount as any,
+        currencyId: userRow.currencyId || null,
+        status: "approved" as any, // immediate credit for claim
+        customTransactionId,
+        notes: `Claimed from notification ${notificationId}`,
+      } as any);
+
+      const transactionId = (createdTxn as any).insertId ?? (createdTxn as any)?.id;
+
+      // Create turnover for the claim (promotion type semantics)
+      const targetTurnover = Number((claimAmount * (turnoverMultiply || 0)).toFixed(2));
+      if (targetTurnover > 0) {
+        await tx.insert(turnover).values({
+          userId: Number(userId),
+          transactionId: transactionId,
+          type: "promotion" as any,
+          status: "active" as any,
+          turnoverName: `Claim turnover from notification ${notificationId}`,
+          depositAmount: claimAmount.toString(),
+          targetTurnover: targetTurnover.toString(),
+          remainingTurnover: targetTurnover.toString(),
+        } as NewTurnover);
+      }
+
+      // Admin main balance entry for promotion payout-like behavior
+      await AdminMainBalanceModel.create(
+        {
+          amount: claimAmount,
+          type: "promotion",
+          status: "approved",
+          transactionId,
+          currencyId: userRow.currencyId || undefined,
+          promotionName: `Claim from notification ${notificationId}`,
+          notes: `Claim credit to user ${userId}`,
+        },
+        tx
+      );
+
+      return { transactionId };
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: "Notification claimed successfully",
+      data: {
+        transactionId: trxResult.transactionId,
+        amount: claimAmount,
+        turnoverMultiply,
+      },
+    });
+  } catch (err) {
+    console.error("claimNotification error", err);
+    return res.status(500).json({ status: false, message: "Internal Server Error", errors: err });
   }
 };
 

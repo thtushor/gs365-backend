@@ -7,6 +7,7 @@ import {
   updateAffiliateWithdrawStatus,
   updateTransactionStatus,
   checkWithdrawCapability,
+  claimNotification,
 } from "../controllers/transactions.controller";
 import { asyncHandler } from "../utils/asyncHandler";
 import { verifyToken } from "../middlewares/verifyToken";
@@ -25,5 +26,6 @@ router.post(
   asyncHandler(updateAffiliateWithdrawStatus)
 );
 router.get("/withdraw-capability/:userId", asyncHandler(checkWithdrawCapability));
+router.post("/claim-notification", asyncHandler(claimNotification));
 
 export default router;
