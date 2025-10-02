@@ -260,22 +260,6 @@ export const createAffiliateWithdraw = async (req: Request, res: Response) => {
       const transactionId =
         (createdTxn as any).insertId ?? (createdTxn as any)?.id;
 
-      // Create admin main balance record for affiliate withdrawal
-      await AdminMainBalanceModel.create(
-        {
-          amount: Number(amount),
-          type: "admin_withdraw",
-          status: "pending", // Match transaction status
-          transactionId: transactionId,
-          currencyId: Number(currencyId),
-
-          createdByPlayer: user?.userType === "user" ? user?.id : undefined,
-          createdByAdmin: user?.userType === "admin" ? user?.id : undefined,
-          notes: `Affiliate withdrawal - Transaction ID: ${customTransactionId}`,
-        },
-        tx
-      );
-
       return { transactionId, customTransactionId };
     });
 
