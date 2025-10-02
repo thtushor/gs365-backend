@@ -4314,6 +4314,7 @@ export const createCustomNotification = async (req: Request, res: Response) => {
         io.emit(`user-notifications-${uid}`, {
           userId: uid,
           event: "notification_created",
+          notificationId:newNotification?.insertId,
           // Clients should call the API to fetch fresh notifications
           refresh: true,
         });
