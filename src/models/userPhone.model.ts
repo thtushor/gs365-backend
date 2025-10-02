@@ -100,13 +100,20 @@ export const UserPhoneModel = {
   },
 
   async update(id: number, data: Partial<{ phoneNumber: string; isPrimary: boolean; isVerified: boolean; isSmsCapable: boolean; }>) {
-    if (data.isPrimary) {
+    // Sanitize input to only allow whitelisted fields
+    const allowed: Partial<{ phoneNumber: string; isPrimary: boolean; isVerified: boolean; isSmsCapable: boolean; }> = {};
+    if (typeof data.phoneNumber === "string") allowed.phoneNumber = data.phoneNumber;
+    if (typeof data.isPrimary === "boolean") allowed.isPrimary = data.isPrimary;
+    if (typeof data.isVerified === "boolean") allowed.isVerified = data.isVerified;
+    if (typeof data.isSmsCapable === "boolean") allowed.isSmsCapable = data.isSmsCapable;
+
+    if (allowed.isPrimary) {
       const current = await this.getById(id);
       if (current?.userId) {
         await db.update(userPhones).set({ isPrimary: false }).where(and(eq(userPhones.userId, current.userId), eq(userPhones.isPrimary, true)));
       }
     }
-    await db.update(userPhones).set({ ...data }).where(eq(userPhones.id, id));
+    await db.update(userPhones).set({ ...allowed, updatedAt: new Date() as unknown as any }).where(eq(userPhones.id, id));
     return this.getById(id);
   },
 

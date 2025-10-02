@@ -54,7 +54,14 @@ export const getUserPhoneById = asyncHandler(async (req: AuthenticatedRequest, r
 
 export const updateUserPhone = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
-  const updated = await UserPhoneModel.update(Number(id), req.body);
+  // Only pass whitelisted fields to the model
+  const payload: any = {};
+  if (typeof req.body.phoneNumber === "string") payload.phoneNumber = req.body.phoneNumber;
+  if (typeof req.body.isPrimary === "boolean") payload.isPrimary = req.body.isPrimary;
+  if (typeof req.body.isVerified === "boolean") payload.isVerified = req.body.isVerified;
+  if (typeof req.body.isSmsCapable === "boolean") payload.isSmsCapable = req.body.isSmsCapable;
+
+  const updated = await UserPhoneModel.update(Number(id), payload);
   return res.json({ status: true, message: "Updated", data: updated });
 });
 
