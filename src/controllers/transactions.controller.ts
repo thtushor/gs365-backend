@@ -180,16 +180,27 @@ export const claimNotification = async (req: Request, res: Response) => {
     }
 
     const claimAmount = Number(note.amount || 0);
+    const promotionId = Number(note.promotionId || 0);
+    const [promotionData] = promotionId ? await db.select().from(promotions).where(eq(promotions.id, promotionId)).limit(1) : [];
+    const promotionTurnoverMultiply = promotionData ? Number(promotionData.turnoverMultiply || 0) : 0;
+    const promotionBonus = promotionData ? Number(promotionData.bonus || 0) : 0;
+    const claimableBonus = claimAmount * (promotionBonus / 100);
+    const claimableBonusTurnover = claimableBonus * (promotionTurnoverMultiply || 0);
+
     const turnoverMultiply = Number(note.turnoverMultiply || 0);
     if (!(claimAmount > 0) || !(turnoverMultiply >= 0)) {
       return res.status(400).json({ status: false, message: "Invalid claim configuration" });
     }
+
+    const [settingsData] = await db.select().from(settings).limit(1);
 
     // Resolve currency: prefer user's currency; fallback to BDT
     const [userRow] = await db.select({ id: users.id, currencyId: users.currency_id }).from(users).where(eq(users.id, Number(userId)));
     if (!userRow) {
       return res.status(404).json({ status: false, message: "User not found" });
     }
+
+    const [currencyData] = await db.select().from(currencies).where(eq(currencies.code, "BDT")).limit(1);
 
     // We will treat claimed amount as a deposit with promotion-like turnover
     const customTransactionId = await generateUniqueTransactionId();
@@ -199,10 +210,14 @@ export const claimNotification = async (req: Request, res: Response) => {
       const [createdTxn] = await tx.insert(transactions).values({
         userId: Number(userId),
         type: "deposit" as any,
-        bonusAmount: claimAmount as any,
-        currencyId: userRow.currencyId || null,
-        status: "approved" as any, // immediate credit for claim
+        amount: claimAmount as number,
+        bonusAmount: claimableBonus as number,
+        currencyId: currencyData?.id || null,
+        status: "approved" as string, // immediate credit for claim
         customTransactionId,
+        promotionId: promotionId ? Number(promotionId) : null,
+        processedByUser: Number(userId),
+        conversionRate: settingsData?.conversionRate || null,
         notes: `Claimed from notification ${notificationId}`,
       } as any);
 
@@ -214,12 +229,25 @@ export const claimNotification = async (req: Request, res: Response) => {
         await tx.insert(turnover).values({
           userId: Number(userId),
           transactionId: transactionId,
-          type: "promotion" as any,
+          type: "default" as any,
           status: "active" as any,
           turnoverName: `Claim turnover from notification ${notificationId}`,
           depositAmount: claimAmount.toString(),
           targetTurnover: targetTurnover.toString(),
           remainingTurnover: targetTurnover.toString(),
+        } as NewTurnover);
+      }
+
+      if (claimableBonusTurnover > 0) {
+        await tx.insert(turnover).values({
+          userId: Number(userId),
+          transactionId: transactionId,
+          type: "promotion" as any,
+          status: "active" as any,
+          turnoverName: `Claim turnover from promotion ${promotionId}`,
+          depositAmount: claimableBonus.toString(),
+          targetTurnover: claimableBonusTurnover.toString(),
+          remainingTurnover: claimableBonusTurnover.toString(),
         } as NewTurnover);
       }
 
@@ -230,12 +258,29 @@ export const claimNotification = async (req: Request, res: Response) => {
           type: "promotion",
           status: "approved",
           transactionId,
-          currencyId: userRow.currencyId || undefined,
+          currencyId: currencyData?.id || undefined,
           promotionName: `Claim from notification ${notificationId}`,
           notes: `Claim credit to user ${userId}`,
         },
         tx
       );
+
+      await AdminMainBalanceModel.create(
+        {
+          amount: claimableBonus,
+          type: "promotion",
+          status: "approved",
+          transactionId,
+          currencyId: currencyData?.id || undefined,
+          promotionName: `Claim from promotion ${promotionId}`,
+          notes: `Claim credit to user ${userId}`,
+        },
+        tx
+      );
+
+      // update 
+      await tx.update(notifications).set({ status: "claimed" }).where(eq(notifications.id, Number(notificationId)));
+
 
       return { transactionId };
     });
@@ -679,6 +724,8 @@ export const getTransactions = async (req: Request, res: Response) => {
       userId,
       affiliateId,
       historyType = "global",
+      dateFrom,
+      dateTo,
     } = req.query as Record<string, string | undefined>;
 
     const currentPage = Math.max(Number(page) || 1, 1);
@@ -713,6 +760,21 @@ export const getTransactions = async (req: Request, res: Response) => {
     if (search && search.trim()) {
       whereClauses.push(like(transactions.customTransactionId, `%${search}%`));
     }
+
+    if (dateFrom) {
+      const start = new Date(dateFrom as string);
+      start.setHours(0, 0, 0, 0);
+      whereClauses.push(sql`${transactions.createdAt} >= ${start}`);
+    }
+  
+    if (dateTo) {
+      const end = new Date(dateTo as string);
+      end.setHours(23, 59, 59, 999);
+      whereClauses.push(sql`${transactions.createdAt} <= ${end}`);
+    }
+    
+
+
 
     const whereExpr = whereClauses.length
       ? (and as any)(...whereClauses)

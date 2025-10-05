@@ -34,7 +34,7 @@ export const notifications = mysqlTable("notifications", {
   endDate: datetime("end_date").notNull(),
 
   // admin user // -- CRON JOB
-  status: mysqlEnum("status", ["active", "inactive", "expired"]).default(
+  status: mysqlEnum("status", ["active", "inactive","claimed", "expired"]).default(
     "active"
   ),
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),

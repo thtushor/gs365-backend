@@ -265,7 +265,7 @@ export const AdminMainBalanceModel = {
         whereConditions.push(eq(adminMainBalance.type, filters.type as any));
       } else {
         // Default case → only admin_deposit
-        // whereConditions.push(eq(adminMainBalance.type, "admin_deposit"));
+        whereConditions.push(eq(adminMainBalance.type, "admin_deposit"));
       }
       if (filters.status) {
         whereConditions.push(
