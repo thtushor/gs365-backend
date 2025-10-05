@@ -1,8 +1,8 @@
 import { db } from "../db/connection";
 import { messages, NewMessage } from "../db/schema/messages";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, aliasedTable } from "drizzle-orm";
 import { ChatModel } from "./chat.model"; // Import ChatModel
-import { chats } from "../db/schema";
+import { adminUsers, chats, users } from "../db/schema";
 
 export class MessageModel {
   static async createMessage(newMessage: NewMessage) {
@@ -42,12 +42,12 @@ export class MessageModel {
 
   static async getMessagesByGuestSenderId(guestSenderId: string) {
     const getChatIds = await db.query.chats.findMany({
-      where: eq(chats.guestId,guestSenderId)
-    }).then((res)=> res.map((item)=>item?.id))
+      where: eq(chats.guestId, guestSenderId)
+    }).then((res) => res.map((item) => item?.id))
 
 
     return await db.query.messages.findMany({
-      where: inArray(messages.chatId, getChatIds.filter((item)=>Boolean(item))),
+      where: inArray(messages.chatId, getChatIds.filter((item) => Boolean(item))),
       with: {
         senderAdmin: true,
         senderUser: true,
@@ -56,32 +56,47 @@ export class MessageModel {
     });
   }
 
-  static async getMessagesByUserOrAdminId(id: number|string, type: "user" | "admin"|"guest") {
-    let chats;
+  static async getMessagesByUserOrAdminId(id: number | string, type: "user" | "admin" | "guest") {
+   
+    const senderUserTable = aliasedTable(users,"senderUserTable");
+    const senderUserAdminTable = aliasedTable(adminUsers,"senderAdminTable");
+
+    const whereCondition = [];
     if (type === "user") {
-      chats = await ChatModel.getChatsByUserId(id as number);
-    } 
-    if(type==="guest"){
-      chats = await ChatModel.getChatsByGuestId(id.toString() as string)
-      // console.log({chats,id, type})
+      whereCondition.push(eq(chats.userId,id as number));
     }
-    else {
-      chats = await ChatModel.getChatsByAdminId(id as number);
+    if (type === "admin") {
+      whereCondition.push(eq(chats.adminUserId,id as number));
     }
-
-    const chatIds = chats.map(chat => chat.id);
-
-    if (chatIds.length === 0) {
-      return [];
+    if (type === "guest") {
+      whereCondition.push(eq(chats.guestId,id as string));
     }
 
-    return await db.query.messages.findMany({
-      where: (message, { inArray }) => inArray(message.chatId, chatIds),
-      with: {
-        senderUser: true,
-        senderAdmin: true,
-      },
-      orderBy: (messages, { asc }) => [asc(messages.createdAt)],
-    });
+    const messagesData = await db
+    .select({
+      id:messages.id,
+      chatId:messages.chatId,
+      senderId:messages.senderId,
+      senderType:messages.senderType,
+      content:messages.content,
+      attachmentUrl:messages.attachmentUrl,
+      guestSenderId:messages.guestSenderId,
+      isRead:messages.isRead,
+      createdAt:messages.createdAt,
+      updatedAt:messages.updatedAt,
+      senderUser:senderUserTable,
+      senderAdmin:senderUserAdminTable,
+      chat:chats,
+    })
+    .from(messages)
+    .leftJoin(chats,eq(chats.id,messages.chatId))
+    .leftJoin(users,eq(users.id,chats.userId))
+    .leftJoin(adminUsers,eq(adminUsers.id,chats.adminUserId))
+    .leftJoin(senderUserAdminTable,and(eq(senderUserAdminTable.id,messages.senderId),eq(messages.senderType,"admin")))
+    .leftJoin(senderUserTable,and(eq(senderUserTable.id,messages.senderId),eq(messages.senderType,"user")))
+    .where(and(...whereCondition))
+
+    return messagesData;
+    
   }
 }
