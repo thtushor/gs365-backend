@@ -1,6 +1,6 @@
 import { db } from "../db/connection";
 import { messages, NewMessage } from "../db/schema/messages";
-import { eq, and, inArray, aliasedTable } from "drizzle-orm";
+import { eq, and, inArray, aliasedTable, ne } from "drizzle-orm";
 import { ChatModel } from "./chat.model"; // Import ChatModel
 import { adminUsers, chats, users } from "../db/schema";
 
@@ -63,13 +63,27 @@ export class MessageModel {
 
     const whereCondition = [];
     if (type === "user") {
+      await db.update(chats).set({
+        status:"open"
+      })
+      .where(and(eq(chats.userId,id as number), ne(chats.status,"open")))
+
       whereCondition.push(eq(chats.userId,id as number));
     }
     if (type === "admin") {
       whereCondition.push(eq(chats.adminUserId,id as number));
+      await db.update(chats).set({
+        status:"open"
+      })
+      .where(and(eq(chats.adminUserId,id as number), ne(chats.status,"open")))
     }
     if (type === "guest") {
       whereCondition.push(eq(chats.guestId,id as string));
+
+      await db.update(chats).set({
+        status:"open"
+      })
+      .where(and(eq(chats.guestId,id as string), ne(chats.status,"open")))
     }
 
     const messagesData = await db
