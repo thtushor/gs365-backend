@@ -138,6 +138,7 @@ export class ChatModel {
           role: adminUsers.role,
           lastMessage: messages.content,
           lastMessageCreatedAt: messages.createdAt,
+          lastMessageAttachmentUrl: messages?.attachmentUrl,
           chatStatus: chats.status
         })
         .from(adminUsers)
@@ -195,6 +196,7 @@ export class ChatModel {
           phone: users.phone,
           lastMessage: messages.content,
           lastMessageCreatedAt: messages.createdAt,
+          lastMessageAttachmentUrl: messages?.attachmentUrl,
           chatStatus: chats.status
         })
         .from(users)
@@ -355,6 +357,7 @@ export class ChatModel {
         id: chats.id,
         guestId: chats.guestId,
         lastMessage: messages.content,
+        lastMessageAttachmentUrl: messages?.attachmentUrl,
         type: chats?.type,
         lastMessageCreatedAt: messages.createdAt,
         chatStatus: chats.status
@@ -378,6 +381,7 @@ export class ChatModel {
           isNotNull(chats.guestId),
           searchPattern ? or(like(chats.guestId, searchPattern), like(messages.content, searchPattern)) : undefined
         ))
+        .orderBy(desc(messages.createdAt));
 
       return guestMessages;
 

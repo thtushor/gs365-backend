@@ -2,9 +2,11 @@ import { Request, Response, NextFunction } from "express";
 import { ChatModel } from "../models/chat.model";
 import { MessageModel } from "../models/message.model";
 import { asyncHandler } from "../utils/asyncHandler";
-import { NewChat, ChatStatus } from "../db/schema/chats";
+import { NewChat, ChatStatus, chats } from "../db/schema/chats";
 import { NewMessage, MessageSenderType } from "../db/schema/messages";
 import { io } from "..";
+import { db } from "../db/connection";
+import { eq, sum } from "drizzle-orm";
 
 export class ChatController {
   static createChat = asyncHandler(
@@ -17,14 +19,15 @@ export class ChatController {
         newChat = {
           userId: userId,
           adminUserId: targetAffiliateId ? targetAffiliateId : adminUserId,
-          status: "open",
+          status:  senderType==="user" ? "pending_admin_response": senderType==="admin" ?  "pending_user_response" :   "open",
           type: senderType || "user",
         };
       } else if (guestId) {
         newChat = {
           guestId: guestId,
           adminUserId: targetAffiliateId ? targetAffiliateId : adminUserId,
-          status: "open",
+          // status: "open",
+          status:  senderType==="guest" ? "pending_admin_response": senderType==="admin" ?  "pending_user_response" :   "open",
           type: "guest",
         };
       } else {
@@ -90,7 +93,12 @@ export class ChatController {
       const chatId = parseInt(req.params.id);
       const { status } = req.body;
 
-      if (!Object.values(ChatStatus).includes(status)) {
+      if (![
+        "open",
+        "closed",
+        "pending_admin_response",
+        "pending_user_response",
+      ].includes(status)) {
         return res.status(400).json({ success: false, message: "Invalid chat status" });
       }
 
@@ -135,6 +143,19 @@ export class ChatController {
       res.status(200).json({ success: true, data: chats });
     }
   );
+
+  static getChatUnreadCount = asyncHandler(async()=>{
+
+    const result = await db.select({
+      countUser: sum(chats.userId),
+
+    }).from(chats).where(eq(chats.status,"pending_admin_response"))
+    return {
+      message: "Chat unread fetched successfully",
+      status: true,
+      data: result
+    };
+  })
 
   static createChatAdmin = asyncHandler(
     async (req: Request, res: Response, next: NextFunction) => {
