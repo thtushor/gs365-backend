@@ -15,6 +15,10 @@ export const notifications = mysqlTable("notifications", {
     "claimable",
     "linkable",
     "static",
+    "admin_player_transaction",
+    "admin_affiliate_transaction",
+    "admin_player_kyc",
+    "admin_affiliate_kyc",
   ]).notNull(),
 
   title: varchar("title", { length: 300 }).notNull(),

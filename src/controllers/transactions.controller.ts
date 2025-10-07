@@ -32,6 +32,7 @@ import {
 import { BalanceModel } from "../models/balance.model";
 import { AdminMainBalanceModel } from "../models/adminMainBalance.model";
 import { notifications } from "../db/schema/notifications";
+import { io } from "..";
 
 type CreateDepositBody = {
   userId: number;
@@ -125,6 +126,43 @@ export const createDeposit = async (req: Request, res: Response) => {
       conversionRate: currentConversionRate.rate ?? null,
     } as any);
 
+    await db.insert(notifications).values({
+      notificationType: "admin_player_transaction" as const,
+      title: `New deposit transaction from user #${userId}`,
+      description: `
+        A new deposit transaction has been created by user <strong> ${user.username} (#${userId})</strong>.<br/>
+        Amount: <strong>${convertedAmount} ${currencyData?.code}</strong><br/>
+        Bonus: <strong>${convertedBonusAmount?.toFixed(2) ?? 0} ${currencyData?.code}</strong><br/>
+        Payment Gateway: <strong>${gatewayId}</strong><br/>
+        Transaction ID: <strong>${customTransactionId}</strong>
+        Promotion ID: <strong>${promotionId}</strong>
+      `,
+      amount: String(0), // ✅ decimal column → string
+      turnoverMultiply: null,
+      playerIds: String(userId),
+      promotionId: promotionId ? Number(promotionId) : null,
+      link: `/players/${userId}/profile/transactions`,
+      startDate: new Date(),
+      endDate: new Date(new Date().setDate(new Date().getDate() + 7)),
+      status: "active",
+      createdBy: Number(user?.id ?? 0), // ✅ ensure numeric int
+    });
+
+    io.emit("admin-notifications",{
+      notificationType: "admin_player_transaction" as const,
+      title: `New deposit transaction from user #${userId}`,
+      description: `
+        A new deposit transaction has been created by user <strong> ${user.username} (#${userId})</strong>.<br/>
+        Amount: <strong>${convertedAmount} ${currencyData?.code}</strong><br/>
+        Bonus: <strong>${convertedBonusAmount?.toFixed(2) ?? 0} ${currencyData?.code}</strong><br/>
+        Payment Gateway: <strong>${gatewayId}</strong><br/>
+        Transaction ID: <strong>${customTransactionId}</strong>
+        Promotion ID: <strong>${promotionId}</strong>
+      `
+    })
+    
+    
+
     return res.status(201).json({
       status: true,
       message: "Deposit created. Pending approval.",
@@ -195,7 +233,7 @@ export const claimNotification = async (req: Request, res: Response) => {
     const [settingsData] = await db.select().from(settings).limit(1);
 
     // Resolve currency: prefer user's currency; fallback to BDT
-    const [userRow] = await db.select({ id: users.id, currencyId: users.currency_id }).from(users).where(eq(users.id, Number(userId)));
+    const [userRow] = await db.select({ id: users.id, currencyId: users.currency_id,userName: users.username }).from(users).where(eq(users.id, Number(userId)));
     if (!userRow) {
       return res.status(404).json({ status: false, message: "User not found" });
     }
@@ -280,6 +318,41 @@ export const claimNotification = async (req: Request, res: Response) => {
 
       // update 
       await tx.update(notifications).set({ status: "claimed" }).where(eq(notifications.id, Number(notificationId)));
+
+       // ✅ Create an admin notification for this claim deposit
+       await tx.insert(notifications).values({
+        notificationType: "admin_player_transaction" as const,
+        title: `New claim transaction from user #${userId}`,
+        description: `
+          A new claim deposit has been created by user <strong>${userRow.userName} (#${userId})</strong>.<br/>
+          Amount: <strong>${claimAmount.toFixed(2)} ${currencyData?.code}</strong><br/>
+          Bonus: <strong>${claimableBonus.toFixed(2)} ${currencyData?.code}</strong><br/>
+          Transaction ID: <strong>${customTransactionId}</strong><br/>
+          Promotion ID: <strong>${promotionId || "N/A"}</strong>
+        `,
+        amount: String(0),
+        turnoverMultiply: null,
+        playerIds: String(userId),
+        promotionId: promotionId ? Number(promotionId) : null,
+        link: `/players/${userId}/profile/transactions`,
+        startDate: new Date(),
+        endDate: new Date(new Date().setDate(new Date().getDate() + 7)),
+        status: "active",
+        createdBy: Number(userId),
+      });
+
+      io.emit("admin-notifications",{
+        notificationType: "admin_player_transaction" as const,
+        title: `New claim transaction from user #${userId}`,
+        description: `
+          A new claim deposit has been created by user <strong>${userRow.userName} (#${userId})</strong>.<br/>
+          Amount: <strong>${claimAmount.toFixed(2)} ${currencyData?.code}</strong><br/>
+          Bonus: <strong>${claimableBonus.toFixed(2)} ${currencyData?.code}</strong><br/>
+          Transaction ID: <strong>${customTransactionId}</strong><br/>
+          Promotion ID: <strong>${promotionId || "N/A"}</strong>
+        `,
+      })
+      
 
 
       return { transactionId };
@@ -416,6 +489,59 @@ export const createAffiliateWithdraw = async (req: Request, res: Response) => {
         walletAddress: walletAddress ?? null,
         network: network ?? null,
       } as any);
+
+       // ✅ Create admin notification
+       await tx.insert(notifications).values({
+        notificationType: "admin_affiliate_transaction" as const,
+        title: `New withdrawal request from affiliate #${affiliateId}`,
+        description: `
+          Affiliate ID <strong>#${affiliateId})</strong> has requested a withdrawal.<br/>
+          Amount: <strong>${amount.toFixed(2)}</strong><br/>
+          Method: <strong>${withdrawMethod}</strong><br/>
+          ${
+            withdrawMethod === "bank"
+              ? `
+              Bank: <strong>${bankName ?? "N/A"}</strong><br/>
+              Account Holder: <strong>${accountHolderName ?? "N/A"}</strong><br/>
+              Account No: <strong>${accountNumber ?? "N/A"}</strong><br/>`
+              : `
+              Wallet Address: <strong>${walletAddress ?? "N/A"}</strong><br/>
+              Network: <strong>${network ?? "N/A"}</strong><br/>`
+          }
+          Transaction ID: <strong>${customTransactionId}</strong>
+        `,
+        amount: String(amount),
+        turnoverMultiply: null,
+        playerIds: String(affiliateId),
+        promotionId: null,
+        link: `/affiliate-list/${affiliateId}/withdraw-history`,
+        startDate: new Date(),
+        endDate: new Date(new Date().setDate(new Date().getDate() + 7)),
+        status: "active",
+        createdBy: Number(user?.id ?? 0),
+      });
+
+      io.emit("admin-notifications",{
+        notificationType: "admin_affiliate_transaction" as const,
+        title: `New withdrawal request from affiliate #${affiliateId}`,
+        description: `
+          Affiliate ID <strong>#${affiliateId})</strong> has requested a withdrawal.<br/>
+          Amount: <strong>${amount.toFixed(2)}</strong><br/>
+          Method: <strong>${withdrawMethod}</strong><br/>
+          ${
+            withdrawMethod === "bank"
+              ? `
+              Bank: <strong>${bankName ?? "N/A"}</strong><br/>
+              Account Holder: <strong>${accountHolderName ?? "N/A"}</strong><br/>
+              Account No: <strong>${accountNumber ?? "N/A"}</strong><br/>`
+              : `
+              Wallet Address: <strong>${walletAddress ?? "N/A"}</strong><br/>
+              Network: <strong>${network ?? "N/A"}</strong><br/>`
+          }
+          Transaction ID: <strong>${customTransactionId}</strong>
+        `,
+      })
+      
 
       const transactionId =
         (createdTxn as any).insertId ?? (createdTxn as any)?.id;
@@ -666,6 +792,41 @@ export const createWithdraw = async (req: Request, res: Response) => {
         processedBy: user?.userType === "admin" ? user?.id : null,
         processedByUser: user?.userType === "user" ? user?.id : null,
       } as any);
+
+
+      await tx.insert(notifications).values({
+        notificationType: "admin_player_transaction" as const,
+        title: `New withdrawal request from user #${userId}`,
+        description: `
+          A new withdrawal request has been submitted by user <strong>(#${userId})</strong>.<br/>
+          Amount: <strong>${convertedAmount.toFixed(2)} ${currencyData?.code}</strong><br/>
+          Gateway: <strong>${getGateWayData?.name}</strong><br/>
+          Transaction ID: <strong>${customTransactionId}</strong><br/>
+          Method: <strong>${walletAddress ? "Wallet" : "Bank"}</strong>
+        `,
+        amount: String(convertedAmount),
+        turnoverMultiply: null,
+        playerIds: String(userId),
+        promotionId: null,
+        link: `/players/${userId}/profile/transactions`,
+        startDate: new Date(),
+        endDate: new Date(new Date().setDate(new Date().getDate() + 7)),
+        status: "active",
+        createdBy: Number(user?.id ?? 0),
+      });
+
+      io.emit("admin-notifications",{
+        notificationType: "admin_player_transaction" as const,
+        title: `New withdrawal request from user #${userId}`,
+        description: `
+          A new withdrawal request has been submitted by user <strong>(#${userId})</strong>.<br/>
+          Amount: <strong>${convertedAmount.toFixed(2)} ${currencyData?.code}</strong><br/>
+          Gateway: <strong>${getGateWayData?.name}</strong><br/>
+          Transaction ID: <strong>${customTransactionId}</strong><br/>
+          Method: <strong>${walletAddress ? "Wallet" : "Bank"}</strong>
+        `,
+      })
+      
 
       const transactionId =
         (createdTxn as any).insertId ?? (createdTxn as any)?.id;

@@ -14,6 +14,7 @@ import {
   getFavorites,
   logoutUser,
   getMyNotifications,
+  updateNotificationStatus,
 } from "../controllers/user.controller";
 import { verifyToken } from "../middlewares/verifyToken";
 import { asyncHandler } from "../utils/asyncHandler";
@@ -75,5 +76,6 @@ router.post("/add-favorite", asyncHandler(addFavorite));
 router.post("/remove-favorite", asyncHandler(removeFavorite));
 router.get("/get-favorites", asyncHandler(getFavorites));
 router.get("/notifications/:userId", asyncHandler(getMyNotifications));
+router.post("/notifications-status", asyncHandler(updateNotificationStatus));
 
 export default router;

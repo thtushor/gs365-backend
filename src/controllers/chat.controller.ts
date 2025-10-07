@@ -6,7 +6,8 @@ import { NewChat, ChatStatus, chats } from "../db/schema/chats";
 import { NewMessage, MessageSenderType } from "../db/schema/messages";
 import { io } from "..";
 import { db } from "../db/connection";
-import { eq, sum } from "drizzle-orm";
+import { and, eq, inArray, sql, sum } from "drizzle-orm";
+import { adminUsers } from "../db/schema";
 
 export class ChatController {
   static createChat = asyncHandler(
@@ -15,11 +16,11 @@ export class ChatController {
 
       let newChat: NewChat;
 
-      if (userId||adminUserId||targetAffiliateId) {
+      if (userId || adminUserId || targetAffiliateId) {
         newChat = {
           userId: userId,
           adminUserId: targetAffiliateId ? targetAffiliateId : adminUserId,
-          status:  senderType==="user" ? "pending_admin_response": senderType==="admin" ?  "pending_user_response" :   "open",
+          status: senderType === "user" ? "pending_admin_response" : senderType === "admin" ? "pending_user_response" : "open",
           type: senderType || "user",
         };
       } else if (guestId) {
@@ -27,7 +28,7 @@ export class ChatController {
           guestId: guestId,
           adminUserId: targetAffiliateId ? targetAffiliateId : adminUserId,
           // status: "open",
-          status:  senderType==="guest" ? "pending_admin_response": senderType==="admin" ?  "pending_user_response" :   "open",
+          status: senderType === "guest" ? "pending_admin_response" : senderType === "admin" ? "pending_user_response" : "open",
           type: "guest",
         };
       } else {
@@ -43,9 +44,9 @@ export class ChatController {
           senderType: senderType || (userId ? "user" : "guest"),
           content: initialMessageContent || null,
           attachmentUrl: attachmentUrl || null,
-          guestSenderId:guestId,
+          guestSenderId: guestId,
         };
-        io.to(chatId.toString()).emit("sendMessage",initialMessage)
+        io.to(chatId.toString()).emit("sendMessage", initialMessage)
         await MessageModel.createMessage(initialMessage);
       }
 
@@ -137,35 +138,51 @@ export class ChatController {
 
   static getAllChats = asyncHandler(
     async (req: Request, res: Response, next: NextFunction) => {
-      const chatUserType = req.query.chatUserType as "admin" | "user"|"guest" | undefined;
+      const chatUserType = req.query.chatUserType as "admin" | "user" | "guest" | undefined;
       const searchKey = req.query.searchKey as string | undefined;
       const chats = await ChatModel.getAllChats(chatUserType, searchKey);
       res.status(200).json({ success: true, data: chats });
     }
   );
 
-  static getChatUnreadCount = asyncHandler(async()=>{
+  static getChatUnreadCount = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
 
-    const result = await db.select({
-      countUser: sum(chats.userId),
+    try {
+      const result = await db
+        .select({
+          countUser: sql<number>`COUNT(DISTINCT ${chats.userId})`,
+          countAffiliate: sql<number>`COUNT(DISTINCT ${adminUsers.id})`,
+          countGuest: sql<number>`COUNT(DISTINCT ${chats.guestId})`
+        })
+        .from(chats)
+        .leftJoin(adminUsers,and(eq(adminUsers.id,chats.adminUserId),inArray(adminUsers.role,["affiliate","superAffiliate"])))
+        .where(eq(chats.status, "pending_admin_response"))
+        .limit(1);
 
-    }).from(chats).where(eq(chats.status,"pending_admin_response"))
-    return {
-      message: "Chat unread fetched successfully",
-      status: true,
-      data: result
-    };
+      res.status(200).json({
+        message: "Chat unread fetched successfully",
+        status: true,
+        data: result?.[0] || { countUser: 0, countAffiliate: 0 },
+      });
+    } catch (error) {
+      res.status(200).json({
+        message: "Chat unread fetched successfully",
+        status: true,
+        errors: error
+      })
+    }
+
   })
 
   static createChatAdmin = asyncHandler(
     async (req: Request, res: Response, next: NextFunction) => {
-      const { adminUserId,userId, initialMessageContent } = req.body;
+      const { adminUserId, userId, initialMessageContent } = req.body;
 
       const newChat: NewChat = {
         userId,
         adminUserId,
         status: "open",
-        type:"admin"
+        type: "admin"
       };
 
       const chatId = await ChatModel.createChat(newChat);

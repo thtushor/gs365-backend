@@ -383,7 +383,7 @@ export const loginUser = async (req: Request, res: Response) => {
         user_id: user.id,
         token: token,
         type: "verify",
-        expires_at: new Date(),      
+        expires_at: new Date(),
       })
     }
 
@@ -629,12 +629,21 @@ export const getFavorites = async (req: Request, res: Response) => {
 export const getMyNotifications = async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
+    const { userType } = req?.query;
 
-    if (!userId) {
+    if (!userId && !userType) {
       return res.status(400).json({
         status: false,
         message: "User ID is required",
       });
+    }
+
+    let condition;
+
+    if (userType === "admin") {
+      condition = sql`${notifications.notificationType} LIKE 'admin_%'`;
+    } else {
+      condition = sql`FIND_IN_SET(${userId}, ${notifications.playerIds})`;
     }
 
     // Fetch notifications where status is active
@@ -644,7 +653,7 @@ export const getMyNotifications = async (req: Request, res: Response) => {
       .from(notifications)
       .where(
         sql`
-        FIND_IN_SET(${userId}, ${notifications.playerIds}) 
+       ${condition}
         AND ${notifications.status} = 'active'
       `
       )
@@ -653,6 +662,36 @@ export const getMyNotifications = async (req: Request, res: Response) => {
     return res.json({
       status: true,
       data: notificationsList,
+      message: "Notifications fetched successfully",
+    });
+  } catch (error) {
+    console.error("Fetch notifications error:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+export const updateNotificationStatus = async (req: Request, res: Response) => {
+  try {
+    const { status,id } = req.body;
+    // const { userType } = req?.query;
+
+    if (!status) {
+      return res.status(400).json({
+        status: false,
+        message: "Status is required",
+      });
+    }
+
+   const result = await db.update(notifications).set({
+    status
+   }).where(eq(notifications.id,Number(id||0)))
+
+    return res.json({
+      status: true,
+      data: result,
       message: "Notifications fetched successfully",
     });
   } catch (error) {

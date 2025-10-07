@@ -291,14 +291,14 @@ export const adminRegistration = async (
             minTrx !== undefined
               ? String(minTrx)
               : referringAdmin?.minTrx
-              ? referringAdmin?.minTrx
-              : undefined,
+                ? referringAdmin?.minTrx
+                : undefined,
           maxTrx:
             maxTrx !== undefined
               ? String(maxTrx)
               : referringAdmin?.maxTrx
-              ? referringAdmin?.maxTrx
-              : undefined,
+                ? referringAdmin?.maxTrx
+                : undefined,
           currency: currency ? currency : referringAdmin?.currency,
           createdBy: Number(createdByData) || undefined,
           refCode: uniqueRefCode,
@@ -307,8 +307,8 @@ export const adminRegistration = async (
           commission_percent: commission_percent
             ? commission_percent
             : referringAdmin?.commission_percent
-            ? referringAdmin?.commission_percent / 2
-            : commission_percent,
+              ? referringAdmin?.commission_percent / 2
+              : commission_percent,
           designation,
         });
         res.status(201).json({
@@ -3671,6 +3671,35 @@ export const createUpdateKyc = async (req: Request, res: Response) => {
       }
     };
 
+
+    const insertKycNotification = async (isUpdate: boolean) => {
+      const type:  "admin_player_kyc" | "admin_affiliate_kyc" =
+        (holderType === "player" ? "admin_player_kyc" : "admin_affiliate_kyc");
+
+      const title = isUpdate
+        ? `KYC updated for ${holderType} #${holderId}`
+        : `New KYC submitted by ${holderType} #${holderId}`;
+
+      const description = `
+        KYC ${isUpdate ? "updated" : "created"} for <strong>${fullName}</strong>.<br/>
+        Document Type: <strong>${documentType}</strong><br/>
+        Document Number: <strong>${documentNo}</strong><br/>
+        Status: <strong>${validatedStatus}</strong>
+      `;
+
+      await db.insert(notifications).values({
+        notificationType: type,
+        title,
+        description,
+        playerIds: String(holderId),
+        startDate: new Date(),
+        link: holderType==="player" ? `/kyc-request-history`: `/affiliate-list/${holderId}/kyc-verification`,
+        endDate: new Date(new Date().setDate(new Date().getDate() + 7)), // visible for 7 days
+        status: "active",
+        createdBy: holderId, // or admin ID if available
+      });
+    };
+
     if (kycToUpdate && kycToUpdate.length > 0) {
       // Update existing KYC
       await db
@@ -3720,6 +3749,7 @@ export const createUpdateKyc = async (req: Request, res: Response) => {
     return res.status(500).json({ status: false, message: "Server error." });
   }
 };
+
 export const sendKycVerificationRequest = async (
   req: Request,
   res: Response
@@ -4007,15 +4037,15 @@ export const getKycList = async (req: Request, res: Response) => {
       whereClauses.push(eq(kyc.status, statusFilter));
     }
 
-        // Single KYC by ID
+    // Single KYC by ID
     // Add kycId and holderType filter if provided
-    if (Boolean(Number(kycId||0))) {
-    
-      whereClauses.push(eq(kyc.holderId, Number(kycId||0)));
-      
+    if (Boolean(Number(kycId || 0))) {
+
+      whereClauses.push(eq(kyc.holderId, Number(kycId || 0)));
+
       if (holderType) {
         whereClauses.push(
-          eq(kyc.holderType, holderType as "player"| "affiliate"|"agent")
+          eq(kyc.holderType, holderType as "player" | "affiliate" | "agent")
         );
       }
     }
@@ -4310,15 +4340,15 @@ export const createCustomNotification = async (req: Request, res: Response) => {
     try {
       const targetIds: number[] = Array.isArray(playerIds)
         ? playerIds
-            .map((v: any) => Number(v))
-            .filter((v: any) => Number.isFinite(v) && v > 0)
+          .map((v: any) => Number(v))
+          .filter((v: any) => Number.isFinite(v) && v > 0)
         : [];
       const uniqueIds = Array.from(new Set(targetIds));
       uniqueIds.forEach((uid) => {
         io.emit(`user-notifications-${uid}`, {
           userId: uid,
           event: "notification_created",
-          notificationId:newNotification?.insertId,
+          notificationId: newNotification?.insertId,
           // Clients should call the API to fetch fresh notifications
           refresh: true,
         });
