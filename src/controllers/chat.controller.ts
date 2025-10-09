@@ -148,6 +148,7 @@ export class ChatController {
   static getChatUnreadCount = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
 
     try {
+      const { playerId, guestId } = req?.query;
       const result = await db
         .select({
           countUser: sql<number>`COUNT(DISTINCT ${chats.userId})`,
@@ -155,8 +156,8 @@ export class ChatController {
           countGuest: sql<number>`COUNT(DISTINCT ${chats.guestId})`
         })
         .from(chats)
-        .leftJoin(adminUsers,and(eq(adminUsers.id,chats.adminUserId),inArray(adminUsers.role,["affiliate","superAffiliate"])))
-        .where(eq(chats.status, "pending_admin_response"))
+        .leftJoin(adminUsers, and(eq(adminUsers.id, chats.adminUserId), inArray(adminUsers.role, playerId ? ["admin", "superAdmin"] : ["affiliate", "superAffiliate"])))
+        .where(and(eq(chats.status, (playerId || guestId) ? "pending_user_response" : "pending_admin_response"), playerId ? eq(chats.userId, Number(playerId)) : guestId ? eq(chats.guestId, String(guestId)) : undefined))
         .limit(1);
 
       res.status(200).json({

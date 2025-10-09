@@ -111,7 +111,7 @@ export class MessageController {
   static getMessagesByGuestSenderId = asyncHandler(
     async (req: Request, res: Response, next: NextFunction) => {
       const guestSenderId = req.params.guestSenderId;
-      const messages = await MessageModel.getMessagesByGuestSenderId(guestSenderId);
+      const messages = await MessageModel.getMessagesByUserOrAdminId(guestSenderId,"guest");
 
       res.status(200).json({ success: true, data: messages });
     }
