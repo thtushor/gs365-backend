@@ -62,7 +62,7 @@ if (!process.env.DATABASE_URL) {
 const app = express();
 const httpServer = createServer(app);
 export const io = new Server(httpServer, {
-  path:"/gs-server/socket/socket.io/",
+  // path:"/gs-server/socket/socket.io/",
   cors: {
     origin: "*", // Adjust this in production to your client's URL
     methods: ["GET", "POST"],
@@ -136,7 +136,7 @@ app.use("/api/auto-replies", autoReplyRoute);
 app.use("/api/user-phones", userPhoneRouter);
 
 app.get("/", (req, res) => {
-  res.send("Welcome to the Fashion Glory API!");
+  res.send("Welcome to the Gamestare 365 API!");
 });
 
 app.get("/test-message", (req, res) => {
