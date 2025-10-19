@@ -41,6 +41,7 @@ import userPhoneRouter from "./routes/userPhone.route";
 import { errorHandler } from "./middlewares/errorHandler";
 import { setupSwagger } from "./utils/swagger";
 import designationRouter from "./routes/designation.route";
+import databaseBackupRouter from "./routes/backupRestore.route";
 import { setupSocketIO } from "./socket";
 import path from "path";
 // Ensure process.env.DATABASE_URL is defined and of correct type
@@ -134,6 +135,7 @@ app.use("/api/chats", chatRoute);
 app.use("/api/messages", messageRoute);
 app.use("/api/auto-replies", autoReplyRoute);
 app.use("/api/user-phones", userPhoneRouter);
+app.use("/api/database", databaseBackupRouter);
 
 app.get("/", (req, res) => {
   res.send("Welcome to the Gamestare 365 API!");
