@@ -7,22 +7,22 @@ import { asyncHandler } from "../utils/asyncHandler";
 const router = Router();
 
 router.post("/backup", 
-    // verifyToken,
+    verifyToken,
      createBackup);
 router.post("/restore", 
-    // verifyToken,
+    verifyToken,
      asyncHandler(restoreBackup));
 router.post("/backup-files", 
-    // verifyToken,
+    verifyToken,
      getBackupList);
 router.post("/download-backup", 
-    // verifyToken,
+    verifyToken,
      asyncHandler(downloadBackup));
 router.post("/delete-backup", 
-    // verifyToken,
+    verifyToken,
      asyncHandler(deleteBackup));
 router.post("/drop-all-tables", 
-    // verifyToken,
+    verifyToken,
      asyncHandler(dropAllTables));
 
 const autoReplyRoute = router;
