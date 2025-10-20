@@ -44,6 +44,7 @@ import designationRouter from "./routes/designation.route";
 import databaseBackupRouter from "./routes/backupRestore.route";
 import { setupSocketIO } from "./socket";
 import path from "path";
+import { scheduleAutoBackup } from "./controllers/backupRestore.controller";
 // Ensure process.env.DATABASE_URL is defined and of correct type
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL environment variable is not set.");
@@ -156,3 +157,5 @@ httpServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Swagger docs: http://localhost:${PORT}/api-docs`);
 });
+
+scheduleAutoBackup();

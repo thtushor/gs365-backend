@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { Request, Response } from "express";
 import { exec } from "child_process";
+import cron from "node-cron";
 
 const MYSQLDUMP_PATH = `${process.env.MYSQLDUMP_PATH || `mysqldump`}`;
 const MYSQL_PATH = `${process.env.MYSQL_PATH || `mysql`}`;
@@ -22,6 +23,55 @@ const DB_CONFIG = {
 
 // Ensure backup folder exists
 if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR);
+
+export const scheduleAutoBackup = () => {
+  console.log("🕒 Setting up automatic daily backups...");
+
+  // Run every day at 03:00 (midnight)
+  cron.schedule("0 3 * * *", async () => {
+    try {
+      console.log("📦 Auto-backup job started...");
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const sqlFile = path.join(BACKUP_DIR, `auto_backup_${timestamp}.sql`);
+
+      const dumpCmd = `${MYSQLDUMP_PATH} -h ${DB_CONFIG.host} -P ${DB_CONFIG.port} -u ${DB_CONFIG.user
+        } ${DB_CONFIG.password ? `-p${DB_CONFIG.password}` : ""} ${DB_CONFIG.database} > "${sqlFile}"`;
+
+      exec(dumpCmd, (error, stdout, stderr) => {
+        if (error) {
+          console.error("❌ Auto-backup failed:", stderr || error);
+          return;
+        }
+
+        console.log("✅ Auto-backup completed:", sqlFile);
+
+        // Optional: Cleanup old backups (keep only latest 7)
+        const backups = fs
+          .readdirSync(BACKUP_DIR)
+          .filter((f) => f.startsWith("auto_backup_"))
+          .sort(
+            (a, b) =>
+              fs.statSync(path.join(BACKUP_DIR, b)).mtime.getTime() -
+              fs.statSync(path.join(BACKUP_DIR, a)).mtime.getTime()
+          );
+
+        if (backups.length > 7) {
+          const oldFiles = backups.slice(7);
+          for (const old of oldFiles) {
+            const oldPath = path.join(BACKUP_DIR, old);
+            fs.unlinkSync(oldPath);
+            console.log("🗑️ Deleted old auto-backup:", old);
+          }
+        }
+      });
+    } catch (err) {
+      console.error("⚠️ Auto-backup job failed:", err);
+    }
+  });
+
+  console.log("✅ Auto-backup scheduler initialized.");
+};
 
 /**
  * Create a database backup using mysqldump CLI
