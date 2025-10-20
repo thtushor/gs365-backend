@@ -3,11 +3,8 @@ import path from "path";
 import { Request, Response } from "express";
 import { exec } from "child_process";
 
-const MYSQLDUMP_PATH = `"C:\\xampp\\mysql\\bin\\mysqldump.exe"`;
-const MYSQL_PATH = `"C:\\xampp\\mysql\\bin\\mysql.exe"`;
-
-
-
+const MYSQLDUMP_PATH = `${process.env.MYSQLDUMP_PATH || `mysqldump`}`;
+const MYSQL_PATH = `${process.env.MYSQL_PATH || `mysql`}`;
 
 const BACKUP_DIR = path.join(process.cwd(), "backups");
 
