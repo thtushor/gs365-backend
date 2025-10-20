@@ -714,7 +714,7 @@ export const BetResultModel = {
       // Main ranking query
       const results = await db
         .select({
-          userId: betResults.userId,
+          userId: betResults?.userId,
           // user: users,
           // game: games,
           // provider: game_providers,
@@ -755,14 +755,15 @@ export const BetResultModel = {
           const [userData] = await db
             .select()
             .from(users)
-            .where(eq(users.id, row.userId));
+            .where(eq(users?.id, row?.userId));
+
           const userBalance = await BalanceModel.calculatePlayerBalance(
-            row.userId,
-            userData.currency_id!
+            row?.userId,
+            userData?.currency_id!
           );
 
           return {
-            userId: row.userId,
+            userId: row?.userId,
             user: { ...userData, password: undefined },
             userBalance,
             // game: row.game,
@@ -777,7 +778,7 @@ export const BetResultModel = {
             winRate: Math.round(winRate * 100) / 100, // Round to 2 decimal places
             totalProfit: Math.round(totalProfit * 100) / 100,
             avgBetAmount: Math.round(avgBetAmount * 100) / 100,
-            lastPlayed: row.lastPlayed || new Date(),
+            lastPlayed: row?.lastPlayed || new Date(),
           };
         })
       );

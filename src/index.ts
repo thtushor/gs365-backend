@@ -138,7 +138,7 @@ app.use("/api/user-phones", userPhoneRouter);
 app.use("/api/database", databaseBackupRouter);
 
 app.get("/", (req, res) => {
-  res.send("Welcome to the Gamestare 365 API!");
+  res.send("Welcome to the Gamestar 365 API!");
 });
 
 app.get("/test-message", (req, res) => {

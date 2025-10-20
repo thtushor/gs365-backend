@@ -35,9 +35,8 @@ export const createBackup = async (req: Request, res: Response) => {
     const sqlFile = path.join(BACKUP_DIR, `backup_${timestamp}.sql`);
 
     // Build mysqldump command
-    const dumpCmd = `${MYSQLDUMP_PATH} -h ${DB_CONFIG.host} -P ${DB_CONFIG.port} -u ${DB_CONFIG.user} ${
-      DB_CONFIG.password ? `-p${DB_CONFIG.password}` : ""
-    } ${DB_CONFIG.database} > "${sqlFile}"`;
+    const dumpCmd = `${MYSQLDUMP_PATH} -h ${DB_CONFIG.host} -P ${DB_CONFIG.port} -u ${DB_CONFIG.user} ${DB_CONFIG.password ? `-p${DB_CONFIG.password}` : ""
+      } ${DB_CONFIG.database} > "${sqlFile}"`;
 
     exec(dumpCmd, (error, stdout, stderr) => {
       if (error) {
@@ -99,9 +98,9 @@ export const restoreBackup = async (req: Request, res: Response) => {
   }
 
   try {
-    const restoreCmd = `mysql -h ${DB_CONFIG.host} -P ${DB_CONFIG.port} -u ${DB_CONFIG.user} ${
-      DB_CONFIG.password ? `-p${DB_CONFIG.password}` : ""
-    } ${DB_CONFIG.database} < "${filePath}"`;
+    const restoreCmd = `${MYSQL_PATH} -h ${DB_CONFIG.host} -P ${DB_CONFIG.port} -u ${DB_CONFIG.user} ${DB_CONFIG.password ? `-p${DB_CONFIG.password}` : ""
+      } ${DB_CONFIG.database} < "${filePath}"`;
+
 
     exec(restoreCmd, (error, stdout, stderr) => {
       if (error) {
