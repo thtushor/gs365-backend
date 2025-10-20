@@ -65,7 +65,7 @@ export const getBackupList = (req: Request, res: Response) => {
         size: (stats.size / 1024).toFixed(2) + " KB",
         date: stats.mtime,
       };
-    });
+    }).sort((a, b) => b.date.getTime() - a.date.getTime()); // Sort by date descending
     res.json(backups);
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to list backups", error });
@@ -76,16 +76,108 @@ export const getBackupList = (req: Request, res: Response) => {
  * Download a backup file
  */
 export const downloadBackup = (req: Request, res: Response) => {
-  const { filename } = req.params;
-  const filePath = path.join(BACKUP_DIR, filename);
+  try {
+    const { filename } = req.body || req.query; // allow both POST and GET
+    if (!filename) {
+      console.log("No filename provided");
+      return res.status(400).json({ success: false, message: "Filename is required" });
+    }
 
-  if (!fs.existsSync(filePath)) {
-    return res.status(404).json({ success: false, message: "File not found" });
+    const filePath = path.join(BACKUP_DIR, filename);
+    console.log("Looking for file at:", filePath);
+
+    if (!fs.existsSync(filePath)) {
+      console.log("File not found");
+      return res.status(404).json({ success: false, message: "File not found" });
+    }
+    console.log("File found:", filePath);
+    // Set headers manually to ensure download
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.setHeader("Content-Type", "application/octet-stream");
+
+    return res.download(filePath, (err) => {
+      if (err) {
+        console.error("Error while downloading file:", err);
+        return res.status(500).json({ success: false, message: "Download failed" });
+      }
+    });
+  } catch (error) {
+    console.error("Unexpected error:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
-
-  res.download(filePath);
 };
 
+// Drop all tables in the database
+export const dropAllTables = async (req: Request, res: Response) => {
+  try {
+    // ✅ Simpler, valid SQL (no double escaping)
+    const sql = `
+      SET FOREIGN_KEY_CHECKS = 0;
+      SET GROUP_CONCAT_MAX_LEN=32768;
+      SELECT CONCAT('DROP TABLE IF EXISTS ', GROUP_CONCAT(CONCAT(' \`', table_name, '\`')), ';')
+      INTO @dropStatement
+      FROM information_schema.tables
+      WHERE table_schema='${DB_CONFIG.database}';
+      PREPARE stmt FROM @dropStatement;
+      EXECUTE stmt;
+      DEALLOCATE PREPARE stmt;
+      SET FOREIGN_KEY_CHECKS = 1;
+    `;
+
+    // Remove newlines for safe CLI execution
+    const cleanedSQL = sql.replace(/\s+/g, " ").trim();
+
+    const dropCmd = `${MYSQL_PATH} -h ${DB_CONFIG.host} -P ${DB_CONFIG.port} -u ${DB_CONFIG.user} ${
+      DB_CONFIG.password ? `-p${DB_CONFIG.password}` : ""
+    } -D ${DB_CONFIG.database} -e "${cleanedSQL}"`;
+
+    exec(dropCmd, (error, stdout, stderr) => {
+      if (error) {
+        console.error("Error dropping tables:", stderr || error);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to drop tables",
+          error: stderr || error,
+        });
+      }
+
+      console.log("Tables dropped successfully:", stdout);
+      res.json({
+        success: true,
+        message: `All tables in database "${DB_CONFIG.database}" dropped successfully.`,
+      });
+    });
+  } catch (error) {
+    console.error("Drop error:", error);
+    res.status(500).json({ success: false, message: "Drop operation failed", error });
+  }
+};
+// Delete a backup file
+export const deleteBackup = (req: Request, res: Response) => {
+  try {
+    const { filename } = req.body || req.query; // allow both POST and GET
+    if (!filename) {
+      console.log("No filename provided");
+      return res.status(400).json({ success: false, message: "Filename is required" });
+    }
+
+    const filePath = path.join(BACKUP_DIR, filename);
+    console.log("Attempting to delete file at:", filePath);
+
+    if (!fs.existsSync(filePath)) {
+      console.log("File not found");
+      return res.status(404).json({ success: false, message: "File not found" });
+    }
+
+    fs.unlinkSync(filePath); // delete the file
+    console.log("File deleted successfully:", filename);
+
+    return res.status(200).json({ success: true, message: "File deleted successfully" });
+  } catch (error) {
+    console.error("Unexpected error while deleting file:", error);
+    return res.status(500).json({ success: false, message: "Server error while deleting file" });
+  }
+};
 /**
  * Restore database from backup using mysql CLI
  */
