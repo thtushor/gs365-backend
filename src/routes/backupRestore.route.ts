@@ -6,24 +6,24 @@ import { asyncHandler } from "../utils/asyncHandler";
 
 const router = Router();
 
-router.post("/backup", 
+router.post("/backup",
     verifyToken,
-     createBackup);
-router.post("/restore", 
+    createBackup);
+router.post("/restore",
     verifyToken,
-     asyncHandler(restoreBackup));
-router.post("/backup-files", 
+    asyncHandler(restoreBackup));
+router.post("/backup-files",
     verifyToken,
-     getBackupList);
-router.post("/download-backup", 
+    getBackupList);
+router.post("/download-backup",
     verifyToken,
-     asyncHandler(downloadBackup));
-router.post("/delete-backup", 
+    asyncHandler(downloadBackup));
+router.post("/delete-backup",
     verifyToken,
-     asyncHandler(deleteBackup));
-router.post("/drop-all-tables", 
+    asyncHandler(deleteBackup));
+router.post("/drop-all-tables",
     verifyToken,
-     asyncHandler(dropAllTables));
+    asyncHandler(dropAllTables));
 
 const autoReplyRoute = router;
 
