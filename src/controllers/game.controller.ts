@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { GameModel } from "../models/game.model";
 import { asyncHandler } from "../utils/asyncHandler";
 import * as UAParser from "ua-parser-js";
+import { io } from "..";
 
 export const GameController = {
   // Helper function to get client IP (same as user controller)
@@ -219,6 +220,15 @@ export const GameController = {
         deviceType: device_type,
         ipAddress: ip_address,
         betAmount: betAmount
+      });
+
+      const tokenResult = await GameModel.verifyGameToken(sessionToken)
+
+      io.emit(`betResultUpdated-${tokenResult?.userId}`, {
+        gameSessionId,
+        betStatus,
+        winAmount,
+        lossAmount,
       });
 
       res.status(200).json({

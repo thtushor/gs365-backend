@@ -28,16 +28,16 @@ export const BetResultController = {
         gameName,
         providerName,
         isMobile,
-        limit = 50,
-        offset = 0,
+        pageSize = 50,
+        page = 1,
         sortBy = 'createdAt',
         sortOrder = 'desc'
       } = req.query;
 
       // Build filters object
       const filters: BetResultFilters = {
-        limit: Number(limit),
-        offset: Number(offset),
+        limit: Number(pageSize),
+        offset: Number(pageSize) * (Number(page) - 1),
         sortBy: sortBy as 'createdAt' | 'betAmount' | 'userScore' | 'betPlacedAt',
         sortOrder: sortOrder as 'asc' | 'desc'
       };
@@ -84,10 +84,10 @@ export const BetResultController = {
         message: "Bet results retrieved successfully",
         data: result.data,
         pagination: {
-          page: Number(offset),
-          pageSize: Number(limit),
-          totalPages: Math.ceil(result.total / Number(limit)),
-          hasMore: result.total > (Number(offset) + Number(limit))
+          page: Number(page),
+          pageSize: Number(pageSize),
+          totalPages: Math.ceil(result.total / Number(filters.limit)),
+          hasMore: result.total > (Number(filters.offset) + Number(filters.limit))
         },
         filters: result.filters,
         count: result.data.length
