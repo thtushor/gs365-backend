@@ -223,6 +223,8 @@ export const BetResultModel = {
         sortOrder = "desc",
       } = filters;
 
+      console.log({filters})
+
       // Build where conditions
       const whereConditions = [];
 
@@ -282,9 +284,6 @@ export const BetResultModel = {
         );
       }
 
-      if (isMobile !== undefined) {
-        whereConditions.push(eq(betResults.isMobile, isMobile));
-      }
 
       // Get total count for pagination
       const countQuery = db
