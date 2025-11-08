@@ -159,7 +159,10 @@ export const getDashboardStats = asyncHandler(
 
         companyProfit: Number(totalCompanyProfit || 0),
         totalGGRAmount: Number(totalGGRAmount || 0),
-        totalPlayerCurrentBalance: Number(totalPlayerCurrentBalance || 0),
+        totalPlayerCurrentBalance: Number(totalPlayerCurrentBalance.totalCurrentBalance || 0),
+        totalPlayerCurrentBalanceUSD: `$${Number(
+          totalPlayerCurrentBalance.totalCurrentBalanceUSD || 0
+        ).toFixed(2)}`,
 
         // Win/Loss
         totalWin: Number(transactionStats[0]?.totalWin || 0),
