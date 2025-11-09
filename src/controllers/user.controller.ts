@@ -347,7 +347,7 @@ export const loginUser = async (req: Request, res: Response) => {
       // token version for new browser or new login
       tokenVersion: tokenVersion,
       userType: "user",
-    });
+    },"5Mins");
 
 
     await db
