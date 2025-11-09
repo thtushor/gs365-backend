@@ -225,7 +225,8 @@ export const getAdminsWithFilters = async (filters: AdminFilters) => {
     .leftJoin(designation, eq(adminUsers.designation, designation.id))
     .where(where)
     .limit(pageSize)
-    .offset((page - 1) * pageSize);
+    .offset((page - 1) * pageSize)
+    .orderBy(desc(adminUsers.id));
 
   const totalPages = Math.ceil(total / pageSize);
 

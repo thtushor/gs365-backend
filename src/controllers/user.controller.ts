@@ -15,7 +15,7 @@ import bcrypt from "bcryptjs";
 import * as UAParser from "ua-parser-js";
 import { db } from "../db/connection";
 import { games, notifications, users, userTokens } from "../db/schema";
-import { and, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { generateUniqueRefCode } from "../utils/refCode";
 import { findUserByReferCode } from "../models/user.model";
 import { findAdminByRefCode } from "../models/admin.model";
@@ -657,7 +657,7 @@ export const getMyNotifications = async (req: Request, res: Response) => {
         AND ${notifications.status} = 'active'
       `
       )
-      .orderBy(notifications.createdAt);
+      .orderBy(desc(notifications.id));
 
     return res.json({
       status: true,

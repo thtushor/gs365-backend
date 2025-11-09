@@ -311,6 +311,46 @@ export const adminRegistration = async (
               : commission_percent,
           designation,
         });
+
+
+
+        if (["superAffiliate", "affiliate"].includes(role)) {
+          // ✅ Notification for new affiliate (created via referral)
+          await db.insert(notifications).values({
+            notificationType: "admin_others",
+            title: `New affiliate registered (#${admin.insertId})`,
+            description: `
+            A new <strong>affiliate</strong> has been registered by <strong>${userData?.username}</strong>.<br/>
+            Username: <strong>${username}</strong><br/>
+            Full Name: <strong>${fullname}</strong><br/>
+            Email: <strong>${email}</strong><br/>
+            Role: <strong>${role}</strong><br/>
+            Referred by: <strong>${referringAdmin.username}</strong>
+          `,
+            amount: "0",
+            // playerIds: String(admin.insertId),
+            link: `/affiliate-list`,
+            startDate: new Date(),
+            endDate: new Date(new Date().setDate(new Date().getDate() + 7)),
+            status: "active",
+            createdBy: Number(userData?.id ?? 0),
+          });
+
+          io.emit("admin-notifications", {
+            notificationType: "admin_registration",
+            title: `New affiliate registered (#${admin.insertId})`,
+            description: `
+            A new <strong>affiliate</strong> has been registered by <strong>${userData?.username}</strong>.<br/>
+            Username: <strong>${username}</strong><br/>
+            Full Name: <strong>${fullname}</strong><br/>
+            Email: <strong>${email}</strong><br/>
+            Role: <strong>${role}</strong><br/>
+            Referred by: <strong>${referringAdmin.username}</strong>
+          `,
+          });
+        }
+
+
         res.status(201).json({
           status: true,
           message: "Admin registered successfully",
@@ -340,6 +380,46 @@ export const adminRegistration = async (
       commission_percent,
       designation,
     });
+
+
+
+    if (["superAffiliate", "affiliate"].includes(role)) {
+      // ✅ Notification for new affiliate (created via referral)
+      await db.insert(notifications).values({
+        notificationType: "admin_others",
+        title: `New affiliate registered (#${admin.insertId})`,
+        description: `
+            A new <strong>affiliate</strong> has been registered by <strong>${userData?.username}</strong>.<br/>
+            Username: <strong>${username}</strong><br/>
+            Full Name: <strong>${fullname}</strong><br/>
+            Email: <strong>${email}</strong><br/>
+            Role: <strong>${role}</strong><br/>
+          `,
+        amount: "0",
+        // playerIds: String(admin.insertId),
+        link: `/affiliate-list`,
+        startDate: new Date(),
+        endDate: new Date(new Date().setDate(new Date().getDate() + 7)),
+        status: "active",
+        createdBy: Number(userData?.id ?? 0),
+      });
+
+      io.emit("admin-notifications", {
+        notificationType: "admin_registration",
+        title: `New affiliate registered (#${admin.insertId})`,
+        description: `
+            A new <strong>affiliate</strong> has been registered by <strong>${userData?.username}</strong>.<br/>
+            Username: <strong>${username}</strong><br/>
+            Full Name: <strong>${fullname}</strong><br/>
+            Email: <strong>${email}</strong><br/>
+            Role: <strong>${role}</strong><br/>
+          `,
+      });
+    }
+
+
+
+
     res.status(201).json({
       status: true,
       message: "Admin registered successfully",
@@ -3673,7 +3753,7 @@ export const createUpdateKyc = async (req: Request, res: Response) => {
 
 
     const insertKycNotification = async (isUpdate: boolean) => {
-      const type:  "admin_player_kyc" | "admin_affiliate_kyc" =
+      const type: "admin_player_kyc" | "admin_affiliate_kyc" =
         (holderType === "player" ? "admin_player_kyc" : "admin_affiliate_kyc");
 
       const title = isUpdate
@@ -3693,7 +3773,7 @@ export const createUpdateKyc = async (req: Request, res: Response) => {
         description,
         playerIds: String(holderId),
         startDate: new Date(),
-        link: holderType==="player" ? `/kyc-request-history`: `/affiliate-list/${holderId}/kyc-verification`,
+        link: holderType === "player" ? `/kyc-request-history` : `/affiliate-list/${holderId}/kyc-verification`,
         endDate: new Date(new Date().setDate(new Date().getDate() + 7)), // visible for 7 days
         status: "active",
         createdBy: holderId, // or admin ID if available

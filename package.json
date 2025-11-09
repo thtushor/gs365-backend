@@ -39,7 +39,7 @@
     "start": "node dist/index.js",
     "dev": "nodemon src/index.ts",
     "drizzle:generate": "drizzle-kit generate",
-    "drizzle:push": "drizzle-kit push",
+    "db:push": "drizzle-kit push",
     "db:seed": "tsx src/db/seeder.ts",
     "build": "tsc"
   }

@@ -14,6 +14,7 @@ export const ChatStatus = mysqlEnum("chat_status", [
   "open",
   "closed",
   "pending_admin_response",
+  // "pending_affiliate_response",
   "pending_user_response",
 ]);
 
