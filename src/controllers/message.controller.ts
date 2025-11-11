@@ -6,6 +6,9 @@ import { asyncHandler } from "../utils/asyncHandler";
 import { NewMessage, MessageSenderType } from "../db/schema/messages";
 import { ChatStatus } from "../db/schema/chats";
 import { io } from "../index"; // Import the Socket.IO instance
+import { adminUsers } from "../db/schema";
+import { db } from "../db/connection";
+import { eq } from "drizzle-orm";
 
 export class MessageController {
   static sendMessage = asyncHandler(
@@ -43,7 +46,9 @@ export class MessageController {
           io.emit("sendMessage", systemMessage);
         }
       } else if (senderType === "admin") {
-        await ChatModel.updateChatStatus(chatId, "pending_user_response");
+        const adminData = await db.select().from(adminUsers).where(eq(adminUsers.id,Number(senderId))).limit(1);
+        const status = adminData[0]?.role === "affiliate" || adminData[0]?.role === "superAffiliate" ? "pending_admin_response" : "pending_user_response";
+        await ChatModel.updateChatStatus(chatId, status);
       }
 
       res.status(201).json({
