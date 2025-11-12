@@ -1,4 +1,4 @@
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, isNotNull } from "drizzle-orm";
 import { db } from "../db/connection";
 import { transactions } from "../db/schema/transactions";
 import { currencies } from "../db/schema/currency";
@@ -333,7 +333,7 @@ export const BalanceModel = {
             THEN ${transactions.amount} / COALESCE(${transactions.conversionRate}, 1) ELSE 0 END), 0)
         `,
         })
-        .from(transactions);
+        .from(transactions).where(isNotNull(transactions.userId));
 
       const row = result[0];
 
