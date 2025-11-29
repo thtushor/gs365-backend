@@ -9,7 +9,12 @@ import { games } from "../db/schema/games";
 import { eq, sql } from "drizzle-orm";
 import { asyncHandler } from "../utils/asyncHandler";
 import { AdminMainBalanceModel } from "../models/adminMainBalance.model";
-import { countries, currencies, game_providers, sports_providers } from "../db/schema";
+import {
+  countries,
+  currencies,
+  game_providers,
+  sports_providers,
+} from "../db/schema";
 import { BalanceModel } from "../models/balance.model";
 
 export const getDashboardStats = asyncHandler(
@@ -28,10 +33,30 @@ export const getDashboardStats = asyncHandler(
           totalLoss: sql<number>`SUM(CASE WHEN transaction_type = 'loss' THEN amount ELSE 0 END)`,
           totalDeposit: sql<number>`SUM(CASE WHEN transaction_type = 'deposit' AND transaction_status = 'approved' THEN amount ELSE 0 END)`,
           totalDepositUSD: sql<number>`SUM(CASE WHEN transaction_type = 'deposit' AND transaction_status = 'approved' AND ${currencies.code} = 'USD' THEN amount / NULLIF(conversion_rate, 0) ELSE 0 END)`,
-          totalWithdraw: sql<number>`SUM(CASE WHEN transaction_type = 'withdraw' AND transaction_status = 'approved'  THEN amount ELSE 0 END)`,
+          totalWithdraw: sql<number>`
+  SUM(
+    CASE 
+      WHEN transaction_type = 'withdraw'
+        AND transaction_status = 'approved'
+        AND ${transactions.affiliateId} IS NULL
+      THEN amount
+      ELSE 0
+    END
+  )
+`,
           totalWithdrawUSD: sql<number>`SUM(CASE WHEN transaction_type = 'withdraw' AND transaction_status = 'approved' AND ${currencies.code} = 'USD'  THEN amount / NULLIF(conversion_rate, 0) ELSE 0 END)`,
           pendingDeposit: sql<number>`SUM(CASE WHEN transaction_type = 'deposit' AND transaction_status = 'pending' THEN amount ELSE 0 END)`,
-          pendingWithdraw: sql<number>`SUM(CASE WHEN transaction_type = 'withdraw' AND transaction_status = 'pending' THEN amount ELSE 0 END)`,
+          pendingWithdraw: sql<number>`
+  SUM(
+    CASE 
+      WHEN transaction_type = 'withdraw'
+        AND transaction_status = 'pending'
+        AND ${transactions.affiliateId} IS NULL
+      THEN amount 
+      ELSE 0 
+    END
+  )
+`,
           totalBonusCoin: sql<number>`SUM(CASE WHEN promotion_id IS NOT NULL AND transaction_status = 'approved' THEN bonus_amount ELSE 0 END)`,
           totalBonusAmount: sql<number>`SUM(CASE WHEN promotion_id IS NOT NULL AND transaction_status = 'approved' THEN bonus_amount ELSE 0 END)`,
           totalBonusAmountUSD: sql<number>`SUM(CASE WHEN promotion_id IS NOT NULL AND transaction_status = 'approved' AND ${currencies.code} = 'USD' THEN bonus_amount / NULLIF(conversion_rate, 0) ELSE 0 END)`,
@@ -159,7 +184,9 @@ export const getDashboardStats = asyncHandler(
 
         companyProfit: Number(totalCompanyProfit || 0),
         totalGGRAmount: Number(totalGGRAmount || 0),
-        totalPlayerCurrentBalance: Number(totalPlayerCurrentBalance.totalCurrentBalance || 0),
+        totalPlayerCurrentBalance: Number(
+          totalPlayerCurrentBalance.totalCurrentBalance || 0
+        ),
         totalPlayerCurrentBalanceUSD: `$${Number(
           totalPlayerCurrentBalance.totalCurrentBalanceUSD || 0
         ).toFixed(2)}`,
@@ -171,9 +198,13 @@ export const getDashboardStats = asyncHandler(
 
         // Deposit/Withdraw
         totalDeposit: Number(transactionStats[0]?.totalDeposit || 0),
-        totalDepositUSD: `$${Number(transactionStats[0]?.totalDepositUSD || 0).toFixed(2)}`,
+        totalDepositUSD: `$${Number(
+          transactionStats[0]?.totalDepositUSD || 0
+        ).toFixed(2)}`,
         totalWithdraw: Number(transactionStats[0]?.totalWithdraw || 0),
-        totalWithdrawUSD: `$${Number(transactionStats[0]?.totalWithdrawUSD || 0).toFixed(2)}`,
+        totalWithdrawUSD: `$${Number(
+          transactionStats[0]?.totalWithdrawUSD || 0
+        ).toFixed(2)}`,
 
         // Deposit/Withdraw affiliates
         totalAffiliateWithdrawal: Number(
@@ -190,7 +221,9 @@ export const getDashboardStats = asyncHandler(
         // Bonus Coins and Bonus Amount
         totalBonusCoin: Number(transactionStats[0]?.totalBonusCoin || 0),
         totalBonusAmount: Number(transactionStats[0]?.totalBonusAmount || 0),
-        totalBonusAmountUSD: `$${Number(transactionStats[0]?.totalBonusAmountUSD || 0).toFixed(2)}`,
+        totalBonusAmountUSD: `$${Number(
+          transactionStats[0]?.totalBonusAmountUSD || 0
+        ).toFixed(2)}`,
 
         // Affiliate Stats
         totalAffiliate: Number(affiliateAgentStats[0]?.totalAffiliate || 0),
