@@ -1,0 +1,731 @@
+// GS365 Gaming Platform Database Schema
+// Use DBML to define your database structure
+// Docs: https://dbml.dbdiagram.io/docs
+// Visualize at: https://dbdiagram.io/
+
+// ============================================
+// USER MANAGEMENT
+// ============================================
+
+Table users {
+  id integer [primary key, increment]
+  username varchar(50) [unique]
+  fullname varchar(100)
+  phone varchar(20) [unique]
+  email varchar(255) [unique]
+  password varchar(255)
+  currency_id integer
+  country_id integer
+  refer_code varchar(50)
+  created_by integer
+  status varchar [note: 'active/inactive']
+  isAgreeWithTerms boolean
+  is_logged_in boolean [default: false]
+  is_verified boolean [default: false]
+  lastIp varchar(120)
+  lastLogin datetime
+  tokenVersion integer [default: 0]
+  device_type varchar(50)
+  device_name varchar(100)
+  os_version varchar(50)
+  browser varchar(50)
+  browser_version varchar(50)
+  ip_address varchar(45)
+  device_token text
+  referred_by integer
+  referred_by_admin_user integer
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+  kyc_status varchar [note: 'verified/unverified/required/pending', default: 'unverified']
+}
+
+Table admin_users {
+  id integer [primary key, increment]
+  username varchar(50) [unique]
+  fullname varchar(100)
+  phone varchar(20) [unique]
+  email varchar(255) [unique]
+  password varchar(255)
+  country varchar(255)
+  city varchar(255)
+  street varchar(255)
+  remaining_balance decimal(20,2)
+  minimum_trx decimal
+  maximum_trx decimal
+  currency integer
+  admin_designation integer
+  role varchar [note: 'superAdmin/admin/superAgent/agent/superAffiliate/affiliate']
+  status varchar [note: 'active/inactive', default: 'inactive']
+  ref_code varchar(255) [unique]
+  is_logged_in boolean [default: false]
+  is_verified boolean [default: false]
+  lastIp varchar(120)
+  lastLogin datetime
+  commission_percent integer
+  main_balance integer [default: 0]
+  downline_balance integer [default: 0]
+  withdrawable_balance integer [default: 0]
+  device_type varchar(50)
+  device_name varchar(100)
+  os_version varchar(50)
+  browser varchar(50)
+  browser_version varchar(50)
+  ip_address varchar(45)
+  device_token text
+  created_by integer
+  referred_by integer
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+  kyc_status varchar [note: 'verified/unverified/required/pending', default: 'unverified']
+}
+
+Table user_login_history {
+  id integer [primary key, increment]
+  user_id integer [not null]
+  ip_address varchar(45)
+  device_type varchar(50)
+  device_name varchar(100)
+  browser varchar(50)
+  browser_version varchar(50)
+  os_version varchar(50)
+  login_at datetime [default: `CURRENT_TIMESTAMP`]
+  status varchar [note: 'success/failed']
+}
+
+Table user_phones {
+  id integer [primary key, increment]
+  user_id integer [not null]
+  phone varchar(20) [not null]
+  is_primary boolean [default: false]
+  is_verified boolean [default: false]
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+}
+
+Table users_token {
+  id integer [primary key, increment]
+  user_id integer
+  admin_id integer
+  token text [not null]
+  type varchar [note: 'verify/reset/refresh']
+  expires_at datetime
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+}
+
+Table kyc {
+  id integer [primary key, increment]
+  user_id integer [not null]
+  document_type varchar(50)
+  document_number varchar(100)
+  front_image text
+  back_image text
+  selfie_image text
+  status varchar [note: 'pending/approved/rejected']
+  verified_by integer
+  verified_at datetime
+  rejection_reason text
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+}
+
+Table designation {
+  id integer [primary key, increment]
+  name varchar(100) [not null]
+  permissions json [note: 'Array of permission strings']
+  status varchar [note: 'active/inactive']
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+}
+
+// ============================================
+// GAMING SYSTEM
+// ============================================
+
+Table games {
+  id integer [primary key, increment]
+  name varchar(300) [not null, unique]
+  parent_id integer
+  status varchar [note: 'active/inactive', default: 'inactive']
+  is_favorite boolean [default: false]
+  is_exclusive boolean [default: false]
+  api_key text [not null]
+  license_key text [not null]
+  game_logo text [not null]
+  secret_pin varchar(150) [not null]
+  game_url varchar(300) [not null]
+  ggr_percent varchar(100) [not null]
+  category_id integer
+  provider_id integer
+  created_by varchar(200)
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+}
+
+Table game_providers {
+  id integer [primary key, increment]
+  name varchar(255) [not null]
+  logo text
+  status varchar [note: 'active/inactive']
+  api_key varchar(255)
+  api_secret varchar(255)
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+}
+
+Table sports {
+  id integer [primary key, increment]
+  name varchar(300) [not null, unique]
+  parent_id integer
+  status varchar [note: 'active/inactive']
+  api_key text
+  license_key text
+  sport_logo text
+  secret_pin varchar(150)
+  sport_url varchar(300)
+  category_id integer
+  provider_id integer
+  created_by varchar(200)
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+}
+
+Table sports_providers {
+  id integer [primary key, increment]
+  name varchar(255) [not null]
+  logo text
+  status varchar [note: 'active/inactive']
+  api_key varchar(255)
+  api_secret varchar(255)
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+}
+
+Table bet_results {
+  id integer [primary key, increment]
+  user_id integer [not null]
+  game_id integer [not null]
+  bet_balance decimal(20,2) [default: 0]
+  bet_amount decimal(20,2) [default: 0]
+  bet_status varchar [note: 'win/loss/pending/cancelled', default: 'pending']
+  playing_status varchar [note: 'playing/completed/abandoned', default: 'playing']
+  session_token text
+  game_session_id text
+  win_amount decimal(20,2) [default: 0]
+  loss_amount decimal(20,2) [default: 0]
+  multiplier decimal(10,4) [default: 0]
+  game_name text
+  game_provider text
+  game_category text
+  user_score integer [default: 0]
+  user_level varchar(50) [default: 'beginner']
+  bet_placed_at datetime [default: `CURRENT_TIMESTAMP`]
+  game_started_at datetime [default: `CURRENT_TIMESTAMP`]
+  game_completed_at datetime [default: `CURRENT_TIMESTAMP`]
+  ip_address varchar(45)
+  device_info text
+  is_mobile boolean [default: false]
+  created_by varchar(200)
+  updated_by varchar(200)
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+  updated_at datetime [default: `CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`]
+}
+
+Table user_favorites {
+  user_id integer [not null]
+  game_id integer [not null]
+  
+  indexes {
+    (user_id, game_id) [pk]
+  }
+}
+
+// ============================================
+// FINANCIAL SYSTEM
+// ============================================
+
+Table transactions {
+  id integer [primary key, increment]
+  user_id integer
+  affiliate_id integer
+  type varchar [note: 'deposit/withdraw/win/loss', not null]
+  amount decimal(10,2) [not null]
+  bonus_amount decimal(10,2) [default: 0]
+  conversion_rate decimal [default: 100]
+  currency_id integer [not null]
+  promotion_id integer
+  game_id integer
+  status varchar [note: 'approved/pending/rejected', default: 'pending']
+  custom_transaction_id varchar(100) [unique]
+  given_transaction_id varchar(100)
+  attachment text
+  notes text
+  provider_account_id integer
+  gateway_id integer
+  account_number varchar(100)
+  account_holder_name varchar(100)
+  bank_name varchar(100)
+  branch_name varchar(100)
+  branch_address varchar(255)
+  swift_code varchar(50)
+  iban varchar(100)
+  wallet_address text
+  network varchar(50)
+  processed_by integer
+  processed_by_user integer
+  processed_at datetime
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+  updated_at datetime [default: `CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`]
+}
+
+Table commission {
+  id integer [primary key, increment]
+  bet_result_id integer [not null]
+  player_id integer [not null]
+  admin_user_id integer [not null]
+  commission_amount decimal(20,2) [default: 0]
+  percentage decimal(5,2) [default: 0]
+  status varchar [note: 'pending/approved/rejected/paid/settled', default: 'pending']
+  notes varchar(500)
+  created_by varchar(200)
+  updated_by varchar(200)
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+  updated_at datetime [default: `CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`]
+}
+
+Table turnover {
+  id integer [primary key, increment]
+  user_id integer [not null]
+  promotion_id integer
+  required_turnover decimal(10,2)
+  completed_turnover decimal(10,2) [default: 0]
+  status varchar [note: 'active/completed/expired']
+  expires_at datetime
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+}
+
+Table admin_main_balance {
+  id integer [primary key, increment]
+  admin_id integer [not null]
+  amount decimal(20,2) [not null]
+  type varchar [note: 'credit/debit']
+  description text
+  balance_after decimal(20,2)
+  created_by integer
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+}
+
+// ============================================
+// PAYMENT SYSTEM
+// ============================================
+
+Table payment_methods {
+  id integer [primary key, increment]
+  name varchar(100) [not null]
+  type_id integer
+  status varchar [note: 'active/inactive']
+}
+
+Table payment_method_types {
+  id integer [primary key, increment]
+  name varchar(100) [not null]
+  icon text
+  status varchar [note: 'active/inactive']
+}
+
+Table payment_gateway {
+  id integer [primary key, increment]
+  method_id integer [not null]
+  payment_method_type_ids json [not null, note: 'Array of type IDs']
+  icon_url varchar(255)
+  min_deposit double
+  max_deposit double
+  min_withdraw double
+  max_withdraw double
+  bonus double
+  status varchar [note: 'active/inactive', default: 'active']
+  country_code integer
+  network varchar(100)
+  currency_conversion_rate double
+  name varchar(100) [unique, not null]
+}
+
+Table payment_providers {
+  id integer [primary key, increment]
+  name varchar(100) [not null]
+  logo text
+  status varchar [note: 'active/inactive']
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+}
+
+Table payment_gateway_providers {
+  id integer [primary key, increment]
+  gateway_id integer [not null]
+  provider_id integer [not null]
+  license_key text
+  commission double
+  is_recommended boolean
+  priority integer
+  status varchar [note: 'active/inactive', default: 'active']
+  
+  indexes {
+    (gateway_id, provider_id) [unique]
+  }
+}
+
+Table payment_gateway_provider_accounts {
+  id integer [primary key, increment]
+  gateway_provider_id integer [not null]
+  account_name varchar(100)
+  account_number varchar(100)
+  account_details json
+  min_amount decimal(10,2)
+  max_amount decimal(10,2)
+  status varchar [note: 'active/inactive']
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+}
+
+Table withdrawal_payment_accounts {
+  id integer [primary key, increment]
+  user_id integer [not null]
+  payment_method_id integer
+  account_name varchar(100)
+  account_number varchar(100)
+  bank_name varchar(100)
+  branch_name varchar(100)
+  wallet_address text
+  network varchar(50)
+  is_primary boolean [default: false]
+  is_verified boolean [default: false]
+  status varchar [note: 'active/inactive']
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+}
+
+// ============================================
+// LOCALIZATION
+// ============================================
+
+Table countries {
+  id integer [primary key, increment]
+  name varchar(100) [not null]
+  flag_url text
+  country_code varchar(50) [unique]
+  currency_id integer
+  status varchar [note: 'active/inactive', default: 'active']
+}
+
+Table currencies {
+  id integer [primary key, increment]
+  code varchar(10) [not null, unique]
+  symbol varchar(5)
+  symbol_native varchar(5)
+  name varchar(50)
+  status varchar [note: 'active/inactive', default: 'active']
+}
+
+Table languages {
+  id integer [primary key, increment]
+  name varchar(100) [not null]
+  code varchar(5) [unique]
+  status varchar [note: 'active/inactive']
+}
+
+Table country_languages {
+  id integer [primary key, increment]
+  country_id integer [not null]
+  language_id integer [not null]
+  status varchar [note: 'active/inactive']
+  
+  indexes {
+    (country_id, language_id) [unique]
+  }
+}
+
+Table currency_conversion {
+  id integer [primary key, increment]
+  from_currency_id integer [not null]
+  to_currency_id integer [not null]
+  rate decimal(10,6) [not null]
+  updated_at datetime [default: `CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`]
+}
+
+// ============================================
+// CMS & CONFIGURATION
+// ============================================
+
+Table promotions {
+  id integer [primary key, increment]
+  promotion_name varchar(300) [not null, unique]
+  promotion_type_id json [not null, note: 'Array of type IDs']
+  status varchar [note: 'active/inactive', default: 'inactive']
+  date_range varchar(255) [not null]
+  minimum_deposit_amount decimal(20,2) [not null]
+  maximum_deposit_amount decimal(20,2) [not null]
+  turnover_multiply integer [not null]
+  banner_img text [not null]
+  bonus integer [not null]
+  description text [not null]
+  is_recommended boolean [default: false]
+  created_by varchar(200) [not null]
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+}
+
+Table banners {
+  id integer [primary key, increment]
+  title varchar(255)
+  image_url text [not null]
+  link varchar(500)
+  priority integer [default: 0]
+  status varchar [note: 'active/inactive']
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+}
+
+Table events {
+  id integer [primary key, increment]
+  title varchar(255) [not null]
+  description text
+  image_url text
+  start_date datetime
+  end_date datetime
+  status varchar [note: 'active/inactive']
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+}
+
+Table announcements {
+  id integer [primary key, increment]
+  title varchar(255) [not null]
+  content text [not null]
+  type varchar(50)
+  priority integer [default: 0]
+  status varchar [note: 'active/inactive']
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+}
+
+Table social_media {
+  id integer [primary key, increment]
+  platform varchar(50) [not null]
+  url varchar(500) [not null]
+  icon text
+  priority integer [default: 0]
+  status varchar [note: 'active/inactive']
+}
+
+Table featured_games {
+  id integer [primary key, increment]
+  game_id integer [not null]
+  priority integer [default: 0]
+  status varchar [note: 'active/inactive']
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+}
+
+Table faqs {
+  id integer [primary key, increment]
+  question text [not null]
+  answer text [not null]
+  category varchar(100)
+  priority integer [default: 0]
+  status varchar [note: 'active/inactive']
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+}
+
+Table gaming_licenses {
+  id integer [primary key, increment]
+  name varchar(255) [not null]
+  license_number varchar(100)
+  image_url text
+  status varchar [note: 'active/inactive']
+}
+
+Table responsible_gaming {
+  id integer [primary key, increment]
+  title varchar(255) [not null]
+  content text [not null]
+  icon text
+  status varchar [note: 'active/inactive']
+}
+
+Table ambassadors {
+  id integer [primary key, increment]
+  name varchar(255) [not null]
+  image_url text
+  description text
+  status varchar [note: 'active/inactive']
+}
+
+Table sponsors {
+  id integer [primary key, increment]
+  name varchar(255) [not null]
+  logo_url text [not null]
+  website varchar(500)
+  status varchar [note: 'active/inactive']
+}
+
+Table advertisements {
+  id integer [primary key, increment]
+  title varchar(255)
+  image_url text [not null]
+  link varchar(500)
+  position varchar(50)
+  status varchar [note: 'active/inactive']
+}
+
+Table popups {
+  id integer [primary key, increment]
+  title varchar(255)
+  content text
+  image_url text
+  trigger_type varchar(50)
+  status varchar [note: 'active/inactive']
+}
+
+Table settings {
+  id integer [primary key, increment]
+  key varchar(100) [unique, not null]
+  value text
+  type varchar(50)
+  description text
+  updated_at datetime [default: `CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`]
+}
+
+Table dropdowns {
+  id integer [primary key, increment]
+  name varchar(100) [not null]
+  label varchar(100)
+  description text
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+}
+
+Table dropdown_options {
+  id integer [primary key, increment]
+  dropdown_id integer [not null]
+  label varchar(100) [not null]
+  value varchar(100) [not null]
+  priority integer [default: 0]
+  status varchar [note: 'active/inactive']
+}
+
+// ============================================
+// COMMUNICATION
+// ============================================
+
+Table chats {
+  id integer [primary key, increment]
+  user_id integer
+  admin_user_id integer
+  guest_id varchar(300)
+  status varchar [note: 'open/closed/pending_admin_response/pending_user_response', default: 'open']
+  type varchar [note: 'user/admin/guest', default: 'user']
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+  updated_at datetime [default: `CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`]
+}
+
+Table messages {
+  id integer [primary key, increment]
+  chat_id integer [not null]
+  sender_id integer
+  guest_sender_id varchar(300)
+  sender_type varchar [note: 'user/admin/guest/system', not null]
+  message_type varchar [note: 'text/image/file', default: 'text']
+  content text [not null]
+  attachment_url varchar(500)
+  is_read boolean [default: false]
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+  updated_at datetime [default: `CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`]
+}
+
+Table auto_replies {
+  id integer [primary key, increment]
+  trigger varchar(255)
+  message text [not null]
+  status varchar [note: 'active/inactive']
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+}
+
+Table notifications {
+  id integer [primary key, increment]
+  user_id integer
+  title varchar(255) [not null]
+  message text [not null]
+  type varchar(50)
+  is_read boolean [default: false]
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+}
+
+// ============================================
+// RELATIONSHIPS
+// ============================================
+
+// User Management Relationships
+Ref: users.currency_id > currencies.id
+Ref: users.country_id > countries.id
+Ref: users.created_by > admin_users.id
+Ref: users.referred_by > users.id
+Ref: users.referred_by_admin_user > admin_users.id
+
+Ref: admin_users.currency > currencies.id
+Ref: admin_users.admin_designation > designation.id
+Ref: admin_users.created_by > admin_users.id
+Ref: admin_users.referred_by > admin_users.id
+
+Ref: user_login_history.user_id > users.id
+Ref: user_phones.user_id > users.id
+Ref: users_token.user_id > users.id
+Ref: users_token.admin_id > admin_users.id
+Ref: kyc.user_id > users.id
+Ref: kyc.verified_by > admin_users.id
+
+// Gaming Relationships
+Ref: games.category_id > dropdown_options.id
+Ref: games.provider_id > game_providers.id
+Ref: sports.category_id > dropdown_options.id
+Ref: sports.provider_id > sports_providers.id
+
+Ref: bet_results.user_id > users.id
+Ref: bet_results.game_id > games.id
+
+Ref: user_favorites.user_id > users.id
+Ref: user_favorites.game_id > games.id
+
+// Financial Relationships
+Ref: transactions.user_id > users.id
+Ref: transactions.affiliate_id > admin_users.id
+Ref: transactions.currency_id > currencies.id
+Ref: transactions.promotion_id > promotions.id
+Ref: transactions.game_id > games.id
+Ref: transactions.provider_account_id > payment_gateway_provider_accounts.id
+Ref: transactions.gateway_id > payment_gateway.id
+Ref: transactions.processed_by > admin_users.id
+Ref: transactions.processed_by_user > users.id
+
+Ref: commission.bet_result_id > bet_results.id
+Ref: commission.player_id > users.id
+Ref: commission.admin_user_id > admin_users.id
+
+Ref: turnover.user_id > users.id
+Ref: turnover.promotion_id > promotions.id
+
+Ref: admin_main_balance.admin_id > admin_users.id
+Ref: admin_main_balance.created_by > admin_users.id
+
+// Payment System Relationships
+Ref: payment_methods.type_id > payment_method_types.id
+
+Ref: payment_gateway_providers.gateway_id > payment_gateway.id
+Ref: payment_gateway_providers.provider_id > payment_providers.id
+
+Ref: payment_gateway_provider_accounts.gateway_provider_id > payment_gateway_providers.id
+
+Ref: withdrawal_payment_accounts.user_id > users.id
+Ref: withdrawal_payment_accounts.payment_method_id > payment_methods.id
+
+// Localization Relationships
+Ref: countries.currency_id > currencies.id
+
+Ref: country_languages.country_id > countries.id
+Ref: country_languages.language_id > languages.id
+
+Ref: currency_conversion.from_currency_id > currencies.id
+Ref: currency_conversion.to_currency_id > currencies.id
+
+// CMS Relationships
+Ref: featured_games.game_id > games.id
+Ref: dropdown_options.dropdown_id > dropdowns.id
+
+// Communication Relationships
+Ref: chats.user_id > users.id
+Ref: chats.admin_user_id > admin_users.id
+
+Ref: messages.chat_id > chats.id
+// Note: messages.sender_id is polymorphic - can reference either users.id or admin_users.id
+
+Ref: notifications.user_id > users.id

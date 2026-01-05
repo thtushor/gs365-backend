@@ -4,6 +4,12 @@
 
 The GS365 platform uses **MySQL 8.0+** with **37 tables** organized into logical domains. The database is managed using **Drizzle ORM** for type-safe queries and migrations.
 
+## 🎨 Visual ER Diagram
+
+**Interactive Database Diagram**: [View on dbdiagram.io](https://dbdiagram.io/d/695c154239fa3db27b2ae254)
+
+You can also find the DBML source code in [`DATABASE_SCHEMA.dbml`](./DATABASE_SCHEMA.dbml) to create your own diagrams or modifications.
+
 ---
 
 ## 🗺️ Entity Relationship Diagram
