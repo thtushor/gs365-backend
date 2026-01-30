@@ -20,7 +20,7 @@ export const spinBonus = mysqlTable("spin_bonus", {
   conversionRate: decimal("conversion_rate").default("100"),
 
   transactionId: varchar("transaction_id", { length: 100 }).references(
-    () => transactions.id,
+    () => transactions.customTransactionId,
     {
       onDelete: "set null",
     },
@@ -43,7 +43,7 @@ export const spinBonusRelations = relations(spinBonus, ({ one }) => ({
   }),
   transaction: one(transactions, {
     fields: [spinBonus.transactionId],
-    references: [transactions.id],
+    references: [transactions.customTransactionId],
   }),
 }));
 
