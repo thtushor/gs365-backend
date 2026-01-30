@@ -106,9 +106,6 @@ export const SpinBonusModel = {
       if (filters.userId) {
         conditions.push(eq(spinBonus.userId, filters.userId));
       }
-      if (filters.transactionId) {
-        conditions.push(eq(spinBonus.transactionId, filters.transactionId));
-      }
       if (filters.minAmount !== undefined) {
         conditions.push(gte(spinBonus.amount, filters.minAmount.toString()));
       }
@@ -209,10 +206,6 @@ export const SpinBonusModel = {
 
       if (filters.userId !== undefined && !isNaN(filters.userId)) {
         conditions.push(eq(spinBonus.userId, filters.userId));
-      }
-
-      if (filters.transactionId !== undefined) {
-        conditions.push(eq(spinBonus.transactionId, filters.transactionId));
       }
 
       // ────────────────────────────────────────────────
