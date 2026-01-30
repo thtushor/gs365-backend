@@ -19,12 +19,9 @@ export const spinBonus = mysqlTable("spin_bonus", {
   amount: decimal("amount", { precision: 18, scale: 2 }).notNull(),
   conversionRate: decimal("conversion_rate").default("100"),
 
-  transactionId: varchar("transaction_id", { length: 100 }).references(
-    () => transactions.customTransactionId,
-    {
-      onDelete: "set null",
-    },
-  ),
+  transactionId: int("transaction_id").references(() => transactions.id, {
+    onDelete: "set null",
+  }),
 
   // Usually 1–100× — how many times the bonus must be turned over
   turnoverMultiply: decimal("turnover_multiply", { precision: 10, scale: 2 })
@@ -43,7 +40,7 @@ export const spinBonusRelations = relations(spinBonus, ({ one }) => ({
   }),
   transaction: one(transactions, {
     fields: [spinBonus.transactionId],
-    references: [transactions.customTransactionId],
+    references: [transactions.id],
   }),
 }));
 

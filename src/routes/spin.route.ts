@@ -12,9 +12,6 @@ router.get(
     // Extract and normalize query params
     const filters = {
       userId: req.query.userId ? Number(req.query.userId) : undefined,
-      transactionId: req.query.transactionId
-        ? String(req.query.transactionId)
-        : undefined,
       minAmount: req.query.minAmount ? Number(req.query.minAmount) : undefined,
       maxAmount: req.query.maxAmount ? Number(req.query.maxAmount) : undefined,
       // startDate & endDate are NOT used in frontend → we can omit or keep optional
