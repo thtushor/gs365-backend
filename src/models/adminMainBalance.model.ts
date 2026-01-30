@@ -25,6 +25,7 @@ export interface AdminMainBalanceData {
     | "admin_deposit"
     | "player_deposit"
     | "promotion"
+    | "spin_bonus"
     | "player_withdraw"
     | "admin_withdraw";
   status?: "approved" | "pending" | "rejected";
@@ -65,6 +66,7 @@ export interface AdminMainBalanceStats {
   totalAdminWithdraw: number;
   currentMainBalance: number;
   totalRecords: number;
+  totalSpinBonus: number;
 }
 
 export interface PaginatedResult<T> {
@@ -97,7 +99,7 @@ export const AdminMainBalanceModel = {
         notes: data.notes || null,
       });
 
-      console.log("insert admin balance",result)
+      console.log("insert admin balance", result);
 
       return result.insertId;
     } catch (error) {
@@ -136,12 +138,12 @@ export const AdminMainBalanceModel = {
         .leftJoin(promotions, eq(adminMainBalance.promotionId, promotions.id))
         .leftJoin(
           transactions,
-          eq(adminMainBalance.transactionId, transactions.id)
+          eq(adminMainBalance.transactionId, transactions.id),
         )
         .leftJoin(users, eq(adminMainBalance.createdByPlayer, users.id))
         .leftJoin(
           adminUsers,
-          eq(adminMainBalance.createdByAdmin, adminUsers.id)
+          eq(adminMainBalance.createdByAdmin, adminUsers.id),
         )
         .where(eq(adminMainBalance.id, id))
         .limit(1);
@@ -156,7 +158,7 @@ export const AdminMainBalanceModel = {
   // Update admin main balance record
   async update(
     id: number,
-    data: Partial<AdminMainBalanceData>
+    data: Partial<AdminMainBalanceData>,
   ): Promise<boolean> {
     try {
       const updateData: any = {};
@@ -193,7 +195,7 @@ export const AdminMainBalanceModel = {
   // Update admin main balance records by transaction ID
   async updateByTransactionId(
     transactionId: number,
-    data: Partial<AdminMainBalanceData>
+    data: Partial<AdminMainBalanceData>,
   ): Promise<boolean> {
     try {
       const updateData: any = {};
@@ -224,7 +226,7 @@ export const AdminMainBalanceModel = {
     } catch (error) {
       console.error(
         "Error updating admin main balance by transaction ID:",
-        error
+        error,
       );
       throw error;
     }
@@ -245,7 +247,7 @@ export const AdminMainBalanceModel = {
   // Get all admin main balance records with filters and pagination
   async getAll(
     filters: AdminMainBalanceFilters = {},
-    pagination: PaginationParams = {}
+    pagination: PaginationParams = {},
   ): Promise<PaginatedResult<any>> {
     try {
       const {
@@ -269,32 +271,32 @@ export const AdminMainBalanceModel = {
       }
       if (filters.status) {
         whereConditions.push(
-          eq(adminMainBalance.status, filters.status as any)
+          eq(adminMainBalance.status, filters.status as any),
         );
       }
       if (filters.promotionId) {
         whereConditions.push(
-          eq(adminMainBalance.promotionId, filters.promotionId)
+          eq(adminMainBalance.promotionId, filters.promotionId),
         );
       }
       if (filters.transactionId) {
         whereConditions.push(
-          eq(adminMainBalance.transactionId, filters.transactionId)
+          eq(adminMainBalance.transactionId, filters.transactionId),
         );
       }
       if (filters.createdByPlayer) {
         whereConditions.push(
-          eq(adminMainBalance.createdByPlayer, filters.createdByPlayer)
+          eq(adminMainBalance.createdByPlayer, filters.createdByPlayer),
         );
       }
       if (filters.createdByAdmin) {
         whereConditions.push(
-          eq(adminMainBalance.createdByAdmin, filters.createdByAdmin)
+          eq(adminMainBalance.createdByAdmin, filters.createdByAdmin),
         );
       }
       if (filters.currencyId) {
         whereConditions.push(
-          eq(adminMainBalance.currencyId, filters.currencyId)
+          eq(adminMainBalance.currencyId, filters.currencyId),
         );
       }
       if (filters.startDate) {
@@ -311,8 +313,8 @@ export const AdminMainBalanceModel = {
         whereConditions.push(
           or(
             like(adminMainBalance.promotionName, `%${filters.search}%`),
-            like(adminMainBalance.notes, `%${filters.search}%`)
-          )
+            like(adminMainBalance.notes, `%${filters.search}%`),
+          ),
         );
       }
 
@@ -360,12 +362,12 @@ export const AdminMainBalanceModel = {
         .leftJoin(promotions, eq(adminMainBalance.promotionId, promotions.id))
         .leftJoin(
           transactions,
-          eq(adminMainBalance.transactionId, transactions.id)
+          eq(adminMainBalance.transactionId, transactions.id),
         )
         .leftJoin(users, eq(adminMainBalance.createdByPlayer, users.id))
         .leftJoin(
           adminUsers,
-          eq(adminMainBalance.createdByAdmin, adminUsers.id)
+          eq(adminMainBalance.createdByAdmin, adminUsers.id),
         )
         .where(whereClause)
         .orderBy(orderBy)
@@ -397,7 +399,7 @@ export const AdminMainBalanceModel = {
 
   // Calculate current main balance and stats
   async calculateStats(
-    filters: AdminMainBalanceFilters = {}
+    filters: AdminMainBalanceFilters = {},
   ): Promise<AdminMainBalanceStats> {
     try {
       // Build where conditions for stats
@@ -405,12 +407,12 @@ export const AdminMainBalanceModel = {
 
       if (filters.currencyId) {
         whereConditions.push(
-          eq(adminMainBalance.currencyId, filters.currencyId)
+          eq(adminMainBalance.currencyId, filters.currencyId),
         );
       }
       if (filters.status) {
         whereConditions.push(
-          eq(adminMainBalance.status, filters.status as any)
+          eq(adminMainBalance.status, filters.status as any),
         );
       }
       if (filters.startDate) {
@@ -444,6 +446,17 @@ export const AdminMainBalanceModel = {
         SUM(
           CASE 
             WHEN ${adminMainBalance.type} = 'player_deposit' 
+              AND ${adminMainBalance.status} = 'approved'
+            THEN CAST(${adminMainBalance.amount} AS DECIMAL(18,2)) 
+          END
+        ), 0
+      )
+    `,
+          totalSpinBonus: sql<number>`
+      COALESCE(
+        SUM(
+          CASE 
+            WHEN ${adminMainBalance.type} = 'spin_bonus' 
               AND ${adminMainBalance.status} = 'approved'
             THEN CAST(${adminMainBalance.amount} AS DECIMAL(18,2)) 
           END
@@ -495,6 +508,7 @@ export const AdminMainBalanceModel = {
         totalPlayerWithdraw,
         totalAdminWithdraw,
         totalRecords,
+        totalSpinBonus,
       } = statsResult;
 
       // Calculate current main balance
@@ -504,9 +518,10 @@ export const AdminMainBalanceModel = {
         Number(totalPlayerWithdraw) +
         Number(totalAdminWithdraw) -
         Number(totalPlayerDeposit) -
-        Number(totalPromotion);
+        Number(totalPromotion) -
+        Number(totalSpinBonus);
 
-        console.log(statsResult,currentMainBalance)
+      console.log(statsResult, currentMainBalance);
 
       return {
         totalAdminDeposit,
@@ -515,6 +530,7 @@ export const AdminMainBalanceModel = {
         totalPlayerWithdraw,
         totalAdminWithdraw,
         currentMainBalance,
+        totalSpinBonus,
         totalRecords,
       };
     } catch (error) {
@@ -526,14 +542,14 @@ export const AdminMainBalanceModel = {
   // Get balance by type
   async getBalanceByType(
     type: string,
-    filters: AdminMainBalanceFilters = {}
+    filters: AdminMainBalanceFilters = {},
   ): Promise<number> {
     try {
       const whereConditions = [eq(adminMainBalance.type, type as any)];
 
       if (filters.currencyId) {
         whereConditions.push(
-          eq(adminMainBalance.currencyId, filters.currencyId)
+          eq(adminMainBalance.currencyId, filters.currencyId),
         );
       }
       if (filters.startDate) {
@@ -582,7 +598,7 @@ export const AdminMainBalanceModel = {
         .leftJoin(users, eq(adminMainBalance.createdByPlayer, users.id))
         .leftJoin(
           adminUsers,
-          eq(adminMainBalance.createdByAdmin, adminUsers.id)
+          eq(adminMainBalance.createdByAdmin, adminUsers.id),
         )
         .orderBy(desc(adminMainBalance.createdAt))
         .limit(limit);

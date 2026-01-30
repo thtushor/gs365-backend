@@ -35,3 +35,4 @@ export * from "./schema/autoReplies";
 export * from "./schema/notifications";
 export * from "./schema/usersToken";
 export * from "./schema/userPhones";
+export * from "./schema/spin_bonus";

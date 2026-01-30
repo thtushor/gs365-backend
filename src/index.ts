@@ -41,6 +41,7 @@ import userPhoneRouter from "./routes/userPhone.route";
 import { errorHandler } from "./middlewares/errorHandler";
 import { setupSwagger } from "./utils/swagger";
 import designationRouter from "./routes/designation.route";
+import spinRout from "./routes/spin.route";
 import databaseBackupRouter from "./routes/backupRestore.route";
 import { setupSocketIO } from "./socket";
 import path from "path";
@@ -69,8 +70,8 @@ export const io = new Server(httpServer, {
     origin: "*", // Adjust this in production to your client's URL
     methods: ["GET", "POST"],
   },
-  pingInterval: 10*1000, // Send ping every 10 seconds
-  pingTimeout: 3*1000, // Disconnect if no pong received within 5 seconds
+  pingInterval: 10 * 1000, // Send ping every 10 seconds
+  pingTimeout: 3 * 1000, // Disconnect if no pong received within 5 seconds
   transports: ["websocket", "polling"], // Prioritize websocket
 });
 
@@ -132,6 +133,7 @@ app.use("/api/game-stats", gameStatsRouter);
 app.use("/api/withdrawal-payment-accounts", withdrawalPaymentAccountRouter);
 app.use("/api/admin-main-balance", adminMainBalanceRouter);
 app.use("/api/designations", designationRouter);
+app.use("/api/spin", spinRout);
 app.use("/api/chats", chatRoute);
 app.use("/api/messages", messageRoute);
 app.use("/api/auto-replies", autoReplyRoute);

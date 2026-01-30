@@ -13,9 +13,14 @@ import { transactions } from "./transactions";
 export const TurnoverType = mysqlEnum("turnover_type", [
   "default",
   "promotion",
+  "spin_bonus",
 ]);
 
-export const TurnoverStatus = mysqlEnum("turnover_status", ["active", "inactive","completed"]);
+export const TurnoverStatus = mysqlEnum("turnover_status", [
+  "active",
+  "inactive",
+  "completed",
+]);
 
 export const turnover = mysqlTable("turnover", {
   id: int("id").primaryKey().autoincrement(),
@@ -28,9 +33,9 @@ export const turnover = mysqlTable("turnover", {
   type: TurnoverType.default("default"),
   status: TurnoverStatus.default("active"),
   turnoverName: varchar("turnover_name", { length: 300 }).notNull(),
-  depositAmount: decimal("deposit_amount",{
+  depositAmount: decimal("deposit_amount", {
     precision: 20,
-    scale: 2
+    scale: 2,
   }),
   targetTurnover: decimal("target_turnover", {
     precision: 20,
@@ -42,7 +47,7 @@ export const turnover = mysqlTable("turnover", {
   }).notNull(),
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updated_at").default(
-    sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`
+    sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`,
   ),
 });
 
