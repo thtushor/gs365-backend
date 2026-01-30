@@ -22,8 +22,8 @@ export const findUserByUsernameOrEmail = async (usernameOrEmail: string) => {
       or(
         eq(users.username, usernameOrEmail),
         eq(users.email, usernameOrEmail),
-        eq(users.phone, usernameOrEmail)
-      )
+        eq(users.phone, usernameOrEmail),
+      ),
     );
   return user;
 };
@@ -69,7 +69,7 @@ export const getUserById = async (id: number) => {
 };
 
 export const getUserDetailsById = async (
-  id: number
+  id: number,
 ): Promise<UserWithDetails | null> => {
   try {
     const [user] = await db
@@ -101,7 +101,7 @@ export const getUserDetailsById = async (
       .leftJoin(adminUsers, eq(users.referred_by_admin_user, adminUsers.id))
       .leftJoin(
         sql`${users} as user_referrer`,
-        eq(users.referred_by, sql`user_referrer.id`)
+        eq(users.referred_by, sql`user_referrer.id`),
       )
       .where(eq(users.id, id));
 
@@ -166,7 +166,7 @@ export const getUserDetailsById = async (
 export const getUsersByReferrerType = async (
   referrerType: "affiliate" | "agent",
   page = 1,
-  pageSize = 10
+  pageSize = 10,
 ) => {
   try {
     const roleFilter =
@@ -176,7 +176,7 @@ export const getUsersByReferrerType = async (
 
     const whereClause = and(
       sql`${users.referred_by_admin_user} IS NOT NULL`,
-      roleFilter
+      roleFilter,
     );
 
     // Get total count
@@ -328,8 +328,8 @@ export const getUsersWithFilters = async (filters: UserFilters) => {
         like(users.username, `%${kw}%`),
         like(users.fullname, `%${kw}%`),
         like(users.email, `%${kw}%`),
-        like(users.phone, `%${kw}%`)
-      )
+        like(users.phone, `%${kw}%`),
+      ),
     );
   }
 
@@ -339,7 +339,7 @@ export const getUsersWithFilters = async (filters: UserFilters) => {
       // Users referred by superAffiliate or affiliate
       whereClauses.push(sql`${users.referred_by_admin_user} IS NOT NULL`);
       whereClauses.push(
-        sql`${adminUsers.role} IN ('superAffiliate', 'affiliate')`
+        sql`${adminUsers.role} IN ('superAffiliate', 'affiliate')`,
       );
     } else if (filters.userType === "agent") {
       // Users referred by agent or superAgent
@@ -392,7 +392,7 @@ export const getUsersWithFilters = async (filters: UserFilters) => {
     .leftJoin(adminUsers, eq(users.referred_by_admin_user, adminUsers.id))
     .leftJoin(
       sql`${users} as user_referrer`,
-      eq(users.referred_by, sql`user_referrer.id`)
+      eq(users.referred_by, sql`user_referrer.id`),
     )
     .where(where)
     .limit(pageSize)
@@ -407,7 +407,7 @@ export const getUsersWithFilters = async (filters: UserFilters) => {
   if (userIds.length > 0) {
     // Get balances for all users
     const balancePromises = userIds.map((userId) =>
-      BalanceModel.calculatePlayerBalance(userId)
+      BalanceModel.calculatePlayerBalance(userId),
     );
 
     const balanceResults = await Promise.all(balancePromises);
@@ -426,7 +426,7 @@ export const getUsersWithFilters = async (filters: UserFilters) => {
 
   // Create a map for quick balance lookup
   const balanceMap = new Map(
-    balanceData.map((balance) => [balance.user_id, balance])
+    balanceData.map((balance) => [balance.user_id, balance]),
   );
 
   // Calculate balance and transaction data for each user
@@ -518,7 +518,7 @@ export const updateUser = async (
     isAgreeWithTerms: boolean;
     status: "active" | "inactive";
     isLoggedIn: boolean;
-  }>
+  }>,
 ) => {
   if (data.password) {
     // Optionally hash password if needed
@@ -585,15 +585,15 @@ export const getUserProfileById = async (id: number): Promise<any> => {
       .leftJoin(currencies, eq(users.currency_id, currencies.id))
       .leftJoin(
         sql`${adminUsers} as admin_referrer`,
-        eq(users.referred_by_admin_user, sql`admin_referrer.id`)
+        eq(users.referred_by_admin_user, sql`admin_referrer.id`),
       )
       .leftJoin(
         sql`${users} as user_referrer`,
-        eq(users.referred_by, sql`user_referrer.id`)
+        eq(users.referred_by, sql`user_referrer.id`),
       )
       .leftJoin(
         sql`${adminUsers} as created_by_user`,
-        eq(users.created_by, sql`created_by_user.id`)
+        eq(users.created_by, sql`created_by_user.id`),
       )
       .where(eq(users.id, id));
 
@@ -624,7 +624,7 @@ export const getUserProfileById = async (id: number): Promise<any> => {
       })
       .from(transactions)
       .where(
-        and(eq(transactions.userId, user.id), eq(transactions.type, "deposit"))
+        and(eq(transactions.userId, user.id), eq(transactions.type, "deposit")),
       );
 
     // Get recent transactions (last 10)
@@ -651,9 +651,10 @@ export const getUserProfileById = async (id: number): Promise<any> => {
           eq(transactions.userId, user.id),
           or(
             eq(transactions.type, "deposit"),
-            eq(transactions.type, "withdraw")
-          )
-        )
+            eq(transactions.type, "withdraw"),
+            eq(transactions.type, "spin_bonus"),
+          ),
+        ),
       )
       .orderBy(desc(transactions.createdAt))
       .limit(10);
@@ -792,16 +793,21 @@ export const getUserProfileById = async (id: number): Promise<any> => {
       transactionSummary: {
         totalTransactions: Number(recentTransactions.length || 0),
         totalDepositTransactions: Number(
-          recentTransactions.filter((t) => t.type === "deposit").length || 0
+          recentTransactions.filter((t) => t.type === "deposit").length || 0,
+        ),
+        totalSpinBonusAmount: Number(
+          recentTransactions
+            .filter((t) => t.type === "spin_bonus")
+            .reduce((sum, t) => sum + Number(t.amount || 0), 0),
         ),
         totalWithdrawTransactions: Number(
-          recentTransactions.filter((t) => t.type === "withdraw").length || 0
+          recentTransactions.filter((t) => t.type === "withdraw").length || 0,
         ),
         totalWinTransactions: Number(
-          recentTransactions.filter((t) => t.type === "win").length || 0
+          recentTransactions.filter((t) => t.type === "win").length || 0,
         ),
         totalLossTransactions: Number(
-          recentTransactions.filter((t) => t.type === "loss").length || 0
+          recentTransactions.filter((t) => t.type === "loss").length || 0,
         ),
         lastTransactionDate: recentTransactions[0]?.createdAt,
         firstTransactionDate:

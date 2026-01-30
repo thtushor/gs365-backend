@@ -33,6 +33,7 @@ import { BalanceModel } from "../models/balance.model";
 import { AdminMainBalanceModel } from "../models/adminMainBalance.model";
 import { notifications } from "../db/schema/notifications";
 import { io } from "..";
+import { SpinBonusModel } from "../models/spinBonusModel";
 
 type CreateDepositBody = {
   userId: number;
@@ -71,22 +72,46 @@ export const createDeposit = async (req: Request, res: Response) => {
 
     const customTransactionId = await generateUniqueTransactionId();
 
-    const [promotionData] = promotionId ? await db.select().from(promotions).where((eq(promotions.id, promotionId))).limit(1) : []
-    const bonusAmount = promotionId ? Number(amount) * (promotionData.bonus / 100) : 0
+    const [promotionData] = promotionId
+      ? await db
+          .select()
+          .from(promotions)
+          .where(eq(promotions.id, promotionId))
+          .limit(1)
+      : [];
+    const bonusAmount = promotionId
+      ? Number(amount) * (promotionData.bonus / 100)
+      : 0;
 
-
-    const [gatewayData] = gatewayId ? await db.select({
-      paymentMethod: paymentMethods,
-    })
-    .from(paymentGateway)
-    .leftJoin(paymentMethods, eq(paymentGateway.methodId, paymentMethods.id))
-    .where(eq(paymentGateway.id, gatewayId)).limit(1) : []
+    const [gatewayData] = gatewayId
+      ? await db
+          .select({
+            paymentMethod: paymentMethods,
+          })
+          .from(paymentGateway)
+          .leftJoin(
+            paymentMethods,
+            eq(paymentGateway.methodId, paymentMethods.id),
+          )
+          .where(eq(paymentGateway.id, gatewayId))
+          .limit(1)
+      : [];
 
     const paymentMethodName = gatewayData?.paymentMethod?.name?.toLowerCase();
 
-    const [currencyData] = paymentMethodName?.includes("international") || paymentMethodName?.includes("crypto") ?
-      await db.select().from(currencies).where(eq(currencies.code, "USD")).limit(1)
-      : await db.select().from(currencies).where(eq(currencies.code, "BDT")).limit(1);
+    const [currencyData] =
+      paymentMethodName?.includes("international") ||
+      paymentMethodName?.includes("crypto")
+        ? await db
+            .select()
+            .from(currencies)
+            .where(eq(currencies.code, "USD"))
+            .limit(1)
+        : await db
+            .select()
+            .from(currencies)
+            .where(eq(currencies.code, "BDT"))
+            .limit(1);
 
     // console.log({ paymentMethodName })
 
@@ -95,15 +120,20 @@ export const createDeposit = async (req: Request, res: Response) => {
         rate: settings.conversionRate,
       })
       .from(settings)
-      .limit(1)
-
+      .limit(1);
 
     // if (paymentMethodName) {
     //   throw new Error("Data error")
     // }
 
-    const convertedAmount = currencyData?.code==="BDT" ? Number(amount||0) : Number(amount) * Number(currentConversionRate?.rate ||1);
-    const convertedBonusAmount = currencyData?.code==="BDT" ? Number(bonusAmount||0) : Number(bonusAmount) * Number(currentConversionRate?.rate ||1);
+    const convertedAmount =
+      currencyData?.code === "BDT"
+        ? Number(amount || 0)
+        : Number(amount) * Number(currentConversionRate?.rate || 1);
+    const convertedBonusAmount =
+      currencyData?.code === "BDT"
+        ? Number(bonusAmount || 0)
+        : Number(bonusAmount) * Number(currentConversionRate?.rate || 1);
 
     const [createdTxn] = await db.insert(transactions).values({
       userId: Number(userId),
@@ -148,7 +178,7 @@ export const createDeposit = async (req: Request, res: Response) => {
       createdBy: Number(user?.id ?? 0), // ✅ ensure numeric int
     });
 
-    io.emit("admin-notifications",{
+    io.emit("admin-notifications", {
       notificationType: "admin_player_transaction" as const,
       title: `New deposit transaction from user #${userId}`,
       description: `
@@ -158,10 +188,8 @@ export const createDeposit = async (req: Request, res: Response) => {
         Payment Gateway: <strong>${gatewayId}</strong><br/>
         Transaction ID: <strong>${customTransactionId}</strong>
         Promotion ID: <strong>${promotionId}</strong>
-      `
-    })
-    
-    
+      `,
+    });
 
     return res.status(201).json({
       status: true,
@@ -181,29 +209,46 @@ export const createDeposit = async (req: Request, res: Response) => {
 
 export const claimNotification = async (req: Request, res: Response) => {
   try {
-    const { notificationId, userId } = req.body as { notificationId: number; userId: number };
+    const { notificationId, userId } = req.body as {
+      notificationId: number;
+      userId: number;
+    };
 
     if (!notificationId || !userId) {
-      return res.status(400).json({ status: false, message: "notificationId and userId are required" });
+      return res.status(400).json({
+        status: false,
+        message: "notificationId and userId are required",
+      });
     }
 
     // Fetch notification and validate
-    const [note] = await db.select().from(notifications).where(eq(notifications.id, Number(notificationId)));
+    const [note] = await db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.id, Number(notificationId)));
     if (!note) {
-      return res.status(404).json({ status: false, message: "Notification not found" });
+      return res
+        .status(404)
+        .json({ status: false, message: "Notification not found" });
     }
 
     if (note.notificationType !== "claimable") {
-      return res.status(400).json({ status: false, message: "Notification is not claimable" });
+      return res
+        .status(400)
+        .json({ status: false, message: "Notification is not claimable" });
     }
 
     // Check dates are valid to claim
     const now = new Date();
     if (note.startDate && now < new Date(note.startDate)) {
-      return res.status(400).json({ status: false, message: "Notification not started yet" });
+      return res
+        .status(400)
+        .json({ status: false, message: "Notification not started yet" });
     }
     if (note.endDate && now > new Date(note.endDate)) {
-      return res.status(400).json({ status: false, message: "Notification has expired" });
+      return res
+        .status(400)
+        .json({ status: false, message: "Notification has expired" });
     }
 
     // Check user is targeted
@@ -213,32 +258,57 @@ export const claimNotification = async (req: Request, res: Response) => {
         .map((s) => Number(s.trim()))
         .filter((n) => Number.isFinite(n));
       if (ids.length && !ids.includes(Number(userId))) {
-        return res.status(403).json({ status: false, message: "User not eligible for this notification" });
+        return res.status(403).json({
+          status: false,
+          message: "User not eligible for this notification",
+        });
       }
     }
 
     const claimAmount = Number(note.amount || 0);
     const promotionId = Number(note.promotionId || 0);
-    const [promotionData] = promotionId ? await db.select().from(promotions).where(eq(promotions.id, promotionId)).limit(1) : [];
-    const promotionTurnoverMultiply = promotionData ? Number(promotionData.turnoverMultiply || 0) : 0;
+    const [promotionData] = promotionId
+      ? await db
+          .select()
+          .from(promotions)
+          .where(eq(promotions.id, promotionId))
+          .limit(1)
+      : [];
+    const promotionTurnoverMultiply = promotionData
+      ? Number(promotionData.turnoverMultiply || 0)
+      : 0;
     const promotionBonus = promotionData ? Number(promotionData.bonus || 0) : 0;
     const claimableBonus = claimAmount * (promotionBonus / 100);
-    const claimableBonusTurnover = claimableBonus * (promotionTurnoverMultiply || 0);
+    const claimableBonusTurnover =
+      claimableBonus * (promotionTurnoverMultiply || 0);
 
     const turnoverMultiply = Number(note.turnoverMultiply || 0);
     if (!(claimAmount > 0) || !(turnoverMultiply >= 0)) {
-      return res.status(400).json({ status: false, message: "Invalid claim configuration" });
+      return res
+        .status(400)
+        .json({ status: false, message: "Invalid claim configuration" });
     }
 
     const [settingsData] = await db.select().from(settings).limit(1);
 
     // Resolve currency: prefer user's currency; fallback to BDT
-    const [userRow] = await db.select({ id: users.id, currencyId: users.currency_id,userName: users.username }).from(users).where(eq(users.id, Number(userId)));
+    const [userRow] = await db
+      .select({
+        id: users.id,
+        currencyId: users.currency_id,
+        userName: users.username,
+      })
+      .from(users)
+      .where(eq(users.id, Number(userId)));
     if (!userRow) {
       return res.status(404).json({ status: false, message: "User not found" });
     }
 
-    const [currencyData] = await db.select().from(currencies).where(eq(currencies.code, "BDT")).limit(1);
+    const [currencyData] = await db
+      .select()
+      .from(currencies)
+      .where(eq(currencies.code, "BDT"))
+      .limit(1);
 
     // We will treat claimed amount as a deposit with promotion-like turnover
     const customTransactionId = await generateUniqueTransactionId();
@@ -259,10 +329,13 @@ export const claimNotification = async (req: Request, res: Response) => {
         notes: `Claimed from notification ${notificationId}`,
       } as any);
 
-      const transactionId = (createdTxn as any).insertId ?? (createdTxn as any)?.id;
+      const transactionId =
+        (createdTxn as any).insertId ?? (createdTxn as any)?.id;
 
       // Create turnover for the claim (promotion type semantics)
-      const targetTurnover = Number((claimAmount * (turnoverMultiply || 0)).toFixed(2));
+      const targetTurnover = Number(
+        (claimAmount * (turnoverMultiply || 0)).toFixed(2),
+      );
       if (targetTurnover > 0) {
         await tx.insert(turnover).values({
           userId: Number(userId),
@@ -300,7 +373,7 @@ export const claimNotification = async (req: Request, res: Response) => {
           promotionName: `Claim from notification ${notificationId}`,
           notes: `Claim credit to user ${userId}`,
         },
-        tx
+        tx,
       );
 
       await AdminMainBalanceModel.create(
@@ -313,14 +386,17 @@ export const claimNotification = async (req: Request, res: Response) => {
           promotionName: `Claim from promotion ${promotionId}`,
           notes: `Claim credit to user ${userId}`,
         },
-        tx
+        tx,
       );
 
-      // update 
-      await tx.update(notifications).set({ status: "claimed" }).where(eq(notifications.id, Number(notificationId)));
+      // update
+      await tx
+        .update(notifications)
+        .set({ status: "claimed" })
+        .where(eq(notifications.id, Number(notificationId)));
 
-       // ✅ Create an admin notification for this claim deposit
-       await tx.insert(notifications).values({
+      // ✅ Create an admin notification for this claim deposit
+      await tx.insert(notifications).values({
         notificationType: "admin_player_transaction" as const,
         title: `New claim transaction from user #${userId}`,
         description: `
@@ -341,7 +417,7 @@ export const claimNotification = async (req: Request, res: Response) => {
         createdBy: Number(userId),
       });
 
-      io.emit("admin-notifications",{
+      io.emit("admin-notifications", {
         notificationType: "admin_player_transaction" as const,
         title: `New claim transaction from user #${userId}`,
         description: `
@@ -351,9 +427,7 @@ export const claimNotification = async (req: Request, res: Response) => {
           Transaction ID: <strong>${customTransactionId}</strong><br/>
           Promotion ID: <strong>${promotionId || "N/A"}</strong>
         `,
-      })
-      
-
+      });
 
       return { transactionId };
     });
@@ -369,7 +443,183 @@ export const claimNotification = async (req: Request, res: Response) => {
     });
   } catch (err) {
     console.error("claimNotification error", err);
-    return res.status(500).json({ status: false, message: "Internal Server Error", errors: err });
+    return res
+      .status(500)
+      .json({ status: false, message: "Internal Server Error", errors: err });
+  }
+};
+
+export const claimSpinBonus = async (req: Request, res: Response) => {
+  try {
+    const {
+      spinBonusAmount,
+      isDailySpinCompleted,
+      isSpinForcedByAdmin,
+      lastSpinDate,
+      isForcedSpinComplete,
+      spinTurnOverMultiply,
+      userId,
+    } = req.body as {
+      spinBonusAmount: number;
+      spinTurnOverMultiply: number;
+      userId: number;
+      isForcedSpinComplete: boolean;
+      lastSpinDate: string;
+      isSpinForcedByAdmin: boolean;
+      isDailySpinCompleted: boolean;
+    };
+
+    // Resolve currency: prefer user's currency; fallback to BDT
+    const [userRow] = await db
+      .select({
+        id: users.id,
+        currencyId: users.currency_id,
+        userName: users.username,
+        isDailySpinCompleted: users.isDailySpinCompleted,
+        isSpinForcedByAdmin: users.isSpinForcedByAdmin,
+        lastSpinDate: users.lastSpinDate,
+        isForcedSpinComplete: users.isForcedSpinComplete,
+      })
+      .from(users)
+      .for("update")
+      .where(eq(users.id, Number(userId)));
+    if (!userRow) {
+      return res.status(404).json({ status: false, message: "User not found" });
+    }
+
+    const claimAmount = spinBonusAmount;
+    const turnoverMultiply = spinTurnOverMultiply;
+    const [settingsData] = await db.select().from(settings).limit(1);
+
+    const [currencyData] = await db
+      .select()
+      .from(currencies)
+      .where(eq(currencies.code, "BDT"))
+      .limit(1);
+
+    // We will treat claimed amount as a deposit with promotion-like turnover
+    const customTransactionId = await generateUniqueTransactionId();
+
+    const trxResult = await db.transaction(async (tx) => {
+      // Create transaction (spin bonus)
+      const [createdTxn] = await tx.insert(transactions).values({
+        userId: Number(userId),
+        type: "spin_bonus" as any,
+        amount: claimAmount as number,
+        bonusAmount: 0 as number,
+        currencyId: currencyData?.id || null,
+        status: "approved" as string, // immediate credit for claim
+        customTransactionId,
+        promotionId: null,
+        processedByUser: Number(userId),
+        conversionRate: settingsData?.conversionRate || 0,
+        notes: `Spin bonus claimed for user ${userId}`,
+      } as any);
+
+      const transactionId =
+        (createdTxn as any).insertId ?? (createdTxn as any)?.id;
+
+      // Create turnover for the claim (promotion type semantics)
+      const targetTurnover = Number(
+        (claimAmount * (turnoverMultiply || 0)).toFixed(2),
+      );
+      if (targetTurnover > 0) {
+        await tx.insert(turnover).values({
+          userId: Number(userId),
+          transactionId: transactionId,
+          type: "spin_bonus" as any,
+          status: "active" as any,
+          turnoverName: `Claim turnover from spin bonus of user ${userId}`,
+          depositAmount: claimAmount.toString(),
+          targetTurnover: targetTurnover.toString(),
+          remainingTurnover: targetTurnover.toString(),
+        } as NewTurnover);
+      }
+
+      console.log(currencyData);
+      // Admin main balance entry for promotion payout-like behavior
+      await AdminMainBalanceModel.create(
+        {
+          amount: claimAmount,
+          type: "spin_bonus",
+          status: "approved",
+          transactionId,
+          currencyId: currencyData?.id || undefined,
+          notes: `Claimed spin bonus for user ${userId}`,
+        },
+        tx,
+      );
+
+      await tx
+        .update(users)
+        .set({
+          isDailySpinCompleted: isDailySpinCompleted,
+          isSpinForcedByAdmin: isSpinForcedByAdmin,
+          lastSpinDate: new Date(lastSpinDate),
+          isForcedSpinComplete: isForcedSpinComplete,
+        })
+        .where(eq(users.id, userId));
+
+      await SpinBonusModel.create(
+        {
+          userId,
+          transactionId,
+          amount: claimAmount,
+          turnoverMultiply: spinTurnOverMultiply,
+          conversionRate: settingsData?.conversionRate || null,
+        },
+        tx,
+      );
+
+      // ✅ Create an admin notification for this claim deposit
+      await tx.insert(notifications).values({
+        notificationType: "admin_player_transaction" as const,
+        title: `New spin bonus claimed for user #${userId}`,
+        description: `
+          A new claim spin bonus has been created by user <strong>${userRow.userName} (#${userId})</strong>.<br/>
+          Amount: <strong>${claimAmount} ${currencyData?.code}</strong><br/>
+          Turnover: <strong>${targetTurnover} ${currencyData?.code}</strong><br/>
+          Transaction ID: <strong>${customTransactionId}</strong><br/>
+        `,
+        amount: String(0),
+        turnoverMultiply: spinTurnOverMultiply,
+        playerIds: String(userId),
+        promotionId: null,
+        link: `/players/${userId}/profile/transactions`,
+        startDate: new Date(),
+        endDate: new Date(),
+        status: "claimed",
+        createdBy: Number(userId),
+      });
+
+      io.emit("admin-notifications", {
+        notificationType: "admin_player_transaction" as const,
+        title: `New claim transaction from user #${userId}`,
+        description: `
+          A new claim spin bonus has been created by user <strong>${userRow.userName} (#${userId})</strong>.<br/>
+          Amount: <strong>${claimAmount} ${currencyData?.code}</strong><br/>
+          Turnover: <strong>${spinTurnOverMultiply} ${currencyData?.code}</strong><br/>
+          Transaction ID: <strong>${customTransactionId}</strong><br/>
+        `,
+      });
+
+      return { transactionId };
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: "Spin bonus claimed successfully",
+      data: {
+        transactionId: trxResult.transactionId,
+        amount: claimAmount,
+        turnoverMultiply,
+      },
+    });
+  } catch (err) {
+    console.error("Spin bonus claimed error", err);
+    return res
+      .status(500)
+      .json({ status: false, message: "Internal Server Error", errors: err });
   }
 };
 
@@ -458,8 +708,8 @@ export const createAffiliateWithdraw = async (req: Request, res: Response) => {
         .where(
           and(
             eq(commission.adminUserId, Number(affiliateId)),
-            eq(commission.status, "approved")
-          )
+            eq(commission.status, "approved"),
+          ),
         );
 
       await tx
@@ -490,8 +740,8 @@ export const createAffiliateWithdraw = async (req: Request, res: Response) => {
         network: network ?? null,
       } as any);
 
-       // ✅ Create admin notification
-       await tx.insert(notifications).values({
+      // ✅ Create admin notification
+      await tx.insert(notifications).values({
         notificationType: "admin_affiliate_transaction" as const,
         title: `New withdrawal request from affiliate #${affiliateId}`,
         description: `
@@ -521,7 +771,7 @@ export const createAffiliateWithdraw = async (req: Request, res: Response) => {
         createdBy: Number(user?.id ?? 0),
       });
 
-      io.emit("admin-notifications",{
+      io.emit("admin-notifications", {
         notificationType: "admin_affiliate_transaction" as const,
         title: `New withdrawal request from affiliate #${affiliateId}`,
         description: `
@@ -540,8 +790,7 @@ export const createAffiliateWithdraw = async (req: Request, res: Response) => {
           }
           Transaction ID: <strong>${customTransactionId}</strong>
         `,
-      })
-      
+      });
 
       const transactionId =
         (createdTxn as any).insertId ?? (createdTxn as any)?.id;
@@ -640,12 +889,12 @@ export const createWithdraw = async (req: Request, res: Response) => {
       .select({
         id: paymentGateway.id,
         name: paymentGateway.name,
-        paymentMethodName: paymentMethods?.name
+        paymentMethodName: paymentMethods?.name,
       })
       .from(paymentGateway)
       .leftJoin(paymentMethods, eq(paymentMethods.id, paymentGateway.methodId))
       .where(eq(paymentGateway.id, paymentGatewayId));
-      console.log({getGateWayData})
+    console.log({ getGateWayData });
 
     if (!getGateWayData?.id) {
       return res.status(200).json({
@@ -657,7 +906,7 @@ export const createWithdraw = async (req: Request, res: Response) => {
     // Get minimum withdrawable balance from settings
     const [settingsRow] = await db.select().from(settings).limit(1);
     const minWithdrawableBalance = Number(
-      settingsRow?.minWithdrawableBalance || 25000
+      settingsRow?.minWithdrawableBalance || 25000,
     );
 
     // Check for pending turnover
@@ -694,15 +943,15 @@ export const createWithdraw = async (req: Request, res: Response) => {
         withdrawReason = "Please verify your KYC status.";
       } else if (!hasSufficientBalance) {
         withdrawReason = `Insufficient balance. Current balance: ${currentBalance.toFixed(
-          2
+          2,
         )}, Minimum required: ${minWithdrawableBalance.toFixed(2)}`;
       } else if (hasPendingTurnover) {
         const turnoverDetails = pendingTurnover
           .map(
             (t) =>
               `${t.type} turnover: ${Number(t.remainingTurnover).toFixed(
-                2
-              )} remaining out of ${Number(t.targetTurnover).toFixed(2)} target`
+                2,
+              )} remaining out of ${Number(t.targetTurnover).toFixed(2)} target`,
           )
           .join(", ");
         withdrawReason = `Pending turnover requirements: ${turnoverDetails}`;
@@ -746,19 +995,31 @@ export const createWithdraw = async (req: Request, res: Response) => {
 
     const paymentMethodName = getGateWayData.paymentMethodName?.toLowerCase();
 
-    const [currencyData] = paymentMethodName?.includes("international") || paymentMethodName?.includes("crypto") ?
-      await db.select().from(currencies).where(eq(currencies.code, "USD")).limit(1)
-      : await db.select().from(currencies).where(eq(currencies.code, "BDT")).limit(1);
+    const [currencyData] =
+      paymentMethodName?.includes("international") ||
+      paymentMethodName?.includes("crypto")
+        ? await db
+            .select()
+            .from(currencies)
+            .where(eq(currencies.code, "USD"))
+            .limit(1)
+        : await db
+            .select()
+            .from(currencies)
+            .where(eq(currencies.code, "BDT"))
+            .limit(1);
 
     const [currentConversionRate] = await db
       .select({
         rate: settings.conversionRate,
       })
       .from(settings)
-      .limit(1)
+      .limit(1);
 
-    const convertedAmount = currencyData?.code==="BDT" ? Number(amount||0) : Number(amount) * Number(currentConversionRate?.rate ||1);
-
+    const convertedAmount =
+      currencyData?.code === "BDT"
+        ? Number(amount || 0)
+        : Number(amount) * Number(currentConversionRate?.rate || 1);
 
     // console.log({currencyData,paymentMethodName,currentConversionRate})
 
@@ -793,7 +1054,6 @@ export const createWithdraw = async (req: Request, res: Response) => {
         processedByUser: user?.userType === "user" ? user?.id : null,
       } as any);
 
-
       await tx.insert(notifications).values({
         notificationType: "admin_player_transaction" as const,
         title: `New withdrawal request from user #${userId}`,
@@ -815,7 +1075,7 @@ export const createWithdraw = async (req: Request, res: Response) => {
         createdBy: Number(user?.id ?? 0),
       });
 
-      io.emit("admin-notifications",{
+      io.emit("admin-notifications", {
         notificationType: "admin_player_transaction" as const,
         title: `New withdrawal request from user #${userId}`,
         description: `
@@ -825,13 +1085,11 @@ export const createWithdraw = async (req: Request, res: Response) => {
           Transaction ID: <strong>${customTransactionId}</strong><br/>
           Method: <strong>${walletAddress ? "Wallet" : "Bank"}</strong>
         `,
-      })
-      
+      });
 
       const transactionId =
         (createdTxn as any).insertId ?? (createdTxn as any)?.id;
 
-      
       // Create admin main balance record for player withdrawal
       // await AdminMainBalanceModel.create(
       //   {
@@ -927,15 +1185,12 @@ export const getTransactions = async (req: Request, res: Response) => {
       start.setHours(0, 0, 0, 0);
       whereClauses.push(sql`${transactions.createdAt} >= ${start}`);
     }
-  
+
     if (dateTo) {
       const end = new Date(dateTo as string);
       end.setHours(23, 59, 59, 999);
       whereClauses.push(sql`${transactions.createdAt} <= ${end}`);
     }
-    
-
-
 
     const whereExpr = whereClauses.length
       ? (and as any)(...whereClauses)
@@ -1046,22 +1301,22 @@ END
       .from(transactions)
       .leftJoin(
         paymentGateway,
-        eq(paymentGateway.id, transactions.paymentGatewayId)
+        eq(paymentGateway.id, transactions.paymentGatewayId),
       )
       .leftJoin(paymentMethods, eq(paymentGateway.methodId, paymentMethods.id))
       .leftJoin(promotions, eq(transactions.promotionId, promotions.id))
       .leftJoin(users, eq(transactions.userId, users.id))
       .leftJoin(
         currencyConversion,
-        eq(transactions.currencyId, currencyConversion.toCurrency)
+        eq(transactions.currencyId, currencyConversion.toCurrency),
       )
       .leftJoin(
         processedByAdmin,
-        eq(transactions?.processedBy, processedByAdmin?.id)
+        eq(transactions?.processedBy, processedByAdmin?.id),
       )
       .leftJoin(
         processedByUser,
-        eq(transactions.processedByUser, processedByUser.id)
+        eq(transactions.processedByUser, processedByUser.id),
       )
       .leftJoin(adminUsers, eq(transactions.affiliateId, adminUsers.id))
       .leftJoin(games, eq(transactions.gameId, games.id))
@@ -1095,20 +1350,28 @@ export const updateTransactionStatus = async (req: Request, res: Response) => {
     const { status, notes } = req.body as { status?: string; notes?: string };
 
     if (Number.isNaN(id)) {
-      return res.status(400).json({ status: false, message: "Invalid transaction id" });
+      return res
+        .status(400)
+        .json({ status: false, message: "Invalid transaction id" });
     }
 
     const validStatuses = ["approved", "pending", "rejected"] as const;
     if (!status || !(validStatuses as readonly string[]).includes(status)) {
       return res.status(400).json({
         status: false,
-        message: "Invalid or missing status. Allowed: approved, pending, rejected",
+        message:
+          "Invalid or missing status. Allowed: approved, pending, rejected",
       });
     }
 
-    const [existing] = await db.select().from(transactions).where(eq(transactions.id, id));
+    const [existing] = await db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.id, id));
     if (!existing) {
-      return res.status(404).json({ status: false, message: "Transaction not found" });
+      return res
+        .status(404)
+        .json({ status: false, message: "Transaction not found" });
     }
 
     const processedBy = (req as any)?.user?.id ?? null;
@@ -1119,7 +1382,10 @@ export const updateTransactionStatus = async (req: Request, res: Response) => {
     if (processedBy) updatePayload.processedBy = Number(processedBy);
     if (typeof notes === "string") updatePayload.notes = notes;
 
-    await db.update(transactions).set(updatePayload).where(eq(transactions.id, id));
+    await db
+      .update(transactions)
+      .set(updatePayload)
+      .where(eq(transactions.id, id));
 
     // --- APPROVED FLOW ---
     if (status === "approved") {
@@ -1136,7 +1402,9 @@ export const updateTransactionStatus = async (req: Request, res: Response) => {
         const [existingDefaultTurnover] = await db
           .select()
           .from(turnover)
-          .where(and(eq(turnover.transactionId, id), eq(turnover.type, "default")));
+          .where(
+            and(eq(turnover.transactionId, id), eq(turnover.type, "default")),
+          );
 
         if (existingDefaultTurnover) {
           // Update
@@ -1180,7 +1448,12 @@ export const updateTransactionStatus = async (req: Request, res: Response) => {
           const [existingPromoTurnover] = await db
             .select()
             .from(turnover)
-            .where(and(eq(turnover.transactionId, id), eq(turnover.type, "promotion")));
+            .where(
+              and(
+                eq(turnover.transactionId, id),
+                eq(turnover.type, "promotion"),
+              ),
+            );
 
           if (existingPromoTurnover) {
             // Update
@@ -1210,12 +1483,19 @@ export const updateTransactionStatus = async (req: Request, res: Response) => {
           }
 
           // Always update transaction bonus amount
-          await db.update(transactions).set({ bonusAmount: bonusAmount.toString() }).where(eq(transactions.id, id));
+          await db
+            .update(transactions)
+            .set({ bonusAmount: bonusAmount.toString() })
+            .where(eq(transactions.id, id));
 
           // --- Admin main balance for promotion ---
-          const [existingPromoBalance] = await db.query.adminMainBalance.findMany({
-            where: and(eq(adminMainBalance.transactionId, id), eq(adminMainBalance.type, "promotion")),
-          });
+          const [existingPromoBalance] =
+            await db.query.adminMainBalance.findMany({
+              where: and(
+                eq(adminMainBalance.transactionId, id),
+                eq(adminMainBalance.type, "promotion"),
+              ),
+            });
 
           if (existingPromoBalance) {
             await AdminMainBalanceModel.update(existingPromoBalance.id, {
@@ -1250,7 +1530,10 @@ export const updateTransactionStatus = async (req: Request, res: Response) => {
             : "promotion";
 
       const [existingMainBalance] = await db.query.adminMainBalance.findMany({
-        where: and(eq(adminMainBalance.transactionId, id), eq(adminMainBalance.type, "promotion")),
+        where: and(
+          eq(adminMainBalance.transactionId, id),
+          eq(adminMainBalance.type, "promotion"),
+        ),
       });
 
       if (existingMainBalance) {
@@ -1274,13 +1557,21 @@ export const updateTransactionStatus = async (req: Request, res: Response) => {
 
     // --- REJECTED / PENDING ---
     if (["rejected", "pending"].includes(status)) {
-      await db.update(turnover).set({ status: "inactive" }).where(eq(turnover.transactionId, id));
+      await db
+        .update(turnover)
+        .set({ status: "inactive" })
+        .where(eq(turnover.transactionId, id));
     }
 
     // Always sync AdminMainBalance statuses
-    await AdminMainBalanceModel.updateByTransactionId(id, { status: status as any });
+    await AdminMainBalanceModel.updateByTransactionId(id, {
+      status: status as any,
+    });
 
-    const [updated] = await db.select().from(transactions).where(eq(transactions.id, id));
+    const [updated] = await db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.id, id));
 
     return res.status(200).json({
       status: true,
@@ -1289,14 +1580,15 @@ export const updateTransactionStatus = async (req: Request, res: Response) => {
     });
   } catch (err) {
     console.error("updateTransactionStatus error", err);
-    return res.status(500).json({ status: false, message: "Internal Server Error", errors: err });
+    return res
+      .status(500)
+      .json({ status: false, message: "Internal Server Error", errors: err });
   }
 };
 
-
 export const updateAffiliateWithdrawStatus = async (
   req: Request,
-  res: Response
+  res: Response,
 ) => {
   const tx = db; // If you use transaction wrapper, replace with `await db.transaction(...)`
   try {
@@ -1357,8 +1649,8 @@ export const updateAffiliateWithdrawStatus = async (
         .where(
           and(
             eq(commission.adminUserId, Number(affiliateId)),
-            eq(commission.status, "paid")
-          )
+            eq(commission.status, "paid"),
+          ),
         );
     } else if (status === "rejected") {
       const paidCommissions = await tx
@@ -1367,8 +1659,8 @@ export const updateAffiliateWithdrawStatus = async (
         .where(
           and(
             eq(commission.adminUserId, Number(affiliateId)),
-            eq(commission.status, "paid")
-          )
+            eq(commission.status, "paid"),
+          ),
         );
       console.log("paidCommissions", paidCommissions);
       if (paidCommissions.length > 0) {
@@ -1378,8 +1670,8 @@ export const updateAffiliateWithdrawStatus = async (
           .where(
             and(
               eq(commission.adminUserId, Number(affiliateId)),
-              eq(commission.status, "paid")
-            )
+              eq(commission.status, "paid"),
+            ),
           );
 
         // ✅ Set remaining balance to 0
@@ -1393,7 +1685,7 @@ export const updateAffiliateWithdrawStatus = async (
           .update(adminUsers)
           .set({
             remainingBalance: sql`${adminUsers.remainingBalance} + ${Number(
-              existing.amount
+              existing.amount,
             )}`,
           })
           .where(eq(adminUsers.id, Number(affiliateId)));
@@ -1442,7 +1734,7 @@ export const checkWithdrawCapability = async (req: Request, res: Response) => {
     // Get minimum withdrawable balance from settings
     const [settingsRow] = await db.select().from(settings).limit(1);
     const minWithdrawableBalance = Number(
-      settingsRow?.minWithdrawableBalance || 25000
+      settingsRow?.minWithdrawableBalance || 25000,
     );
 
     // Check for pending turnover
@@ -1483,7 +1775,7 @@ export const checkWithdrawCapability = async (req: Request, res: Response) => {
         withdrawReason = "User is not active";
       } else if (!hasSufficientBalance) {
         withdrawReason = `Insufficient balance. Current balance: ${currentBalance.toFixed(
-          2
+          2,
         )}, Minimum required: ${minWithdrawableBalance.toFixed(2)}`;
       } else if (hasPendingTurnover) {
         withdrawReason = `Turnover has not yet reached`;

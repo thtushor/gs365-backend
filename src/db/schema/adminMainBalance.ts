@@ -16,8 +16,9 @@ import { currencies } from "./currency";
 
 export const AdminMainBalanceType = mysqlEnum("admin_main_balance_type", [
   "admin_deposit",
-  "player_deposit", 
+  "player_deposit",
   "promotion",
+  "spin_bonus",
   "player_withdraw",
   "admin_withdraw",
 ]);
@@ -40,7 +41,9 @@ export const adminMainBalance = mysqlTable("admin_main_balance", {
     onDelete: "set null",
   }),
   promotionName: varchar("promotion_name", { length: 300 }),
-  currencyId: int("currency_id").references(() => currencies.id, { onDelete: "cascade" }),
+  currencyId: int("currency_id").references(() => currencies.id, {
+    onDelete: "cascade",
+  }),
   createdByPlayer: int("created_by_player").references(() => users.id, {
     onDelete: "set null",
   }),
@@ -50,32 +53,35 @@ export const adminMainBalance = mysqlTable("admin_main_balance", {
   notes: text("notes"),
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updated_at").default(
-    sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`
+    sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`,
   ),
 });
 
-export const adminMainBalanceRelations = relations(adminMainBalance, ({ one }) => ({
-  promotion: one(promotions, {
-    fields: [adminMainBalance.promotionId],
-    references: [promotions.id],
+export const adminMainBalanceRelations = relations(
+  adminMainBalance,
+  ({ one }) => ({
+    promotion: one(promotions, {
+      fields: [adminMainBalance.promotionId],
+      references: [promotions.id],
+    }),
+    transaction: one(transactions, {
+      fields: [adminMainBalance.transactionId],
+      references: [transactions.id],
+    }),
+    currency: one(currencies, {
+      fields: [adminMainBalance.currencyId],
+      references: [currencies.id],
+    }),
+    createdByPlayerUser: one(users, {
+      fields: [adminMainBalance.createdByPlayer],
+      references: [users.id],
+    }),
+    createdByAdminUser: one(adminUsers, {
+      fields: [adminMainBalance.createdByAdmin],
+      references: [adminUsers.id],
+    }),
   }),
-  transaction: one(transactions, {
-    fields: [adminMainBalance.transactionId],
-    references: [transactions.id],
-  }),
-  currency: one(currencies, {
-    fields: [adminMainBalance.currencyId],
-    references: [currencies.id],
-  }),
-  createdByPlayerUser: one(users, {
-    fields: [adminMainBalance.createdByPlayer],
-    references: [users.id],
-  }),
-  createdByAdminUser: one(adminUsers, {
-    fields: [adminMainBalance.createdByAdmin],
-    references: [adminUsers.id],
-  }),
-}));
+);
 
 export type AdminMainBalance = typeof adminMainBalance.$inferSelect;
 export type NewAdminMainBalance = typeof adminMainBalance.$inferInsert;

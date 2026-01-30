@@ -32,6 +32,7 @@ export const getDashboardStats = asyncHandler(
           totalWin: sql<number>`SUM(CASE WHEN transaction_type = 'win' THEN amount ELSE 0 END)`,
           totalLoss: sql<number>`SUM(CASE WHEN transaction_type = 'loss' THEN amount ELSE 0 END)`,
           totalDeposit: sql<number>`SUM(CASE WHEN transaction_type = 'deposit' AND transaction_status = 'approved' THEN amount ELSE 0 END)`,
+          totalSpinBonus: sql<number>`SUM(CASE WHEN transaction_type = 'spin_bonus' AND transaction_status = 'approved' THEN amount ELSE 0 END)`,
           totalDepositUSD: sql<number>`SUM(CASE WHEN transaction_type = 'deposit' AND transaction_status = 'approved' AND ${currencies.code} = 'USD' THEN amount / NULLIF(conversion_rate, 0) ELSE 0 END)`,
           totalWithdraw: sql<number>`
   SUM(
@@ -175,6 +176,7 @@ export const getDashboardStats = asyncHandler(
         Number(totalPlayerCurrentBalance.totalCurrentBalance || 0);
       // Prepare dashboard data
       const dashboardData = {
+        totalSpinBonus: adminMainBalanceStats.totalSpinBonus,
         mainBalance: adminMainBalanceStats.currentMainBalance,
         totalAdminDeposit: adminMainBalanceStats.totalAdminDeposit,
         totalPlayerDeposit: adminMainBalanceStats.totalPlayerDeposit,
@@ -185,10 +187,10 @@ export const getDashboardStats = asyncHandler(
         companyProfit: Number(totalCompanyProfit || 0),
         totalGGRAmount: Number(totalGGRAmount || 0),
         totalPlayerCurrentBalance: Number(
-          totalPlayerCurrentBalance.totalCurrentBalance || 0
+          totalPlayerCurrentBalance.totalCurrentBalance || 0,
         ),
         totalPlayerCurrentBalanceUSD: `$${Number(
-          totalPlayerCurrentBalance.totalCurrentBalanceUSD || 0
+          totalPlayerCurrentBalance.totalCurrentBalanceUSD || 0,
         ).toFixed(2)}`,
 
         // Win/Loss
@@ -199,19 +201,19 @@ export const getDashboardStats = asyncHandler(
         // Deposit/Withdraw
         totalDeposit: Number(transactionStats[0]?.totalDeposit || 0),
         totalDepositUSD: `$${Number(
-          transactionStats[0]?.totalDepositUSD || 0
+          transactionStats[0]?.totalDepositUSD || 0,
         ).toFixed(2)}`,
         totalWithdraw: Number(transactionStats[0]?.totalWithdraw || 0),
         totalWithdrawUSD: `$${Number(
-          transactionStats[0]?.totalWithdrawUSD || 0
+          transactionStats[0]?.totalWithdrawUSD || 0,
         ).toFixed(2)}`,
 
         // Deposit/Withdraw affiliates
         totalAffiliateWithdrawal: Number(
-          transactionStats[0]?.totalAffiliateWithdrawal || 0
+          transactionStats[0]?.totalAffiliateWithdrawal || 0,
         ),
         totalAffiliateWithdrawalPending: Number(
-          transactionStats[0]?.totalAffiliateWithdrawalPending || 0
+          transactionStats[0]?.totalAffiliateWithdrawalPending || 0,
         ),
 
         // Pending Transactions
@@ -222,16 +224,16 @@ export const getDashboardStats = asyncHandler(
         totalBonusCoin: Number(transactionStats[0]?.totalBonusCoin || 0),
         totalBonusAmount: Number(transactionStats[0]?.totalBonusAmount || 0),
         totalBonusAmountUSD: `$${Number(
-          transactionStats[0]?.totalBonusAmountUSD || 0
+          transactionStats[0]?.totalBonusAmountUSD || 0,
         ).toFixed(2)}`,
 
         // Affiliate Stats
         totalAffiliate: Number(affiliateAgentStats[0]?.totalAffiliate || 0),
         totalSuperAffiliate: Number(
-          affiliateAgentStats[0]?.totalSuperAffiliate || 0
+          affiliateAgentStats[0]?.totalSuperAffiliate || 0,
         ),
         totalSubAffiliate: Number(
-          affiliateAgentStats[0]?.totalSubAffiliate || 0
+          affiliateAgentStats[0]?.totalSubAffiliate || 0,
         ),
 
         // Agent Stats
@@ -243,13 +245,13 @@ export const getDashboardStats = asyncHandler(
         totalPlayers: Number(playerStats[0]?.totalPlayers || 0),
         totalOnlinePlayers: Number(playerStats[0]?.totalOnlinePlayers || 0),
         totalPlayerKycVerified: Number(
-          playerStats[0]?.totalPlayerKycVerified || 0
+          playerStats[0]?.totalPlayerKycVerified || 0,
         ),
         totalPlayerKycUnverified: Number(
-          playerStats[0]?.totalPlayerKycUnverified || 0
+          playerStats[0]?.totalPlayerKycUnverified || 0,
         ),
         totalPlayerKycRequired: Number(
-          playerStats[0]?.totalPlayerKycRequired || 0
+          playerStats[0]?.totalPlayerKycRequired || 0,
         ),
         totalForeignUsers: Number(playerStats[0]?.totalForeignUsers || 0),
         totalBDUsers: Number(playerStats[0]?.totalBDUsers || 0),
@@ -272,32 +274,32 @@ export const getDashboardStats = asyncHandler(
         totalInactiveGames: Number(gamesCount?.totalInactiveGames || 0),
         totalGameProviders: Number(gameProvidersCount?.totalGameProviders || 0),
         totalActiveGameProviders: Number(
-          gameProvidersCount?.totalActiveGameProviders || 0
+          gameProvidersCount?.totalActiveGameProviders || 0,
         ),
         totalInactiveGameProviders: Number(
-          gameProvidersCount?.totalInactiveGameProviders || 0
+          gameProvidersCount?.totalInactiveGameProviders || 0,
         ),
         totalParentGameProviders: Number(
-          gameProvidersCount?.totalParentGameProviders || 0
+          gameProvidersCount?.totalParentGameProviders || 0,
         ),
         totalSubGameProviders: Number(
-          gameProvidersCount?.totalSubGameProviders || 0
+          gameProvidersCount?.totalSubGameProviders || 0,
         ),
 
         totalSportsProviders: Number(
-          sportsProvidersCount?.totalSportsProviders || 0
+          sportsProvidersCount?.totalSportsProviders || 0,
         ),
         totalActiveSportsProviders: Number(
-          sportsProvidersCount?.totalActiveSportsProviders || 0
+          sportsProvidersCount?.totalActiveSportsProviders || 0,
         ),
         totalInactiveSportsProviders: Number(
-          sportsProvidersCount?.totalInactiveSportsProviders || 0
+          sportsProvidersCount?.totalInactiveSportsProviders || 0,
         ),
         totalParentSportsProviders: Number(
-          sportsProvidersCount?.totalParentSportsProviders || 0
+          sportsProvidersCount?.totalParentSportsProviders || 0,
         ),
         totalSubSportsProviders: Number(
-          sportsProvidersCount?.totalSubSportsProviders || 0
+          sportsProvidersCount?.totalSubSportsProviders || 0,
         ),
       };
 
@@ -316,5 +318,5 @@ export const getDashboardStats = asyncHandler(
         error: error instanceof Error ? error.message : "Unknown error",
       });
     }
-  }
+  },
 );

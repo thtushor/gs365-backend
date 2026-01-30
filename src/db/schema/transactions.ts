@@ -27,6 +27,7 @@ export const TransactionType = mysqlEnum("transaction_type", [
   "withdraw",
   "win",
   "loss",
+  "spin_bonus",
 ]);
 
 export const transactions = mysqlTable("transactions", {
@@ -37,7 +38,9 @@ export const transactions = mysqlTable("transactions", {
   }),
   type: TransactionType.notNull(),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
-  bonusAmount: decimal("bonus_amount", { precision: 10, scale: 2 }).default("0"),
+  bonusAmount: decimal("bonus_amount", { precision: 10, scale: 2 }).default(
+    "0",
+  ),
   conversionRate: decimal("conversion_rate").default("100"),
   currencyId: int("currency_id")
     .notNull()
@@ -51,7 +54,7 @@ export const transactions = mysqlTable("transactions", {
     },
     {
       onDelete: "cascade",
-    }
+    },
   ),
   status: TransactionStatus.default("pending"),
   customTransactionId: varchar("custom_transaction_id", {
@@ -65,14 +68,11 @@ export const transactions = mysqlTable("transactions", {
     () => paymentGatewayProviderAccount.id,
     {
       onDelete: "cascade",
-    }
+    },
   ),
-  paymentGatewayId: int("gateWayId").references(
-    () => paymentGateway.id,
-    {
-      onDelete: "cascade",
-    }
-  ),
+  paymentGatewayId: int("gateWayId").references(() => paymentGateway.id, {
+    onDelete: "cascade",
+  }),
   // Bank-specific fields
   accountNumber: varchar("account_number", { length: 100 }),
   accountHolderName: varchar("account_holder_name", { length: 100 }),
@@ -85,11 +85,11 @@ export const transactions = mysqlTable("transactions", {
   walletAddress: text("wallet_address"),
   network: varchar("network", { length: 50 }),
   processedBy: int("processed_by"),
-  processedByUser:int("processedByUser"),
+  processedByUser: int("processedByUser"),
   processedAt: datetime("processed_at"),
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updated_at").default(
-    sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`
+    sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`,
   ),
 });
 

@@ -34,6 +34,12 @@ export const users = mysqlTable("users", {
   lastLogin: datetime("last_login"),
   tokenVersion: int("token_version").default(0),
 
+  // ✅ Spin and Forced spin fields
+  isDailySpinCompleted: boolean("is_daily_spin_completed").default(false),
+  isSpinForcedByAdmin: boolean("is_spin_forced_by_admin").default(false),
+  isForcedSpinComplete: boolean("is_forced_spin_complete").default(false),
+  lastSpinDate: datetime("last_spin_date"),
+
   // ✅ Device info fields
   device_type: varchar("device_type", { length: 50 }),
   device_name: varchar("device_name", { length: 100 }),

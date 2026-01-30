@@ -5,6 +5,8 @@ import { currencies } from "../db/schema/currency";
 import { promotions } from "../db/schema";
 
 export interface PlayerBalance {
+  totalSpinBonusUSD: number;
+  totalSpinBonus: number;
   currencyCode: string;
   totalDeposits: number;
   totalWithdrawals: number;
@@ -36,7 +38,7 @@ export interface BalanceFilters {
 export const BalanceModel = {
   async calculatePlayerBalance(
     userId: number,
-    currencyId?: number
+    currencyId?: number,
   ): Promise<PlayerBalance> {
     try {
       let whereConditions = [eq(transactions.userId, userId)];
@@ -50,6 +52,11 @@ export const BalanceModel = {
           // BDT amounts (original logic)
           totalDeposits: sql<number>`
             COALESCE(SUM(CASE WHEN ${transactions.type} = 'deposit' 
+              AND ${transactions.status} = 'approved' 
+              THEN ${transactions.amount} + COALESCE(${transactions.bonusAmount}, 0) ELSE 0 END), 0)
+          `,
+          totalSpinBonus: sql<number>`
+            COALESCE(SUM(CASE WHEN ${transactions.type} = 'spin_bonus' 
               AND ${transactions.status} = 'approved' 
               THEN ${transactions.amount} + COALESCE(${transactions.bonusAmount}, 0) ELSE 0 END), 0)
           `,
@@ -81,6 +88,11 @@ export const BalanceModel = {
           // USD amounts (converted)
           totalDepositsUSD: sql<number>`
             COALESCE(SUM(CASE WHEN ${transactions.type} = 'deposit' 
+              AND ${transactions.status} = 'approved' 
+              THEN (${transactions.amount} + COALESCE(${transactions.bonusAmount}, 0)) / COALESCE(${transactions.conversionRate}, 1) ELSE 0 END), 0)
+          `,
+          totalSpinBonusUSD: sql<number>`
+            COALESCE(SUM(CASE WHEN ${transactions.type} = 'spin_bonus' 
               AND ${transactions.status} = 'approved' 
               THEN (${transactions.amount} + COALESCE(${transactions.bonusAmount}, 0)) / COALESCE(${transactions.conversionRate}, 1) ELSE 0 END), 0)
           `,
@@ -120,6 +132,7 @@ export const BalanceModel = {
         return {
           currencyCode: "N/A",
           totalDeposits: 0,
+          totalSpinBonus: 0,
           totalWithdrawals: 0,
           totalWins: 0,
           totalLosses: 0,
@@ -130,6 +143,7 @@ export const BalanceModel = {
           approvedWithdrawals: 0,
           // USD equivalents
           totalDepositsUSD: 0,
+          totalSpinBonusUSD: 0,
           totalWithdrawalsUSD: 0,
           totalWinsUSD: 0,
           totalLossesUSD: 0,
@@ -143,6 +157,7 @@ export const BalanceModel = {
 
       const row = result[0];
       // BDT amounts
+      const totalSpinBonus = Number(row.totalSpinBonus);
       const totalDeposits = Number(row.totalDeposits);
       const totalWithdrawals = Number(row.totalWithdrawals);
       const totalWins = Number(row.totalWins);
@@ -151,6 +166,7 @@ export const BalanceModel = {
       const pendingWithdrawals = Number(row.pendingWithdrawals);
 
       // USD amounts
+      const totalSpinBonusUSD = Number(row.totalSpinBonusUSD);
       const totalDepositsUSD = Number(row.totalDepositsUSD);
       const totalWithdrawalsUSD = Number(row.totalWithdrawalsUSD);
       const totalWinsUSD = Number(row.totalWinsUSD);
@@ -159,8 +175,18 @@ export const BalanceModel = {
       const pendingWithdrawalsUSD = Number(row.pendingWithdrawalsUSD);
 
       // Calculate current balance: deposits + wins - withdrawals - losses
-      const currentBalance = totalDeposits + totalWins - totalWithdrawals - totalLosses;
-      const currentBalanceUSD = totalDepositsUSD + totalWinsUSD - totalWithdrawalsUSD - totalLossesUSD;
+      const currentBalance =
+        totalDeposits +
+        totalSpinBonus +
+        totalWins -
+        totalWithdrawals -
+        totalLosses;
+      const currentBalanceUSD =
+        totalDepositsUSD +
+        totalSpinBonusUSD +
+        totalWinsUSD -
+        totalWithdrawalsUSD -
+        totalLossesUSD;
 
       return {
         currencyCode: "N/A", // Will be updated if currency info is needed
@@ -168,6 +194,7 @@ export const BalanceModel = {
         totalWithdrawals,
         totalWins,
         totalLosses,
+        totalSpinBonus,
         currentBalance,
         pendingDeposits,
         pendingWithdrawals,
@@ -176,6 +203,7 @@ export const BalanceModel = {
         // USD equivalents
         totalDepositsUSD,
         totalWithdrawalsUSD,
+        totalSpinBonusUSD,
         totalWinsUSD,
         totalLossesUSD,
         currentBalanceUSD,
@@ -191,7 +219,7 @@ export const BalanceModel = {
   },
 
   async calculateAllPlayerBalances(
-    filters: BalanceFilters = {}
+    filters: BalanceFilters = {},
   ): Promise<PlayerBalance[]> {
     try {
       let whereConditions = [];
@@ -214,6 +242,7 @@ export const BalanceModel = {
           c.code as currencyCode,
           -- BDT amounts (original logic)
           COALESCE(SUM(CASE WHEN t.type = 'deposit' AND t.status = 'approved' THEN t.amount ELSE 0 END), 0) as totalDeposits,
+          COALESCE(SUM(CASE WHEN t.type = 'spin_bonus' AND t.status = 'approved' THEN t.amount ELSE 0 END), 0) as totalSpinBonus,
           COALESCE(SUM(CASE WHEN t.type = 'withdraw' AND t.status = 'approved' THEN t.amount ELSE 0 END), 0) as totalWithdrawals,
           COALESCE(SUM(CASE WHEN t.type = 'win' AND t.status = 'approved' THEN t.amount ELSE 0 END), 0) as totalWins,
           COALESCE(SUM(CASE WHEN t.type = 'loss' AND t.status = 'approved' THEN t.amount ELSE 0 END), 0) as totalLosses,
@@ -221,6 +250,7 @@ export const BalanceModel = {
           COALESCE(SUM(CASE WHEN t.type = 'withdraw' AND t.status = 'pending' THEN t.amount ELSE 0 END), 0) as pendingWithdrawals,
           -- USD amounts (converted)
           COALESCE(SUM(CASE WHEN t.type = 'deposit' AND t.status = 'approved' THEN t.amount / COALESCE(t.conversion_rate, 1) ELSE 0 END), 0) as totalDepositsUSD,
+          COALESCE(SUM(CASE WHEN t.type = 'spin_bonus' AND t.status = 'approved' THEN t.amount / COALESCE(t.conversion_rate, 1) ELSE 0 END), 0) as totalSpinBonusUSD,
           COALESCE(SUM(CASE WHEN t.type = 'withdraw' AND t.status = 'approved' THEN t.amount / COALESCE(t.conversion_rate, 1) ELSE 0 END), 0) as totalWithdrawalsUSD,
           COALESCE(SUM(CASE WHEN t.type = 'win' AND t.status = 'approved' THEN t.amount / COALESCE(t.conversion_rate, 1) ELSE 0 END), 0) as totalWinsUSD,
           COALESCE(SUM(CASE WHEN t.type = 'loss' AND t.status = 'approved' THEN t.amount / COALESCE(t.conversion_rate, 1) ELSE 0 END), 0) as totalLossesUSD,
@@ -237,6 +267,7 @@ export const BalanceModel = {
 
       return result.map((row: any) => {
         // BDT amounts
+        const totalSpinBonus = Number(row.totalSpinBonus);
         const totalDeposits = Number(row.totalDeposits);
         const totalWithdrawals = Number(row.totalWithdrawals);
         const totalWins = Number(row.totalWins);
@@ -245,6 +276,7 @@ export const BalanceModel = {
         const pendingWithdrawals = Number(row.pendingWithdrawals);
 
         // USD amounts
+        const totalSpinBonusUSD = Number(row.totalSpinBonusUSD);
         const totalDepositsUSD = Number(row.totalDepositsUSD);
         const totalWithdrawalsUSD = Number(row.totalWithdrawalsUSD);
         const totalWinsUSD = Number(row.totalWinsUSD);
@@ -253,14 +285,26 @@ export const BalanceModel = {
         const pendingWithdrawalsUSD = Number(row.pendingWithdrawalsUSD);
 
         // Calculate current balance: deposits + wins - withdrawals - losses
-        const currentBalance = totalDeposits + totalWins - totalWithdrawals - totalLosses;
-        const currentBalanceUSD = totalDepositsUSD + totalWinsUSD - totalWithdrawalsUSD - totalLossesUSD;
+        const currentBalance =
+          totalDeposits +
+          totalSpinBonus +
+          totalWins -
+          totalWithdrawals -
+          totalLosses;
+        const currentBalanceUSD =
+          totalDepositsUSD +
+          totalSpinBonusUSD +
+          totalWinsUSD -
+          totalWithdrawalsUSD -
+          totalLossesUSD;
 
         return {
           userId: Number(row.userId),
           currencyId: Number(row.currencyId),
           currencyCode: row.currencyCode,
           totalDeposits,
+          totalSpinBonus,
+          totalSpinBonusUSD,
           totalWithdrawals,
           totalWins,
           totalLosses,
@@ -286,13 +330,21 @@ export const BalanceModel = {
       throw error;
     }
   },
-  async getTotalPlayerCurrentBalance(): Promise<{ totalCurrentBalance: number; totalCurrentBalanceUSD: number }> {
+  async getTotalPlayerCurrentBalance(): Promise<{
+    totalCurrentBalance: number;
+    totalCurrentBalanceUSD: number;
+  }> {
     try {
       const result = await db
         .select({
           // BDT amounts (original logic)
           totalDeposits: sql<number>`
           COALESCE(SUM(CASE WHEN ${transactions.type} = 'deposit' 
+            AND ${transactions.status} = 'approved' 
+            THEN ${transactions.amount} + COALESCE(${transactions.bonusAmount}, 0) ELSE 0 END), 0)
+        `,
+          totalSpinBonus: sql<number>`
+          COALESCE(SUM(CASE WHEN ${transactions.type} = 'spin_bonus' 
             AND ${transactions.status} = 'approved' 
             THEN ${transactions.amount} + COALESCE(${transactions.bonusAmount}, 0) ELSE 0 END), 0)
         `,
@@ -317,6 +369,11 @@ export const BalanceModel = {
             AND ${transactions.status} = 'approved' 
             THEN (${transactions.amount} + COALESCE(${transactions.bonusAmount}, 0)) / COALESCE(${transactions.conversionRate}, 1) ELSE 0 END), 0)
         `,
+          totalSpinBonusUSD: sql<number>`
+          COALESCE(SUM(CASE WHEN ${transactions.type} = 'spin_bonus' 
+            AND ${transactions.status} = 'approved' 
+            THEN (${transactions.amount} + COALESCE(${transactions.bonusAmount}, 0)) / COALESCE(${transactions.conversionRate}, 1) ELSE 0 END), 0)
+        `,
           totalWithdrawalsUSD: sql<number>`
           COALESCE(SUM(CASE WHEN ${transactions.type} = 'withdraw' 
             AND ${transactions.status} = 'approved' 
@@ -333,25 +390,38 @@ export const BalanceModel = {
             THEN ${transactions.amount} / COALESCE(${transactions.conversionRate}, 1) ELSE 0 END), 0)
         `,
         })
-        .from(transactions).where(isNotNull(transactions.userId));
+        .from(transactions)
+        .where(isNotNull(transactions.userId));
 
       const row = result[0];
 
       // BDT amounts
+      const totalSpinBonus = Number(row.totalSpinBonus);
       const totalDeposits = Number(row.totalDeposits);
       const totalWithdrawals = Number(row.totalWithdrawals);
       const totalWins = Number(row.totalWins);
       const totalLosses = Number(row.totalLosses);
 
       // USD amounts
+      const totalSpinBonusUSD = Number(row.totalSpinBonusUSD);
       const totalDepositsUSD = Number(row.totalDepositsUSD);
       const totalWithdrawalsUSD = Number(row.totalWithdrawalsUSD);
       const totalWinsUSD = Number(row.totalWinsUSD);
       const totalLossesUSD = Number(row.totalLossesUSD);
 
       // Calculate total balance of all players
-      const totalCurrentBalance = totalDeposits + totalWins - totalWithdrawals - totalLosses;
-      const totalCurrentBalanceUSD = totalDepositsUSD + totalWinsUSD - totalWithdrawalsUSD - totalLossesUSD;
+      const totalCurrentBalance =
+        totalDeposits +
+        totalSpinBonus +
+        totalWins -
+        totalWithdrawals -
+        totalLosses;
+      const totalCurrentBalanceUSD =
+        totalDepositsUSD +
+        totalSpinBonusUSD +
+        totalWinsUSD -
+        totalWithdrawalsUSD -
+        totalLossesUSD;
 
       return { totalCurrentBalance, totalCurrentBalanceUSD };
     } catch (error) {
@@ -363,6 +433,7 @@ export const BalanceModel = {
     totalBalance: number;
     currencyBalances: PlayerBalance[];
     summary: {
+      totalSpinBonus: number;
       totalDeposits: number;
       totalWithdrawals: number;
       totalWins: number;
@@ -376,6 +447,7 @@ export const BalanceModel = {
 
       const summary = balances.reduce(
         (acc, balance) => {
+          acc.totalSpinBonus += balance.totalSpinBonus;
           acc.totalDeposits += balance.totalDeposits;
           acc.totalWithdrawals += balance.totalWithdrawals;
           acc.totalWins += balance.totalWins;
@@ -383,12 +455,13 @@ export const BalanceModel = {
           return acc;
         },
         {
+          totalSpinBonus: 0,
           totalDeposits: 0,
           totalWithdrawals: 0,
           totalWins: 0,
           totalLosses: 0,
           netGamblingResult: 0,
-        }
+        },
       );
 
       // Calculate net gambling result (wins - losses)
@@ -397,7 +470,7 @@ export const BalanceModel = {
       // Calculate total balance across all currencies
       const totalBalance = balances.reduce(
         (sum, balance) => sum + balance.currentBalance,
-        0
+        0,
       );
 
       return {
@@ -413,7 +486,7 @@ export const BalanceModel = {
 
   async getCurrencyBalance(
     userId: number,
-    currencyId: number
+    currencyId: number,
   ): Promise<PlayerBalance | null> {
     try {
       const balance = await this.calculatePlayerBalance(userId, currencyId);
