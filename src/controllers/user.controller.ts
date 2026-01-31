@@ -259,6 +259,11 @@ export const registerUser = async (req: Request, res: Response) => {
       }
     }
 
+    // Generate OTP for email verification
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiry = new Date();
+    otpExpiry.setMinutes(otpExpiry.getMinutes() + 10); // OTP valid for 10 minutes
+
     const user = await createUser({
       username,
       fullname,
@@ -273,11 +278,24 @@ export const registerUser = async (req: Request, res: Response) => {
       referred_by_admin_user,
       status: "active",
       country_id,
+      otp,
+      otp_expiry: otpExpiry,
+      isVerified: false, // User needs to verify email
     });
+
+    // Send OTP email
+    const { sendOTPEmail } = await import("../utils/emailService");
+    await sendOTPEmail(email, otp, 10);
+
     return res.status(201).json({
       status: true,
-      message: "User registered successfully",
-      data: user,
+      message: "User registered successfully. Please verify your email with the OTP sent.",
+      data: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        isVerified: user.isVerified,
+      },
     });
   } catch (error) {
     return res
@@ -320,6 +338,17 @@ export const loginUser = async (req: Request, res: Response) => {
         .status(401)
         .json({ status: false, message: "Invalid credentials" });
     }
+
+    // Check if email is verified
+    if (!user.isVerified) {
+      return res.status(403).json({
+        status: false,
+        message: "Email not verified. Please verify your email before logging in.",
+        requiresVerification: true,
+        email: user.email,
+      });
+    }
+
     const isMatch = password === user.password;
     if (!isMatch) {
       return res
@@ -347,7 +376,7 @@ export const loginUser = async (req: Request, res: Response) => {
       // token version for new browser or new login
       tokenVersion: tokenVersion,
       userType: "user",
-    },"5Mins");
+    }, "5Mins");
 
 
     await db
@@ -675,7 +704,7 @@ export const getMyNotifications = async (req: Request, res: Response) => {
 
 export const updateNotificationStatus = async (req: Request, res: Response) => {
   try {
-    const { status,id } = req.body;
+    const { status, id } = req.body;
     // const { userType } = req?.query;
 
     if (!status) {
@@ -685,9 +714,9 @@ export const updateNotificationStatus = async (req: Request, res: Response) => {
       });
     }
 
-   const result = await db.update(notifications).set({
-    status
-   }).where(eq(notifications.id,Number(id||0)))
+    const result = await db.update(notifications).set({
+      status
+    }).where(eq(notifications.id, Number(id || 0)))
 
     return res.json({
       status: true,

@@ -34,6 +34,14 @@ export const users = mysqlTable("users", {
   lastLogin: datetime("last_login"),
   tokenVersion: int("token_version").default(0),
 
+  // ✅ Email verification fields
+  otp: varchar("otp", { length: 6 }),
+  otp_expiry: datetime("otp_expiry"),
+
+  // ✅ Password reset fields
+  reset_password_token: varchar("reset_password_token", { length: 255 }),
+  reset_password_token_expiry: datetime("reset_password_token_expiry"),
+
   // ✅ Spin and Forced spin fields
   isDailySpinCompleted: boolean("is_daily_spin_completed").default(false),
   isSpinForcedByAdmin: boolean("is_spin_forced_by_admin").default(false),

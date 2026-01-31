@@ -42,9 +42,12 @@ export const createUser = async (data: {
   referred_by?: number;
   referred_by_admin_user?: number;
   status: "active" | "inactive";
+  otp?: string;
+  otp_expiry?: Date;
+  isVerified?: boolean;
 }) => {
   // const hashedPassword = await bcrypt.hash(data.password, 10);
-  const [user] = await db.insert(users).values({
+  const [result] = await db.insert(users).values({
     ...data,
     created_by: data?.createdBy,
     referred_by: data?.referred_by,
@@ -52,7 +55,13 @@ export const createUser = async (data: {
     // password: hashedPassword,
   });
 
-  return user;
+  // Fetch and return the created user
+  const [createdUser] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, result.insertId));
+
+  return createdUser;
 };
 
 export const findUserByReferCode = async (refer_code: string) => {
@@ -826,10 +835,10 @@ export const getUserProfileById = async (id: number): Promise<any> => {
         winRate:
           betResultsSummary[0]?.totalBets > 0
             ? (
-                (Number(betResultsSummary[0]?.totalWins || 0) /
-                  Number(betResultsSummary[0]?.totalBets || 1)) *
-                100
-              ).toFixed(2)
+              (Number(betResultsSummary[0]?.totalWins || 0) /
+                Number(betResultsSummary[0]?.totalBets || 1)) *
+              100
+            ).toFixed(2)
             : "0.00",
         lastBetDate: betResultsSummary[0]?.lastBetDate,
         firstBetDate: betResultsSummary[0]?.firstBetDate,

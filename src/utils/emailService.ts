@@ -8,18 +8,18 @@ const DEFAULT_FROM = process.env.EMAIL_FROM || "noreply@gamestar365.com";
 
 // Email response type
 interface EmailResponse {
-    success: boolean;
-    data?: any;
-    error?: any;
+  success: boolean;
+  data?: any;
+  error?: any;
 }
 
 // Email options interface
 interface SendEmailOptions {
-    to: string | string[];
-    subject: string;
-    html: string;
-    from?: string;
-    replyTo?: string;
+  to: string | string[];
+  subject: string;
+  html: string;
+  from?: string;
+  replyTo?: string;
 }
 
 /**
@@ -28,20 +28,20 @@ interface SendEmailOptions {
  * @returns EmailResponse with success status
  */
 export const sendEmail = async (options: SendEmailOptions): Promise<EmailResponse> => {
-    try {
-        const data = await resend.emails.send({
-            from: options.from || DEFAULT_FROM,
-            to: options.to,
-            subject: options.subject,
-            html: options.html,
-            replyTo: options.replyTo,
-        });
-        console.log("Email sent successfully:", data);
-        return { success: true, data };
-    } catch (error) {
-        console.error("Email sending failed:", error);
-        return { success: false, error };
-    }
+  try {
+    const data = await resend.emails.send({
+      from: options.from || DEFAULT_FROM,
+      to: options.to,
+      subject: options.subject,
+      html: options.html,
+      replyTo: options.replyTo,
+    });
+    console.log("Email sent successfully:", data);
+    return { success: true, data };
+  } catch (error) {
+    console.error("Email sending failed:", error);
+    return { success: false, error };
+  }
 };
 
 // ========================================
@@ -52,14 +52,14 @@ export const sendEmail = async (options: SendEmailOptions): Promise<EmailRespons
  * Send OTP verification email
  */
 export const sendOTPEmail = async (
-    email: string,
-    otp: string,
-    expiryMinutes: number = 5
+  email: string,
+  otp: string,
+  expiryMinutes: number = 5
 ): Promise<EmailResponse> => {
-    return sendEmail({
-        to: email,
-        subject: "Your Verification Code - GameStar365",
-        html: `
+  return sendEmail({
+    to: email,
+    subject: "Your Verification Code - GameStar365",
+    html: `
       <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;">
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
           <h1 style="color: white; margin: 0; font-size: 28px;">GameStar365</h1>
@@ -80,20 +80,20 @@ export const sendOTPEmail = async (
         </div>
       </div>
     `,
-    });
+  });
 };
 
 /**
  * Send welcome email to new user
  */
 export const sendWelcomeEmail = async (
-    email: string,
-    name: string
+  email: string,
+  name: string
 ): Promise<EmailResponse> => {
-    return sendEmail({
-        to: email,
-        subject: "Welcome to GameStar365! 🎮",
-        html: `
+  return sendEmail({
+    to: email,
+    subject: "Welcome to GameStar365! 🎮",
+    html: `
       <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;">
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
           <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to GameStar365!</h1>
@@ -117,21 +117,21 @@ export const sendWelcomeEmail = async (
         </div>
       </div>
     `,
-    });
+  });
 };
 
 /**
  * Send password reset email
  */
 export const sendPasswordResetEmail = async (
-    email: string,
-    resetLink: string,
-    expiryMinutes: number = 30
+  email: string,
+  resetLink: string,
+  expiryMinutes: number = 30
 ): Promise<EmailResponse> => {
-    return sendEmail({
-        to: email,
-        subject: "Reset Your Password - GameStar365",
-        html: `
+  return sendEmail({
+    to: email,
+    subject: "Reset Your Password - GameStar365",
+    html: `
       <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;">
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
           <h1 style="color: white; margin: 0; font-size: 28px;">GameStar365</h1>
@@ -156,35 +156,35 @@ export const sendPasswordResetEmail = async (
         </div>
       </div>
     `,
-    });
+  });
 };
 
 /**
  * Send transaction notification email
  */
 export const sendTransactionEmail = async (
-    email: string,
-    type: "deposit" | "withdraw",
-    amount: number,
-    status: "pending" | "approved" | "rejected",
-    transactionId: string
+  email: string,
+  type: "deposit" | "withdraw",
+  amount: number,
+  status: "pending" | "approved" | "rejected",
+  transactionId: string
 ): Promise<EmailResponse> => {
-    const statusColors = {
-        pending: "#f59e0b",
-        approved: "#10b981",
-        rejected: "#ef4444",
-    };
+  const statusColors = {
+    pending: "#f59e0b",
+    approved: "#10b981",
+    rejected: "#ef4444",
+  };
 
-    const statusText = {
-        pending: "Pending Review",
-        approved: "Approved ✓",
-        rejected: "Rejected ✗",
-    };
+  const statusText = {
+    pending: "Pending Review",
+    approved: "Approved ✓",
+    rejected: "Rejected ✗",
+  };
 
-    return sendEmail({
-        to: email,
-        subject: `${type === "deposit" ? "Deposit" : "Withdrawal"} ${status === "approved" ? "Successful" : status === "rejected" ? "Rejected" : "Pending"} - GameStar365`,
-        html: `
+  return sendEmail({
+    to: email,
+    subject: `${type === "deposit" ? "Deposit" : "Withdrawal"} ${status === "approved" ? "Successful" : status === "rejected" ? "Rejected" : "Pending"} - GameStar365`,
+    html: `
       <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;">
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
           <h1 style="color: white; margin: 0; font-size: 28px;">Transaction Update</h1>
@@ -218,17 +218,17 @@ export const sendTransactionEmail = async (
         </div>
       </div>
     `,
-    });
+  });
 };
 
 /**
  * Send custom HTML email
  */
 export const sendCustomEmail = async (
-    to: string | string[],
-    subject: string,
-    html: string,
-    from?: string
+  to: string | string[],
+  subject: string,
+  html: string,
+  from?: string
 ): Promise<EmailResponse> => {
-    return sendEmail({ to, subject, html, from });
+  return sendEmail({ to, subject, html, from });
 };

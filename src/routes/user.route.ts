@@ -32,6 +32,19 @@ router.post("/login", (req, res, next) => {
   loginUser(req, res).catch(next);
 });
 
+// Auth routes for email verification and password reset
+import {
+  verifyOtp,
+  resendOtp,
+  forgotPassword,
+  resetPassword,
+} from "../controllers/auth.controller";
+
+router.post("/verify-otp", asyncHandler(verifyOtp));
+router.post("/resend-otp", asyncHandler(resendOtp));
+router.post("/forgot-password", asyncHandler(forgotPassword));
+router.post("/reset-password", asyncHandler(resetPassword));
+
 router.post("/logout", verifyToken, (req, res, next) => {
   console.log("hit login page...");
   logoutUser(req, res).catch(next);
