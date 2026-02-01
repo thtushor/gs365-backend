@@ -79,11 +79,24 @@ import {
 } from "../controllers/admin.controller";
 import { getUserDetailsController } from "../controllers/user.controller";
 
+import {
+  forgotAdminPassword,
+  resendAdminOtp,
+  resetAdminPassword,
+  verifyAdminOtp,
+} from "../controllers/adminAuth.controller";
+
 const router = Router();
 
 // withtout verification token
 router.post("/login", asyncHandler(adminLogin));
 router.post("/registration", asyncHandler(adminRegistration));
+
+// Auth flows
+router.post("/verify-otp", asyncHandler(verifyAdminOtp));
+router.post("/resend-otp", asyncHandler(resendAdminOtp));
+router.post("/forgot-password", asyncHandler(forgotAdminPassword));
+router.post("/reset-password", asyncHandler(resetAdminPassword));
 // with token
 router.post("/create-agent", verifyToken, asyncHandler(adminRegistration));
 router.post("/create-admin", verifyToken, asyncHandler(adminRegistration));

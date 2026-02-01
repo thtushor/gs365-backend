@@ -55,6 +55,15 @@ export const adminUsers = mysqlTable("admin_users", {
   lastIp: varchar("last_ip", { length: 120 }),
   lastLogin: datetime("last_login"),
   commission_percent: int("commission_percent"),
+
+  // OTP and Verification
+  otp: varchar("otp", { length: 6 }),
+  otp_expiry: datetime("otp_expiry"),
+
+  // Password Reset
+  reset_password_token: varchar("reset_password_token", { length: 255 }),
+  reset_password_token_expiry: datetime("reset_password_token_expiry"),
+
   main_balance: int("main_balance").default(0),
   downline_balance: int("downline_balance").default(0),
   withdrawable_balance: int("withdrawable_balance").default(0),

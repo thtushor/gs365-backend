@@ -1,4 +1,6 @@
 import { NextFunction, Request, Response } from "express";
+import { sendOTPEmail } from "../utils/emailService";
+
 import jwt from "jsonwebtoken";
 import {
   findAdminByUsernameOrEmail,
@@ -97,38 +99,37 @@ import { PromotionDataType } from "../utils/types";
 import { generateUniqueRefCode } from "../utils/refCode";
 import { kyc } from "../db/schema/kyc";
 import { alias } from "drizzle-orm/mysql-core";
-import { de } from "zod/v4/locales/index.cjs";
 
+/**
+ * Helper function to get client IP address
+ */
 export function getClientIp(req: Request): string {
-  const ipSource = {
-    xForwardFor: (req.headers["x-forwarded-for"] as string)
-      ?.split(",")
-      .map((s) => s.trim())[0],
-    xRealIp: req.headers["x-real-ip"] as string,
-    remoteAddress: req.socket?.remoteAddress,
-    remoteAddressConnection: (req.connection as any)?.remoteAddress,
-    ip: req.ip,
-  };
-  console.log({
-    ipSource,
-    reqAgent: req.headers["user-agent"],
-  });
-  let ip =
-    ipSource.xForwardFor ||
-    ipSource.xRealIp ||
-    ipSource.remoteAddress ||
-    ipSource.remoteAddressConnection ||
-    ipSource.ip ||
-    "Unknown";
+  const xForwardedFor = req.headers["x-forwarded-for"];
+  let ip = "Unknown";
+
+  if (typeof xForwardedFor === "string") {
+    ip = xForwardedFor.split(",")[0].trim();
+  } else if (Array.isArray(xForwardedFor)) {
+    ip = xForwardedFor[0].trim();
+  } else {
+    ip =
+      (req.headers["x-real-ip"] as string) ||
+      req.socket?.remoteAddress ||
+      (req as any).connection?.remoteAddress ||
+      req.ip ||
+      "Unknown";
+  }
 
   // Normalize IPv6 localhost
   if (ip === "::1" || ip === "0:0:0:0:0:0:0:1") {
     ip = "127.0.0.1";
   }
+
   // Remove IPv6 prefix if present (e.g., "::ffff:192.168.1.1")
   if (ip.startsWith("::ffff:")) {
     ip = ip.replace("::ffff:", "");
   }
+
   return ip;
 }
 
@@ -157,6 +158,11 @@ export const adminRegistration = async (
       country_id,
       designation,
     } = req.body;
+
+    // Generate OTP for email verification
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiry = new Date();
+    otpExpiry.setMinutes(otpExpiry.getMinutes() + 10); // OTP valid for 10 minutes
 
     const userData = (req as unknown as { user: DecodedUser | null })?.user;
     if (!username) {
@@ -310,7 +316,14 @@ export const adminRegistration = async (
               ? referringAdmin?.commission_percent / 2
               : commission_percent,
           designation,
+          otp,
+          otp_expiry: otpExpiry,
+          isVerified: false,
         });
+
+        if (email) {
+          await sendOTPEmail(email, otp, 10);
+        }
 
 
 
@@ -379,7 +392,14 @@ export const adminRegistration = async (
       referred_by,
       commission_percent,
       designation,
+      otp,
+      otp_expiry: otpExpiry,
+      isVerified: false,
     });
+
+    if (email) {
+      await sendOTPEmail(email, otp, 10);
+    }
 
 
 
@@ -450,6 +470,48 @@ export const adminLogin = async (
     if (!admin || typeof admin.password !== "string") {
       res.status(401).json({ status: false, message: "Invalid credentials" });
       return;
+    }
+
+    // --- OTP Verification Check ---
+    if (!admin.isVerified) {
+      const now = new Date();
+      const otpExpiry = admin.otp_expiry ? new Date(admin.otp_expiry) : null;
+      const isOtpValid = otpExpiry && otpExpiry > now;
+
+      if (isOtpValid) {
+        // OTP is still valid, don't resend
+        res.status(403).json({
+          status: false,
+          message:
+            "Email not verified. Please verify your email with the One Time Password (OTP) sent to your registered email address.",
+          requiresVerification: true,
+          email: admin.email,
+        });
+        return;
+      } else {
+        // OTP is expired or missing, generate and send a new one
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const newOtpExpiry = new Date();
+        newOtpExpiry.setMinutes(newOtpExpiry.getMinutes() + 10);
+
+        await updateAdmin(admin.id, {
+          otp,
+          otp_expiry: newOtpExpiry,
+        });
+
+        if (admin.email) {
+          await sendOTPEmail(admin.email, otp, 10);
+        }
+
+        res.status(403).json({
+          status: false,
+          message:
+            "Email not verified. A new One Time Password (OTP) has been sent to your registered email address.",
+          requiresVerification: true,
+          email: admin.email,
+        });
+        return;
+      }
     }
     const isMatch = password === admin.password;
     if (!isMatch) {

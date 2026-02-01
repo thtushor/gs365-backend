@@ -85,6 +85,9 @@ export const createAdmin = async (data: {
   referred_by?: number;
   commission_percent: number;
   designation?: number;
+  otp?: string;
+  otp_expiry?: Date;
+  isVerified?: boolean;
 }) => {
   const { maxTrx, minTrx, commission_percent, ...rest } = data;
   console.log("from this", {
@@ -282,6 +285,11 @@ export const updateAdmin = async (
     status?: "active" | "inactive";
     designation?: number;
     commission_percent?: number;
+    otp?: string | null;
+    otp_expiry?: Date | null;
+    reset_password_token?: string | null;
+    reset_password_token_expiry?: Date | null;
+    isVerified?: boolean;
   }>
 ) => {
   const { commission_percent, ...rest } = data;
@@ -318,14 +326,14 @@ export const getDropdownById = async (id: number) => {
     ...dropdown,
     options: options.length
       ? options.map((opt) => ({
-          id: opt.id,
-          title: opt.title,
-          status: opt.status,
-          imgUrl: opt.imgUrl,
-          created_at: opt.created_at,
-          created_by: opt.created_by,
-          isMenu: opt.isMenu,
-        }))
+        id: opt.id,
+        title: opt.title,
+        status: opt.status,
+        imgUrl: opt.imgUrl,
+        created_at: opt.created_at,
+        created_by: opt.created_by,
+        isMenu: opt.isMenu,
+      }))
       : undefined,
   };
 };
@@ -356,14 +364,14 @@ export const getPaginatedDropdowns = async (page: number, pageSize: number) => {
         ...dropdown,
         options: options.length
           ? options.map((opt) => ({
-              id: opt.id,
-              title: opt.title,
-              status: opt.status,
-              imgUrl: opt.imgUrl,
-              created_at: opt.created_at,
-              created_by: opt.created_by,
-              isMenu: opt.isMenu,
-            }))
+            id: opt.id,
+            title: opt.title,
+            status: opt.status,
+            imgUrl: opt.imgUrl,
+            created_at: opt.created_at,
+            created_by: opt.created_by,
+            isMenu: opt.isMenu,
+          }))
           : [],
       };
     })
@@ -794,9 +802,9 @@ export const getAllGameProviders = async (isParent?: boolean) => {
   const providers =
     isParent === true
       ? await db
-          .select()
-          .from(game_providers)
-          .where(isNull(game_providers.parentId))
+        .select()
+        .from(game_providers)
+        .where(isNull(game_providers.parentId))
       : await db.select().from(game_providers);
 
   return providers;
@@ -1037,9 +1045,9 @@ export const getAllSportsProviders = async (isParent?: boolean) => {
   const providers =
     isParent === true
       ? await db
-          .select()
-          .from(sports_providers)
-          .where(isNull(sports_providers.parentId))
+        .select()
+        .from(sports_providers)
+        .where(isNull(sports_providers.parentId))
       : await db.select().from(sports_providers);
 
   return providers;
@@ -1135,13 +1143,13 @@ export async function getPaginatedSportList(
   const total = publicList
     ? rows.length
     : Number(
-        (
-          await db
-            .select({ count: sql`COUNT(*)`.as("count") })
-            .from(sports)
-            .where(where)
-        )[0].count
-      );
+      (
+        await db
+          .select({ count: sql`COUNT(*)`.as("count") })
+          .from(sports)
+          .where(where)
+      )[0].count
+    );
 
   // Flatten rows
   const data = rows.map((row) => ({
@@ -1155,11 +1163,11 @@ export async function getPaginatedSportList(
     pagination: publicList
       ? undefined
       : {
-          page,
-          pageSize,
-          total,
-          totalPages: Math.ceil(total / pageSize),
-        },
+        page,
+        pageSize,
+        total,
+        totalPages: Math.ceil(total / pageSize),
+      },
   };
 }
 
