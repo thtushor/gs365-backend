@@ -383,7 +383,9 @@ export const loginUser = async (req: Request, res: Response) => {
       }
     }
 
+    // Check for password match (Plain text, as per registration flow)
     const isMatch = password === user.password;
+
     if (!isMatch) {
       return res
         .status(401)

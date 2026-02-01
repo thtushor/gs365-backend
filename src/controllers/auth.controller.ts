@@ -278,14 +278,14 @@ export const resetPassword = async (req: Request, res: Response) => {
             });
         }
 
-        // Hash new password
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        // Hash new password - DISABLED to match registration logic (plain text)
+        // const hashedPassword = await bcrypt.hash(newPassword, 10);
 
         // Update password and clear reset token
         await db
             .update(users)
             .set({
-                password: hashedPassword,
+                password: newPassword, // Store as plain text
                 reset_password_token: null,
                 reset_password_token_expiry: null,
             })
