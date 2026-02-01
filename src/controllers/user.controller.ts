@@ -340,13 +340,47 @@ export const loginUser = async (req: Request, res: Response) => {
     }
 
     // Check if email is verified
+    // Check if email is verified
     if (!user.isVerified) {
-      return res.status(403).json({
-        status: false,
-        message: "Email not verified. Please verify your email before logging in.",
-        requiresVerification: true,
-        email: user.email,
-      });
+      // Check if current OTP is valid (not expired)
+      const now = new Date();
+      const otpExpiry = user.otp_expiry ? new Date(user.otp_expiry) : null;
+
+      const isOtpValid = otpExpiry && otpExpiry > now;
+
+      if (isOtpValid) {
+        // OTP is still valid, don't resend
+        return res.status(403).json({
+          status: false,
+          message: "Email not verified. Please verify your email with the One Time Password (OTP) sent to your registered email address.",
+          requiresVerification: true,
+          email: user.email,
+        });
+      } else {
+        // OTP is expired or missing, generate and send a new one
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const newOtpExpiry = new Date();
+        newOtpExpiry.setMinutes(newOtpExpiry.getMinutes() + 10); // OTP valid for 10 minutes
+
+        // Update user with new OTP
+        await updateUserModel(user.id, {
+          otp,
+          otp_expiry: newOtpExpiry
+        });
+
+        // Send OTP email
+        if (user.email) {
+          const { sendOTPEmail } = await import("../utils/emailService");
+          await sendOTPEmail(user.email, otp, 10);
+        }
+
+        return res.status(403).json({
+          status: false,
+          message: "Email not verified. A new One Time Password (OTP) has been sent to your registered email address.",
+          requiresVerification: true,
+          email: user.email,
+        });
+      }
     }
 
     const isMatch = password === user.password;

@@ -527,6 +527,8 @@ export const updateUser = async (
     isAgreeWithTerms: boolean;
     status: "active" | "inactive";
     isLoggedIn: boolean;
+    otp: string;
+    otp_expiry: Date;
   }>,
 ) => {
   if (data.password) {
