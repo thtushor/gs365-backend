@@ -43,6 +43,7 @@
     "db:push": "drizzle-kit push",
     "db:seed": "tsx src/db/seeder.ts",
     "test:email": "tsx src/test-email.ts",
+    "test:sms": "tsx src/test-sms.ts",
     "build": "tsc"
   }
 }
