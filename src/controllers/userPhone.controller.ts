@@ -2,6 +2,7 @@ import { Response } from "express";
 import { asyncHandler } from "../utils/asyncHandler";
 import { AuthenticatedRequest } from "../utils/types";
 import { UserPhoneModel } from "../models/userPhone.model";
+import { sendOTPSMS } from "../utils/smsService";
 
 export const createUserPhone = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -92,6 +93,46 @@ export const verifyUserPhone = asyncHandler(async (req: AuthenticatedRequest, re
   const { id } = req.params;
   const row = await UserPhoneModel.verify(Number(id));
   return res.json({ status: true, message: "Verified", data: row });
+});
+
+export const sendPhoneOtp = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const phone = await UserPhoneModel.getById(Number(id));
+
+  if (!phone) {
+    return res.status(404).json({ status: false, message: "Phone not found" });
+  }
+
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiry = new Date();
+  expiry.setMinutes(expiry.getMinutes() + 10);
+
+  await UserPhoneModel.setOtp(Number(id), otp, expiry);
+
+  const smsRes = await sendOTPSMS(phone.phoneNumber, otp, 10);
+
+  if (!smsRes.success) {
+    return res.status(500).json({ status: false, message: "Failed to send SMS OTP", error: smsRes.msg });
+  }
+
+  return res.json({ status: true, message: "OTP sent successfully" });
+});
+
+export const verifyPhoneOtp = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const { otp } = req.body;
+
+  if (!otp) {
+    return res.status(400).json({ status: false, message: "OTP is required" });
+  }
+
+  const result = await UserPhoneModel.verifyWithOtp(Number(id), otp);
+
+  if (!result.success) {
+    return res.status(400).json({ status: false, message: result.message });
+  }
+
+  return res.json({ status: true, message: result.message });
 });
 
 

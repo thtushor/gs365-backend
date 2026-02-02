@@ -11,6 +11,8 @@ export const userPhones = mysqlTable(
     isPrimary: boolean("is_primary").default(false),
     isVerified: boolean("is_verified").default(false),
     isSmsCapable: boolean("is_sms_capable").default(true),
+    otp: varchar("otp", { length: 6 }),
+    otp_expiry: datetime("otp_expiry"),
     createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
     updatedAt: datetime("updated_at").default(
       sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`

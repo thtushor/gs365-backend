@@ -46,6 +46,8 @@ export const UserPhoneModel = {
         isPrimary: userPhones.isPrimary,
         isVerified: userPhones.isVerified,
         isSmsCapable: userPhones.isSmsCapable,
+        otp: userPhones.otp,
+        otp_expiry: userPhones.otp_expiry,
         createdAt: userPhones.createdAt,
         updatedAt: userPhones.updatedAt,
         user: {
@@ -70,6 +72,8 @@ export const UserPhoneModel = {
         isPrimary: userPhones.isPrimary,
         isVerified: userPhones.isVerified,
         isSmsCapable: userPhones.isSmsCapable,
+        otp: userPhones.otp,
+        otp_expiry: userPhones.otp_expiry,
         createdAt: userPhones.createdAt,
         updatedAt: userPhones.updatedAt,
       })
@@ -95,6 +99,8 @@ export const UserPhoneModel = {
         isPrimary: userPhones.isPrimary,
         isVerified: userPhones.isVerified,
         isSmsCapable: userPhones.isSmsCapable,
+        otp: userPhones.otp,
+        otp_expiry: userPhones.otp_expiry,
         createdAt: userPhones.createdAt,
         updatedAt: userPhones.updatedAt,
       })
@@ -141,8 +147,24 @@ export const UserPhoneModel = {
   },
 
   async verify(id: number) {
-    await db.update(userPhones).set({ isVerified: true, updatedAt: new Date() }).where(eq(userPhones.id, id));
+    await db.update(userPhones).set({ isVerified: true, otp: null, otp_expiry: null, updatedAt: new Date() }).where(eq(userPhones.id, id));
     return this.getById(id);
+  },
+
+  async setOtp(id: number, otp: string, expiry: Date) {
+    await db.update(userPhones).set({ otp, otp_expiry: expiry, updatedAt: new Date() }).where(eq(userPhones.id, id));
+    return true;
+  },
+
+  async verifyWithOtp(id: number, otp: string) {
+    const row = await this.getById(id);
+    if (!row) return { success: false, message: "Phone not found" };
+    if (row.isVerified) return { success: false, message: "Phone already verified" };
+    if (row.otp !== otp) return { success: false, message: "Invalid OTP" };
+    if (!row.otp_expiry || new Date() > new Date(row.otp_expiry)) return { success: false, message: "OTP expired" };
+
+    await this.verify(id);
+    return { success: true, message: "Phone verified successfully" };
   },
 };
 
