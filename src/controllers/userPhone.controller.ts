@@ -18,11 +18,17 @@ export const createUserPhone = asyncHandler(async (req: AuthenticatedRequest, re
       return res.status(400).json({ status: false, message: "userId and phoneNumber are required" });
     }
 
+    // Check if user already has 3 phone numbers
+    const existingPhones = await UserPhoneModel.getByUserId(Number(userId));
+    if (existingPhones.length >= 3) {
+      return res.status(400).json({ status: false, message: "Maximum 3 phone numbers allowed" });
+    }
+
     const created = await UserPhoneModel.create({
       userId: Number(userId),
       phoneNumber,
       isPrimary,
-      isVerified,
+      isVerified: false, // Force false for new phones initially if they must be verified manually
       isSmsCapable,
     });
 
@@ -61,6 +67,19 @@ export const getUserPhoneById = asyncHandler(async (req: AuthenticatedRequest, r
 export const updateUserPhone = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
+    const existingPhone = await UserPhoneModel.getById(Number(id));
+
+    if (!existingPhone) {
+      return res.status(404).json({ status: false, message: "Phone not found" });
+    }
+
+    // If attempting to update phone number, check if it's verified
+    if (req.body.phoneNumber && req.body.phoneNumber !== existingPhone.phoneNumber) {
+      if (existingPhone.isVerified) {
+        return res.status(400).json({ status: false, message: "Cannot edit phone number once it is verified" });
+      }
+    }
+
     // Only pass whitelisted fields to the model
     const payload: any = {};
     if (typeof req.body.phoneNumber === "string") payload.phoneNumber = req.body.phoneNumber;
@@ -97,10 +116,17 @@ export const verifyUserPhone = asyncHandler(async (req: AuthenticatedRequest, re
 
 export const sendPhoneOtp = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
+  const { phoneNumber } = req.body;
   const phone = await UserPhoneModel.getById(Number(id));
 
   if (!phone) {
     return res.status(404).json({ status: false, message: "Phone not found" });
+  }
+
+
+  // Validate phoneNumber if provided in body
+  if (phoneNumber && phone.phoneNumber !== phoneNumber) {
+    return res.status(400).json({ status: false, message: "Phone number mismatch" });
   }
 
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -120,10 +146,20 @@ export const sendPhoneOtp = asyncHandler(async (req: AuthenticatedRequest, res: 
 
 export const verifyPhoneOtp = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
-  const { otp } = req.body;
+  const { otp, phoneNumber } = req.body;
 
   if (!otp) {
     return res.status(400).json({ status: false, message: "OTP is required" });
+  }
+
+  const phone = await UserPhoneModel.getById(Number(id));
+  if (!phone) {
+    return res.status(404).json({ status: false, message: "Phone not found" });
+  }
+
+  // Validate phoneNumber if provided in body
+  if (phoneNumber && phone.phoneNumber !== phoneNumber) {
+    return res.status(400).json({ status: false, message: "Phone number mismatch" });
   }
 
   const result = await UserPhoneModel.verifyWithOtp(Number(id), otp);
