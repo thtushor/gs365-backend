@@ -37,7 +37,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
 
 export const getUsersWithFiltersController = async (
   req: Request,
-  res: Response
+  res: Response,
 ) => {
   try {
     const {
@@ -120,7 +120,7 @@ export const getUserDetailsController = async (req: Request, res: Response) => {
 
 export const getUsersByReferrerTypeController = async (
   req: Request,
-  res: Response
+  res: Response,
 ) => {
   try {
     const { type } = req.params;
@@ -136,13 +136,14 @@ export const getUsersByReferrerTypeController = async (
     const result = await getUsersByReferrerType(
       type as "affiliate" | "agent",
       Number(page),
-      Number(pageSize)
+      Number(pageSize),
     );
 
     return res.json({
       status: true,
-      message: `${type.charAt(0).toUpperCase() + type.slice(1)
-        } users fetched successfully`,
+      message: `${
+        type.charAt(0).toUpperCase() + type.slice(1)
+      } users fetched successfully`,
       data: result,
     });
   } catch (error) {
@@ -289,7 +290,8 @@ export const registerUser = async (req: Request, res: Response) => {
 
     return res.status(201).json({
       status: true,
-      message: "User registered successfully. Please verify your email with the OTP sent.",
+      message:
+        "User registered successfully. Please verify your email with the OTP sent.",
       data: {
         id: user.id,
         username: user.username,
@@ -352,7 +354,8 @@ export const loginUser = async (req: Request, res: Response) => {
         // OTP is still valid, don't resend
         return res.status(403).json({
           status: false,
-          message: "Email not verified. Please verify your email with the One Time Password (OTP) sent to your registered email address.",
+          message:
+            "Email not verified. Please verify your email with the One Time Password (OTP) sent to your registered email address.",
           requiresVerification: true,
           email: user.email,
         });
@@ -365,7 +368,7 @@ export const loginUser = async (req: Request, res: Response) => {
         // Update user with new OTP
         await updateUserModel(user.id, {
           otp,
-          otp_expiry: newOtpExpiry
+          otp_expiry: newOtpExpiry,
         });
 
         // Send OTP email
@@ -376,7 +379,8 @@ export const loginUser = async (req: Request, res: Response) => {
 
         return res.status(403).json({
           status: false,
-          message: "Email not verified. A new One Time Password (OTP) has been sent to your registered email address.",
+          message:
+            "Email not verified. A new One Time Password (OTP) has been sent to your registered email address.",
           requiresVerification: true,
           email: user.email,
         });
@@ -405,15 +409,17 @@ export const loginUser = async (req: Request, res: Response) => {
     const ip_address = getClientIp(req);
     const tokenVersion = (user.tokenVersion ?? 0) + 1;
     // You can now use device_type, device_name, os_version, browser, browser_version, ip_address as needed (e.g., log, save to DB, etc.)
-    const token = generateJwtToken({
-      id: user.id,
-      email: user.email,
-      username: user.username,
-      // token version for new browser or new login
-      tokenVersion: tokenVersion,
-      userType: "user",
-    }, "5Mins");
-
+    const token = generateJwtToken(
+      {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        // token version for new browser or new login
+        tokenVersion: tokenVersion,
+        userType: "user",
+      },
+      "5Mins",
+    );
 
     await db
       .update(users)
@@ -430,26 +436,29 @@ export const loginUser = async (req: Request, res: Response) => {
       })
       .where(eq(users.id, user.id));
 
-
     const getUserVerifyToken = await db.query.userTokens.findFirst({
-      where: and(eq(userTokens.user_id, user.id), eq(userTokens.type, "verify"))
-    })
-
+      where: and(
+        eq(userTokens.user_id, user.id),
+        eq(userTokens.type, "verify"),
+      ),
+    });
 
     if (getUserVerifyToken?.id) {
-      await db.update(userTokens).set({
-        user_id: user.id,
-        token: token,
-        type: "verify"
-      }).where(and(eq(userTokens.user_id, user.id)))
-    }
-    else {
+      await db
+        .update(userTokens)
+        .set({
+          user_id: user.id,
+          token: token,
+          type: "verify",
+        })
+        .where(and(eq(userTokens.user_id, user.id)));
+    } else {
       await db.insert(userTokens).values({
         user_id: user.id,
         token: token,
         type: "verify",
         expires_at: new Date(),
-      })
+      });
     }
 
     // Notify all connected clients for this user to validate their token.
@@ -457,7 +466,7 @@ export const loginUser = async (req: Request, res: Response) => {
     io.emit(`logout-user-${user.id}`, {
       userId: user.id,
       latestToken: token,
-    })
+    });
 
     // Record login history
     try {
@@ -512,7 +521,7 @@ export const logoutUser = async (req: Request, res: Response) => {
     return res
       .status(200)
       .json({ status: true, message: "Logged out successfully" });
-  } catch (error) { }
+  } catch (error) {}
 };
 
 export const updateUser = async (req: Request, res: Response) => {
@@ -566,7 +575,7 @@ export const deleteUser = async (req: Request, res: Response) => {
 
 export const userProfile = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   const user = (req as unknown as { user: JwtPayload }).user;
 
@@ -580,6 +589,36 @@ export const userProfile = async (
 
     if (userData?.id) {
       if (userData.status === "active") {
+        const lastSpinDate = userData?.lastSpinDate
+          ? new Date(userData.lastSpinDate)
+          : null;
+
+        const isDailySpinCompleted = userData?.isDailySpinCompleted;
+
+        // Get today's date (year-month-day only)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        if (lastSpinDate) {
+          const lastSpin = new Date(lastSpinDate);
+          lastSpin.setHours(0, 0, 0, 0);
+
+          const isNotToday = lastSpin.getTime() !== today.getTime();
+
+          if (isNotToday && isDailySpinCompleted === true) {
+            const data = {
+              isDailySpinCompleted: false,
+            };
+
+            const updateRes = await updateUserModel(Number(userData?.id), data);
+            if (updateRes.affectedRows > 0) {
+              res.status(201).json({
+                status: true,
+                message: "User daily spin activated",
+              });
+            }
+          }
+        }
         res.status(200).json({
           status: true,
           message: "Profile fetched successfully",
@@ -620,8 +659,8 @@ export const addFavorite = async (req: Request, res: Response) => {
       .where(
         and(
           eq(user_favorites.gameId, Number(gameId)),
-          eq(user_favorites.userId, Number(userId))
-        )
+          eq(user_favorites.userId, Number(userId)),
+        ),
       );
 
     if (exists.length > 0) {
@@ -649,8 +688,8 @@ export const removeFavorite = async (req: Request, res: Response) => {
       .where(
         and(
           eq(user_favorites.gameId, Number(gameId)),
-          eq(user_favorites.userId, Number(userId))
-        )
+          eq(user_favorites.userId, Number(userId)),
+        ),
       );
 
     return res.status(200).json({ message: "Removed from favorites" });
@@ -720,7 +759,7 @@ export const getMyNotifications = async (req: Request, res: Response) => {
         sql`
        ${condition}
         AND ${notifications.status} = 'active'
-      `
+      `,
       )
       .orderBy(desc(notifications.id));
 
@@ -750,9 +789,12 @@ export const updateNotificationStatus = async (req: Request, res: Response) => {
       });
     }
 
-    const result = await db.update(notifications).set({
-      status
-    }).where(eq(notifications.id, Number(id || 0)))
+    const result = await db
+      .update(notifications)
+      .set({
+        status,
+      })
+      .where(eq(notifications.id, Number(id || 0)));
 
     return res.json({
       status: true,

@@ -529,6 +529,7 @@ export const updateUser = async (
     isLoggedIn: boolean;
     otp: string;
     otp_expiry: Date;
+    isDailySpinCompleted?: boolean;
   }>,
 ) => {
   if (data.password) {
@@ -837,10 +838,10 @@ export const getUserProfileById = async (id: number): Promise<any> => {
         winRate:
           betResultsSummary[0]?.totalBets > 0
             ? (
-              (Number(betResultsSummary[0]?.totalWins || 0) /
-                Number(betResultsSummary[0]?.totalBets || 1)) *
-              100
-            ).toFixed(2)
+                (Number(betResultsSummary[0]?.totalWins || 0) /
+                  Number(betResultsSummary[0]?.totalBets || 1)) *
+                100
+              ).toFixed(2)
             : "0.00",
         lastBetDate: betResultsSummary[0]?.lastBetDate,
         firstBetDate: betResultsSummary[0]?.firstBetDate,
