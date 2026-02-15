@@ -542,6 +542,7 @@ export const updateUser = async (
     otp: string;
     otp_expiry: Date;
     isDailySpinCompleted?: boolean;
+    isVerified?: boolean;
   }>,
 ) => {
   if (data.password) {

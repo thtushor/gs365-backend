@@ -394,10 +394,10 @@ export const adminRegistration = async (
       designation,
       otp,
       otp_expiry: otpExpiry,
-      isVerified: false,
+      isVerified: ["admin", "superAdmin"].includes(role),
     });
 
-    if (email) {
+    if (!["admin", "superAdmin"].includes(role) && email) {
       await sendOTPEmail(email, otp, 10);
     }
 

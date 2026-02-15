@@ -141,9 +141,8 @@ export const getUsersByReferrerTypeController = async (
 
     return res.json({
       status: true,
-      message: `${
-        type.charAt(0).toUpperCase() + type.slice(1)
-      } users fetched successfully`,
+      message: `${type.charAt(0).toUpperCase() + type.slice(1)
+        } users fetched successfully`,
       data: result,
     });
   } catch (error) {
@@ -281,12 +280,14 @@ export const registerUser = async (req: Request, res: Response) => {
       country_id,
       otp,
       otp_expiry: otpExpiry,
-      isVerified: false, // User needs to verify email
+      isVerified: false, // User needs to verify email if created by themselves
     });
 
-    // Send OTP email
-    const { sendOTPEmail } = await import("../utils/emailService");
-    await sendOTPEmail(email, otp, 10);
+    // Send OTP email only if not verified
+    if (email) {
+      const { sendOTPEmail } = await import("../utils/emailService");
+      await sendOTPEmail(email, otp, 10);
+    }
 
     return res.status(201).json({
       status: true,
@@ -521,7 +522,7 @@ export const logoutUser = async (req: Request, res: Response) => {
     return res
       .status(200)
       .json({ status: true, message: "Logged out successfully" });
-  } catch (error) {}
+  } catch (error) { }
 };
 
 export const updateUser = async (req: Request, res: Response) => {
