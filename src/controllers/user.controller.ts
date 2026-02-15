@@ -14,6 +14,7 @@ import bcrypt from "bcryptjs";
 
 import * as UAParser from "ua-parser-js";
 import { db } from "../db/connection";
+import { SettingsModel } from "../models/settings.model";
 import { games, notifications, users, userTokens } from "../db/schema";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { generateUniqueRefCode } from "../utils/refCode";
@@ -343,36 +344,39 @@ export const loginUser = async (req: Request, res: Response) => {
     }
 
     // Check if email is verified
-    // Check if email is verified
-    if (!user.isVerified) {
+    // Check global settings for verification requirements
+    const settings = await SettingsModel.getFirst();
+    const isEmailVerificationEnabled =
+      settings?.isEmailVerificationEnabled === "Enabled";
+    const isSmsVerificationEnabled =
+      settings?.isSmsVerificationEnabled === "Enabled";
+
+    // 1. Check Email Verification
+    if (isEmailVerificationEnabled && !user.isEmailVerified) {
       // Check if current OTP is valid (not expired)
       const now = new Date();
       const otpExpiry = user.otp_expiry ? new Date(user.otp_expiry) : null;
-
       const isOtpValid = otpExpiry && otpExpiry > now;
 
       if (isOtpValid) {
-        // OTP is still valid, don't resend
         return res.status(403).json({
           status: false,
           message:
             "Email not verified. Please verify your email with the One Time Password (OTP) sent to your registered email address.",
           requiresVerification: true,
+          verificationType: "email",
           email: user.email,
         });
       } else {
-        // OTP is expired or missing, generate and send a new one
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         const newOtpExpiry = new Date();
-        newOtpExpiry.setMinutes(newOtpExpiry.getMinutes() + 10); // OTP valid for 10 minutes
+        newOtpExpiry.setMinutes(newOtpExpiry.getMinutes() + 10);
 
-        // Update user with new OTP
         await updateUserModel(user.id, {
           otp,
           otp_expiry: newOtpExpiry,
         });
 
-        // Send OTP email
         if (user.email) {
           const { sendOTPEmail } = await import("../utils/emailService");
           await sendOTPEmail(user.email, otp, 10);
@@ -383,9 +387,25 @@ export const loginUser = async (req: Request, res: Response) => {
           message:
             "Email not verified. A new One Time Password (OTP) has been sent to your registered email address.",
           requiresVerification: true,
+          verificationType: "email",
           email: user.email,
         });
       }
+    }
+
+    // 2. Check SMS Verification
+    if (isSmsVerificationEnabled && !user.isPhoneVerified) {
+      // Placeholder for SMS OTP logic
+      // You would check/generate SMS OTP here similar to email
+      // For now, we will block login but not send actual SMS until SMS service is integrated
+      return res.status(403).json({
+        status: false,
+        message:
+          "Phone number not verified. Please verify your phone number.",
+        requiresVerification: true,
+        verificationType: "phone",
+        phone: user.phone,
+      });
     }
 
     // Check for password match (Plain text, as per registration flow)

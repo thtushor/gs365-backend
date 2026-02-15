@@ -20,6 +20,14 @@ export const settings = mysqlTable("settings", {
     "Enabled",
     "Disabled",
   ]).default("Enabled"),
+  isEmailVerificationEnabled: mysqlEnum("is_email_verification_enabled", [
+    "Enabled",
+    "Disabled",
+  ]).default("Enabled"),
+  isSmsVerificationEnabled: mysqlEnum("is_sms_verification_enabled", [
+    "Enabled",
+    "Disabled",
+  ]).default("Enabled"),
   affiliateWithdrawTime: json("affiliate_withdraw_time").$type<string[]>(),
   systemActiveTime: json("system_active_time").$type<{
     start: string;

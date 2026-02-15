@@ -45,6 +45,8 @@ export const createUser = async (data: {
   otp?: string;
   otp_expiry?: Date;
   isVerified?: boolean;
+  isEmailVerified?: boolean;
+  isPhoneVerified?: boolean;
 }) => {
   // const hashedPassword = await bcrypt.hash(data.password, 10);
   const [result] = await db.insert(users).values({
@@ -543,6 +545,8 @@ export const updateUser = async (
     otp_expiry: Date;
     isDailySpinCompleted?: boolean;
     isVerified?: boolean;
+    isEmailVerified?: boolean;
+    isPhoneVerified?: boolean;
   }>,
 ) => {
   if (data.password) {
