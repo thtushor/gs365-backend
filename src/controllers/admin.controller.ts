@@ -45,6 +45,7 @@ import {
   getAllMenuProviders,
   getAdminsDetailsByReferCode,
 } from "../models/admin.model";
+import { SettingsModel } from "../models/settings.model";
 import { db } from "../db/connection";
 import {
   adminUsers,
@@ -319,6 +320,8 @@ export const adminRegistration = async (
           otp,
           otp_expiry: otpExpiry,
           isVerified: false,
+          isEmailVerified: false,
+          isPhoneVerified: false,
         });
 
         if (email) {
@@ -395,6 +398,8 @@ export const adminRegistration = async (
       otp,
       otp_expiry: otpExpiry,
       isVerified: ["admin", "superAdmin"].includes(role),
+      isEmailVerified: ["admin", "superAdmin"].includes(role),
+      isPhoneVerified: ["admin", "superAdmin"].includes(role),
     });
 
     if (!["admin", "superAdmin"].includes(role) && email) {
@@ -472,24 +477,30 @@ export const adminLogin = async (
       return;
     }
 
-    // --- OTP Verification Check ---
-    if (!admin.isVerified) {
+    // --- Verification Checks ---
+    const settings = await SettingsModel.getFirst();
+    const isEmailVerificationEnabled =
+      settings?.isEmailVerificationEnabled === "Enabled";
+    const isSmsVerificationEnabled =
+      settings?.isSmsVerificationEnabled === "Enabled";
+
+    // 1. Check Email Verification
+    if (isEmailVerificationEnabled && !admin.isEmailVerified) {
       const now = new Date();
       const otpExpiry = admin.otp_expiry ? new Date(admin.otp_expiry) : null;
       const isOtpValid = otpExpiry && otpExpiry > now;
 
       if (isOtpValid) {
-        // OTP is still valid, don't resend
         res.status(403).json({
           status: false,
           message:
             "Email not verified. Please verify your email with the One Time Password (OTP) sent to your registered email address.",
           requiresVerification: true,
+          verificationType: "email",
           email: admin.email,
         });
         return;
       } else {
-        // OTP is expired or missing, generate and send a new one
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         const newOtpExpiry = new Date();
         newOtpExpiry.setMinutes(newOtpExpiry.getMinutes() + 10);
@@ -508,10 +519,24 @@ export const adminLogin = async (
           message:
             "Email not verified. A new One Time Password (OTP) has been sent to your registered email address.",
           requiresVerification: true,
+          verificationType: "email",
           email: admin.email,
         });
         return;
       }
+    }
+
+    // 2. Check SMS Verification
+    if (isSmsVerificationEnabled && !admin.isPhoneVerified) {
+      res.status(403).json({
+        status: false,
+        message:
+          "Phone number not verified. Please verify your phone number.",
+        requiresVerification: true,
+        verificationType: "phone",
+        phone: admin.phone,
+      });
+      return;
     }
     const isMatch = password === admin.password;
     if (!isMatch) {

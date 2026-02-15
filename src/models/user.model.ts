@@ -553,6 +553,32 @@ export const updateUser = async (
     // Optionally hash password if needed
     // data.password = await bcrypt.hash(data.password, 10);
   }
+
+  // If verification status is being updated, we need to ensure consistency
+  if (
+    data.isEmailVerified !== undefined ||
+    data.isPhoneVerified !== undefined
+  ) {
+    const currentUser = await getUserById(id);
+    if (currentUser) {
+      const newEmailVerified =
+        data.isEmailVerified !== undefined
+          ? data.isEmailVerified
+          : currentUser.isEmailVerified;
+      const newPhoneVerified =
+        data.isPhoneVerified !== undefined
+          ? data.isPhoneVerified
+          : currentUser.isPhoneVerified;
+
+      // If both are verified, set main isVerified to true
+      // Otherwise set to false (or keep as is? User asked to mark Verified if both verified)
+      // "if both phone and email marked as verified then mark isVerified options also verified"
+      if (newEmailVerified && newPhoneVerified) {
+        data.isVerified = true;
+      }
+    }
+  }
+
   const [user] = await db.update(users).set(data).where(eq(users.id, id));
   return user;
 };

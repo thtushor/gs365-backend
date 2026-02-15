@@ -88,6 +88,8 @@ export const createAdmin = async (data: {
   otp?: string;
   otp_expiry?: Date;
   isVerified?: boolean;
+  isEmailVerified?: boolean;
+  isPhoneVerified?: boolean;
 }) => {
   const { maxTrx, minTrx, commission_percent, ...rest } = data;
   console.log("from this", {
@@ -290,9 +292,33 @@ export const updateAdmin = async (
     reset_password_token?: string | null;
     reset_password_token_expiry?: Date | null;
     isVerified?: boolean;
+    isEmailVerified?: boolean;
+    isPhoneVerified?: boolean;
   }>
 ) => {
   const { commission_percent, ...rest } = data;
+
+  // Logic to auto-verify if both email and phone are verified
+  if (
+    data.isEmailVerified !== undefined ||
+    data.isPhoneVerified !== undefined
+  ) {
+    const currentAdmin = await getAdminById(id);
+    if (currentAdmin) {
+      const newEmailVerified =
+        data.isEmailVerified !== undefined
+          ? data.isEmailVerified
+          : currentAdmin.isEmailVerified;
+      const newPhoneVerified =
+        data.isPhoneVerified !== undefined
+          ? data.isPhoneVerified
+          : currentAdmin.isPhoneVerified;
+
+      if (newEmailVerified && newPhoneVerified) {
+        rest.isVerified = true;
+      }
+    }
+  }
 
   const dataToUpdate: Record<string, any> = { ...rest };
 

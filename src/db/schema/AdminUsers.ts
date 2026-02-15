@@ -51,6 +51,8 @@ export const adminUsers = mysqlTable("admin_users", {
 
   isLoggedIn: boolean("is_logged_in").default(false),
   isVerified: boolean("is_verified").default(false),
+  isEmailVerified: boolean("is_email_verified").default(false),
+  isPhoneVerified: boolean("is_phone_verified").default(false),
 
   lastIp: varchar("last_ip", { length: 120 }),
   lastLogin: datetime("last_login"),
