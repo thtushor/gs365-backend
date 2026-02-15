@@ -381,6 +381,8 @@ export const getUsersWithFilters = async (filters: UserFilters) => {
       email: users.email,
       phone: users.phone,
       isVerified: users.isVerified,
+      isEmailVerified: users.isEmailVerified,
+      isPhoneVerified: users.isPhoneVerified,
       status: users.status,
       kyc_status: users.kyc_status,
       created_at: users.created_at,
