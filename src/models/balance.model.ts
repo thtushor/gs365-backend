@@ -8,6 +8,8 @@ export interface PlayerBalance {
   totalSpinBonusUSD: number;
   totalSpinBonus: number;
   currencyCode: string;
+  totalOnlyDeposit: number;
+  totalBonus: number;
   totalDeposits: number;
   totalWithdrawals: number;
   totalWins: number;
@@ -50,11 +52,22 @@ export const BalanceModel = {
       const result = await db
         .select({
           // BDT amounts (original logic)
+          totalOnlyDeposit: sql<number>`
+            COALESCE(SUM(CASE WHEN ${transactions.type} = 'deposit' 
+              AND ${transactions.status} = 'approved' 
+              THEN ${transactions.amount} ELSE 0 END), 0)
+          `,
           totalDeposits: sql<number>`
             COALESCE(SUM(CASE WHEN ${transactions.type} = 'deposit' 
               AND ${transactions.status} = 'approved' 
               THEN ${transactions.amount} + COALESCE(${transactions.bonusAmount}, 0) ELSE 0 END), 0)
           `,
+          totalBonus: sql<number>`
+            COALESCE(SUM(CASE WHEN ${transactions.type} = 'deposit' 
+              AND ${transactions.status} = 'approved' 
+              THEN ${transactions.bonusAmount} ELSE 0 END), 0)
+          `,
+
           totalSpinBonus: sql<number>`
             COALESCE(SUM(CASE WHEN ${transactions.type} = 'spin_bonus' 
               AND ${transactions.status} = 'approved' 
@@ -131,7 +144,9 @@ export const BalanceModel = {
         // Return default balance object if no transactions found
         return {
           currencyCode: "N/A",
+          totalOnlyDeposit: 0,
           totalDeposits: 0,
+          totalBonus: 0,
           totalSpinBonus: 0,
           totalWithdrawals: 0,
           totalWins: 0,
@@ -164,6 +179,8 @@ export const BalanceModel = {
       const totalLosses = Number(row.totalLosses);
       const pendingDeposits = Number(row.pendingDeposits);
       const pendingWithdrawals = Number(row.pendingWithdrawals);
+      const totalOnlyDeposit = Number(row.totalOnlyDeposit);
+      const totalBonus = Number(row.totalBonus);
 
       // USD amounts
       const totalSpinBonusUSD = Number(row.totalSpinBonusUSD);
@@ -190,6 +207,8 @@ export const BalanceModel = {
 
       return {
         currencyCode: "N/A", // Will be updated if currency info is needed
+        totalOnlyDeposit,
+        totalBonus,
         totalDeposits,
         totalWithdrawals,
         totalWins,
@@ -241,20 +260,22 @@ export const BalanceModel = {
           t.currency_id as currencyId,
           c.code as currencyCode,
           -- BDT amounts (original logic)
-          COALESCE(SUM(CASE WHEN t.type = 'deposit' AND t.status = 'approved' THEN t.amount ELSE 0 END), 0) as totalDeposits,
-          COALESCE(SUM(CASE WHEN t.type = 'spin_bonus' AND t.status = 'approved' THEN t.amount ELSE 0 END), 0) as totalSpinBonus,
+          COALESCE(SUM(CASE WHEN t.type = 'deposit' AND t.status = 'approved' THEN t.amount ELSE 0 END), 0) as totalOnlyDeposit,
+          COALESCE(SUM(CASE WHEN t.type = 'deposit' AND t.status = 'approved' THEN t.bonus_amount ELSE 0 END), 0) as totalBonus,
+          COALESCE(SUM(CASE WHEN t.type = 'deposit' AND t.status = 'approved' THEN t.amount + COALESCE(t.bonus_amount, 0) ELSE 0 END), 0) as totalDeposits,
+          COALESCE(SUM(CASE WHEN t.type = 'spin_bonus' AND t.status = 'approved' THEN t.amount + COALESCE(t.bonus_amount, 0) ELSE 0 END), 0) as totalSpinBonus,
           COALESCE(SUM(CASE WHEN t.type = 'withdraw' AND t.status = 'approved' THEN t.amount ELSE 0 END), 0) as totalWithdrawals,
           COALESCE(SUM(CASE WHEN t.type = 'win' AND t.status = 'approved' THEN t.amount ELSE 0 END), 0) as totalWins,
           COALESCE(SUM(CASE WHEN t.type = 'loss' AND t.status = 'approved' THEN t.amount ELSE 0 END), 0) as totalLosses,
-          COALESCE(SUM(CASE WHEN t.type = 'deposit' AND t.status = 'pending' THEN t.amount ELSE 0 END), 0) as pendingDeposits,
+          COALESCE(SUM(CASE WHEN t.type = 'deposit' AND t.status = 'pending' THEN t.amount + COALESCE(t.bonus_amount, 0) ELSE 0 END), 0) as pendingDeposits,
           COALESCE(SUM(CASE WHEN t.type = 'withdraw' AND t.status = 'pending' THEN t.amount ELSE 0 END), 0) as pendingWithdrawals,
           -- USD amounts (converted)
-          COALESCE(SUM(CASE WHEN t.type = 'deposit' AND t.status = 'approved' THEN t.amount / COALESCE(t.conversion_rate, 1) ELSE 0 END), 0) as totalDepositsUSD,
-          COALESCE(SUM(CASE WHEN t.type = 'spin_bonus' AND t.status = 'approved' THEN t.amount / COALESCE(t.conversion_rate, 1) ELSE 0 END), 0) as totalSpinBonusUSD,
+          COALESCE(SUM(CASE WHEN t.type = 'deposit' AND t.status = 'approved' THEN (t.amount + COALESCE(t.bonus_amount, 0)) / COALESCE(t.conversion_rate, 1) ELSE 0 END), 0) as totalDepositsUSD,
+          COALESCE(SUM(CASE WHEN t.type = 'spin_bonus' AND t.status = 'approved' THEN (t.amount + COALESCE(t.bonus_amount, 0)) / COALESCE(t.conversion_rate, 1) ELSE 0 END), 0) as totalSpinBonusUSD,
           COALESCE(SUM(CASE WHEN t.type = 'withdraw' AND t.status = 'approved' THEN t.amount / COALESCE(t.conversion_rate, 1) ELSE 0 END), 0) as totalWithdrawalsUSD,
           COALESCE(SUM(CASE WHEN t.type = 'win' AND t.status = 'approved' THEN t.amount / COALESCE(t.conversion_rate, 1) ELSE 0 END), 0) as totalWinsUSD,
           COALESCE(SUM(CASE WHEN t.type = 'loss' AND t.status = 'approved' THEN t.amount / COALESCE(t.conversion_rate, 1) ELSE 0 END), 0) as totalLossesUSD,
-          COALESCE(SUM(CASE WHEN t.type = 'deposit' AND t.status = 'pending' THEN t.amount / COALESCE(t.conversion_rate, 1) ELSE 0 END), 0) as pendingDepositsUSD,
+          COALESCE(SUM(CASE WHEN t.type = 'deposit' AND t.status = 'pending' THEN (t.amount + COALESCE(t.bonus_amount, 0)) / COALESCE(t.conversion_rate, 1) ELSE 0 END), 0) as pendingDepositsUSD,
           COALESCE(SUM(CASE WHEN t.type = 'withdraw' AND t.status = 'pending' THEN t.amount / COALESCE(t.conversion_rate, 1) ELSE 0 END), 0) as pendingWithdrawalsUSD
         FROM transactions t
         LEFT JOIN currencies c ON t.currency_id = c.id
@@ -269,6 +290,8 @@ export const BalanceModel = {
         // BDT amounts
         const totalSpinBonus = Number(row.totalSpinBonus);
         const totalDeposits = Number(row.totalDeposits);
+        const totalOnlyDeposit = Number(row.totalOnlyDeposit);
+        const totalBonus = Number(row.totalBonus);
         const totalWithdrawals = Number(row.totalWithdrawals);
         const totalWins = Number(row.totalWins);
         const totalLosses = Number(row.totalLosses);
@@ -302,6 +325,8 @@ export const BalanceModel = {
           userId: Number(row.userId),
           currencyId: Number(row.currencyId),
           currencyCode: row.currencyCode,
+          totalOnlyDeposit,
+          totalBonus,
           totalDeposits,
           totalSpinBonus,
           totalSpinBonusUSD,

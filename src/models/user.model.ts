@@ -430,6 +430,9 @@ export const getUsersWithFilters = async (filters: UserFilters) => {
       totalLosses: balance.totalLosses,
       pendingDeposits: balance.pendingDeposits,
       pendingWithdrawals: balance.pendingWithdrawals,
+      totalBonus: balance.totalBonus,
+      totalOnlyDeposits: balance.totalOnlyDeposit,
+      totalSpinBonus: balance.totalSpinBonus,
     }));
   }
 
@@ -448,8 +451,14 @@ export const getUsersWithFilters = async (filters: UserFilters) => {
       totalLosses: 0,
       pendingDeposits: 0,
       pendingWithdrawals: 0,
+      totalBonus: 0,
+      totalOnlyDeposits: 0,
+      totalSpinBonus: 0,
     };
 
+    const totalSpinBonus = Number(balance.totalSpinBonus);
+    const totalBonus = Number(balance.totalBonus);
+    const totalOnlyDeposits = Number(balance.totalOnlyDeposits);
     const totalDeposits = Number(balance.totalDeposits);
     const totalWithdrawals = Number(balance.totalWithdrawals);
     const totalWins = Number(balance.totalWins);
@@ -497,6 +506,9 @@ export const getUsersWithFilters = async (filters: UserFilters) => {
       totalLosses,
       pendingDeposits,
       pendingWithdrawals,
+      totalBonus,
+      totalOnlyDeposits,
+      totalSpinBonus,
     };
   });
 
@@ -838,10 +850,10 @@ export const getUserProfileById = async (id: number): Promise<any> => {
         winRate:
           betResultsSummary[0]?.totalBets > 0
             ? (
-                (Number(betResultsSummary[0]?.totalWins || 0) /
-                  Number(betResultsSummary[0]?.totalBets || 1)) *
-                100
-              ).toFixed(2)
+              (Number(betResultsSummary[0]?.totalWins || 0) /
+                Number(betResultsSummary[0]?.totalBets || 1)) *
+              100
+            ).toFixed(2)
             : "0.00",
         lastBetDate: betResultsSummary[0]?.lastBetDate,
         firstBetDate: betResultsSummary[0]?.firstBetDate,
