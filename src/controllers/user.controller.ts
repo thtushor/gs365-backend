@@ -260,10 +260,19 @@ export const registerUser = async (req: Request, res: Response) => {
       }
     }
 
-    // Generate OTP for email verification
+    // Check verification settings
+    const settings = await SettingsModel.getFirst();
+    const isSmsVerificationEnabled =
+      settings?.isSmsVerificationEnabled === "Enabled";
+    const isEmailVerificationEnabled =
+      settings?.isEmailVerificationEnabled === "Enabled";
+    const needsVerification =
+      isSmsVerificationEnabled || isEmailVerificationEnabled;
+
+    // Generate OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpiry = new Date();
-    otpExpiry.setMinutes(otpExpiry.getMinutes() + 10); // OTP valid for 10 minutes
+    otpExpiry.setMinutes(otpExpiry.getMinutes() + 10);
 
     const user = await createUser({
       username,
@@ -279,26 +288,43 @@ export const registerUser = async (req: Request, res: Response) => {
       referred_by_admin_user,
       status: "active",
       country_id,
-      otp,
-      otp_expiry: otpExpiry,
-      isVerified: false, // User needs to verify email if created by themselves
+      otp: needsVerification ? otp : undefined,
+      otp_expiry: needsVerification ? otpExpiry : undefined,
+      isVerified: !needsVerification,
+      isEmailVerified: !isEmailVerificationEnabled,
+      isPhoneVerified: !isSmsVerificationEnabled,
     });
 
-    // Send OTP email only if not verified
-    if (email) {
-      const { sendOTPEmail } = await import("../utils/emailService");
-      await sendOTPEmail(email, otp, 10);
+    // Send OTP only if verification is required
+    let otpSentVia = "";
+    if (needsVerification) {
+      // Priority: if phone present and SMS enabled, send SMS OTP; otherwise send email OTP
+      if (phone && isSmsVerificationEnabled) {
+        const { sendOTPSMS } = await import("../utils/smsService");
+        await sendOTPSMS(phone, otp, 10);
+        otpSentVia = "phone";
+      } else if (email && isEmailVerificationEnabled) {
+        const { sendOTPEmail } = await import("../utils/emailService");
+        await sendOTPEmail(email, otp, 10);
+        otpSentVia = "email";
+      }
     }
+
+    const message = needsVerification
+      ? `User registered successfully. Please verify your ${otpSentVia} with the OTP sent.`
+      : "User registered successfully.";
 
     return res.status(201).json({
       status: true,
-      message:
-        "User registered successfully. Please verify your email with the OTP sent.",
+      message,
       data: {
         id: user.id,
         username: user.username,
         email: user.email,
+        phone: user.phone,
         isVerified: user.isVerified,
+        requiresVerification: needsVerification,
+        verificationType: otpSentVia || null,
       },
     });
   } catch (error) {
@@ -351,61 +377,69 @@ export const loginUser = async (req: Request, res: Response) => {
     const isSmsVerificationEnabled =
       settings?.isSmsVerificationEnabled === "Enabled";
 
-    // 1. Check Email Verification
-    if (isEmailVerificationEnabled && !user.isEmailVerified) {
-      // Check if current OTP is valid (not expired)
-      const now = new Date();
-      const otpExpiry = user.otp_expiry ? new Date(user.otp_expiry) : null;
-      const isOtpValid = otpExpiry && otpExpiry > now;
+    // If user is not verified, send OTP based on priority: phone SMS first, then email
+    if (!user.isVerified) {
+      // 1. Check SMS Verification (priority if phone present)
+      if (isSmsVerificationEnabled && user.phone && !user.isPhoneVerified) {
+        const now = new Date();
+        const otpExpiry = user.otp_expiry ? new Date(user.otp_expiry) : null;
+        const isOtpValid = otpExpiry && otpExpiry > now;
 
-      if (isOtpValid) {
-        return res.status(403).json({
-          status: false,
-          message:
-            "Email not verified. Please verify your email with the One Time Password (OTP) sent to your registered email address.",
-          requiresVerification: true,
-          verificationType: "email",
-          email: user.email,
-        });
-      } else {
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        const newOtpExpiry = new Date();
-        newOtpExpiry.setMinutes(newOtpExpiry.getMinutes() + 10);
+        if (!isOtpValid) {
+          const otp = Math.floor(100000 + Math.random() * 900000).toString();
+          const newOtpExpiry = new Date();
+          newOtpExpiry.setMinutes(newOtpExpiry.getMinutes() + 10);
 
-        await updateUserModel(user.id, {
-          otp,
-          otp_expiry: newOtpExpiry,
-        });
+          await updateUserModel(user.id, {
+            otp,
+            otp_expiry: newOtpExpiry,
+          });
 
-        if (user.email) {
-          const { sendOTPEmail } = await import("../utils/emailService");
-          await sendOTPEmail(user.email, otp, 10);
+          const { sendOTPSMS } = await import("../utils/smsService");
+          await sendOTPSMS(user.phone, otp, 10);
         }
 
         return res.status(403).json({
           status: false,
           message:
-            "Email not verified. A new One Time Password (OTP) has been sent to your registered email address.",
+            "Phone not verified. Please verify your phone with the OTP sent.",
+          requiresVerification: true,
+          verificationType: "phone",
+          phone: user.phone,
+        });
+      }
+
+      // 2. Check Email Verification
+      if (isEmailVerificationEnabled && user.email && !user.isEmailVerified) {
+        const now = new Date();
+        const otpExpiry = user.otp_expiry ? new Date(user.otp_expiry) : null;
+        const isOtpValid = otpExpiry && otpExpiry > now;
+
+        if (!isOtpValid) {
+          const otp = Math.floor(100000 + Math.random() * 900000).toString();
+          const newOtpExpiry = new Date();
+          newOtpExpiry.setMinutes(newOtpExpiry.getMinutes() + 10);
+
+          await updateUserModel(user.id, {
+            otp,
+            otp_expiry: newOtpExpiry,
+          });
+
+          if (user.email) {
+            const { sendOTPEmail } = await import("../utils/emailService");
+            await sendOTPEmail(user.email, otp, 10);
+          }
+        }
+
+        return res.status(403).json({
+          status: false,
+          message:
+            "Email not verified. Please verify your email with the OTP sent.",
           requiresVerification: true,
           verificationType: "email",
           email: user.email,
         });
       }
-    }
-
-    // 2. Check SMS Verification
-    if (isSmsVerificationEnabled && !user.isPhoneVerified) {
-      // Placeholder for SMS OTP logic
-      // You would check/generate SMS OTP here similar to email
-      // For now, we will block login but not send actual SMS until SMS service is integrated
-      return res.status(403).json({
-        status: false,
-        message:
-          "Phone number not verified. Please verify your phone number.",
-        requiresVerification: true,
-        verificationType: "phone",
-        phone: user.phone,
-      });
     }
 
     // Check for password match (Plain text, as per registration flow)

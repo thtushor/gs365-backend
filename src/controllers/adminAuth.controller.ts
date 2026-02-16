@@ -1,8 +1,9 @@
 import { Request, Response } from "express";
 import { db } from "../db/connection";
 import { adminUsers } from "../db/schema";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { sendOTPEmail, sendPasswordResetEmail } from "../utils/emailService";
+import { sendOTPSMS } from "../utils/smsService";
 import crypto from "crypto";
 
 /**
@@ -19,18 +20,23 @@ const generateOTP = (): string => {
  */
 export const verifyAdminOtp = async (req: Request, res: Response) => {
     try {
-        const { email, otp } = req.body;
+        const { email, phone, otp } = req.body;
+        const identifier = email || phone;
 
-        if (!email || !otp) {
+        if (!identifier || !otp) {
             return res.status(400).json({
                 status: false,
-                message: "Email and OTP are required",
+                message: "Email or Phone and OTP are required",
             });
         }
 
-        // Find admin by email
+        const isPhoneVerification = !!phone && !email;
+
+        // Find admin by email or phone
         const user = await db.query.adminUsers.findFirst({
-            where: eq(adminUsers.email, email),
+            where: isPhoneVerification
+                ? eq(adminUsers.phone, phone)
+                : eq(adminUsers.email, email),
         });
 
         if (!user) {
@@ -40,8 +46,14 @@ export const verifyAdminOtp = async (req: Request, res: Response) => {
             });
         }
 
-        // Check if user is already verified
-        if (user.isVerified) {
+        // Check if already verified for this type
+        if (isPhoneVerification && user.isPhoneVerified) {
+            return res.status(400).json({
+                status: false,
+                message: "Phone is already verified",
+            });
+        }
+        if (!isPhoneVerification && user.isEmailVerified) {
             return res.status(400).json({
                 status: false,
                 message: "Email is already verified",
@@ -64,19 +76,28 @@ export const verifyAdminOtp = async (req: Request, res: Response) => {
             });
         }
 
-        // Verify user and clear OTP
+        // Set the appropriate verification flags
+        const updateData: any = {
+            otp: null,
+            otp_expiry: null,
+            isVerified: true,
+        };
+
+        if (isPhoneVerification) {
+            updateData.isPhoneVerified = true;
+        } else {
+            updateData.isEmailVerified = true;
+        }
+
         await db
             .update(adminUsers)
-            .set({
-                isVerified: true,
-                otp: null,
-                otp_expiry: null,
-            })
+            .set(updateData)
             .where(eq(adminUsers.id, user.id));
 
+        const verifiedType = isPhoneVerification ? "Phone" : "Email";
         return res.json({
             status: true,
-            message: "Email verified successfully. You can now login.",
+            message: `${verifiedType} verified successfully. You can now login.`,
         });
     } catch (error) {
         console.error("Verify OTP error:", error);
@@ -94,18 +115,23 @@ export const verifyAdminOtp = async (req: Request, res: Response) => {
  */
 export const resendAdminOtp = async (req: Request, res: Response) => {
     try {
-        const { email } = req.body;
+        const { email, phone } = req.body;
+        const identifier = email || phone;
 
-        if (!email) {
+        if (!identifier) {
             return res.status(400).json({
                 status: false,
-                message: "Email is required",
+                message: "Email or Phone is required",
             });
         }
 
-        // Find admin by email
+        const isPhoneResend = !!phone && !email;
+
+        // Find admin by email or phone
         const user = await db.query.adminUsers.findFirst({
-            where: eq(adminUsers.email, email),
+            where: isPhoneResend
+                ? eq(adminUsers.phone, phone)
+                : eq(adminUsers.email, email),
         });
 
         if (!user) {
@@ -115,8 +141,14 @@ export const resendAdminOtp = async (req: Request, res: Response) => {
             });
         }
 
-        // Check if user is already verified
-        if (user.isVerified) {
+        // Check if already verified
+        if (isPhoneResend && user.isPhoneVerified) {
+            return res.status(400).json({
+                status: false,
+                message: "Phone is already verified",
+            });
+        }
+        if (!isPhoneResend && user.isEmailVerified) {
             return res.status(400).json({
                 status: false,
                 message: "Email is already verified",
@@ -126,9 +158,9 @@ export const resendAdminOtp = async (req: Request, res: Response) => {
         // Generate new OTP
         const otp = generateOTP();
         const otpExpiry = new Date();
-        otpExpiry.setMinutes(otpExpiry.getMinutes() + 10); // OTP valid for 10 minutes
+        otpExpiry.setMinutes(otpExpiry.getMinutes() + 10);
 
-        // Update user with new OTP
+        // Update admin with new OTP
         await db
             .update(adminUsers)
             .set({
@@ -137,20 +169,32 @@ export const resendAdminOtp = async (req: Request, res: Response) => {
             })
             .where(eq(adminUsers.id, user.id));
 
-        // Send OTP email
-        const emailResult = await sendOTPEmail(email, otp, 10);
-
-        if (!emailResult.success) {
-            return res.status(500).json({
-                status: false,
-                message: "Failed to send OTP email. Please try again.",
+        // Send OTP via SMS or Email
+        if (isPhoneResend) {
+            const smsResult = await sendOTPSMS(phone, otp, 10);
+            if (!smsResult.success) {
+                return res.status(500).json({
+                    status: false,
+                    message: "Failed to send OTP SMS. Please try again.",
+                });
+            }
+            return res.json({
+                status: true,
+                message: "OTP has been resent to your phone",
+            });
+        } else {
+            const emailResult = await sendOTPEmail(email, otp, 10);
+            if (!emailResult.success) {
+                return res.status(500).json({
+                    status: false,
+                    message: "Failed to send OTP email. Please try again.",
+                });
+            }
+            return res.json({
+                status: true,
+                message: "OTP has been resent to your email",
             });
         }
-
-        return res.json({
-            status: true,
-            message: "OTP has been resent to your email",
-        });
     } catch (error) {
         console.error("Resend OTP error:", error);
         return res.status(500).json({

@@ -1,8 +1,9 @@
 import { Request, Response } from "express";
 import { db } from "../db/connection";
 import { users } from "../db/schema";
-import { eq, and, gt } from "drizzle-orm";
+import { eq, and, gt, or } from "drizzle-orm";
 import { sendOTPEmail, sendPasswordResetEmail } from "../utils/emailService";
+import { sendOTPSMS } from "../utils/smsService";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 
@@ -20,18 +21,24 @@ const generateOTP = (): string => {
  */
 export const verifyOtp = async (req: Request, res: Response) => {
     try {
-        const { email, otp } = req.body;
+        const { email, phone, otp } = req.body;
+        const identifier = email || phone;
 
-        if (!email || !otp) {
+        if (!identifier || !otp) {
             return res.status(400).json({
                 status: false,
-                message: "Email and OTP are required",
+                message: "Email or Phone and OTP are required",
             });
         }
 
-        // Find user by email
+        // Determine verification type
+        const isPhoneVerification = !!phone && !email;
+
+        // Find user by email or phone
         const user = await db.query.users.findFirst({
-            where: eq(users.email, email),
+            where: isPhoneVerification
+                ? eq(users.phone, phone)
+                : eq(users.email, email),
         });
 
         if (!user) {
@@ -41,8 +48,14 @@ export const verifyOtp = async (req: Request, res: Response) => {
             });
         }
 
-        // Check if user is already verified
-        if (user.isVerified) {
+        // Check if already verified for this type
+        if (isPhoneVerification && user.isPhoneVerified) {
+            return res.status(400).json({
+                status: false,
+                message: "Phone is already verified",
+            });
+        }
+        if (!isPhoneVerification && user.isEmailVerified) {
             return res.status(400).json({
                 status: false,
                 message: "Email is already verified",
@@ -65,19 +78,28 @@ export const verifyOtp = async (req: Request, res: Response) => {
             });
         }
 
-        // Verify user and clear OTP
+        // Set the appropriate verification flags
+        const updateData: any = {
+            otp: null,
+            otp_expiry: null,
+            isVerified: true,
+        };
+
+        if (isPhoneVerification) {
+            updateData.isPhoneVerified = true;
+        } else {
+            updateData.isEmailVerified = true;
+        }
+
         await db
             .update(users)
-            .set({
-                isVerified: true,
-                otp: null,
-                otp_expiry: null,
-            })
+            .set(updateData)
             .where(eq(users.id, user.id));
 
+        const verifiedType = isPhoneVerification ? "Phone" : "Email";
         return res.json({
             status: true,
-            message: "Email verified successfully. You can now login.",
+            message: `${verifiedType} verified successfully. You can now login.`,
         });
     } catch (error) {
         console.error("Verify OTP error:", error);
@@ -95,18 +117,23 @@ export const verifyOtp = async (req: Request, res: Response) => {
  */
 export const resendOtp = async (req: Request, res: Response) => {
     try {
-        const { email } = req.body;
+        const { email, phone } = req.body;
+        const identifier = email || phone;
 
-        if (!email) {
+        if (!identifier) {
             return res.status(400).json({
                 status: false,
-                message: "Email is required",
+                message: "Email or Phone is required",
             });
         }
 
-        // Find user by email
+        const isPhoneResend = !!phone && !email;
+
+        // Find user by email or phone
         const user = await db.query.users.findFirst({
-            where: eq(users.email, email),
+            where: isPhoneResend
+                ? eq(users.phone, phone)
+                : eq(users.email, email),
         });
 
         if (!user) {
@@ -116,8 +143,14 @@ export const resendOtp = async (req: Request, res: Response) => {
             });
         }
 
-        // Check if user is already verified
-        if (user.isVerified) {
+        // Check if already verified
+        if (isPhoneResend && user.isPhoneVerified) {
+            return res.status(400).json({
+                status: false,
+                message: "Phone is already verified",
+            });
+        }
+        if (!isPhoneResend && user.isEmailVerified) {
             return res.status(400).json({
                 status: false,
                 message: "Email is already verified",
@@ -127,7 +160,7 @@ export const resendOtp = async (req: Request, res: Response) => {
         // Generate new OTP
         const otp = generateOTP();
         const otpExpiry = new Date();
-        otpExpiry.setMinutes(otpExpiry.getMinutes() + 10); // OTP valid for 10 minutes
+        otpExpiry.setMinutes(otpExpiry.getMinutes() + 10);
 
         // Update user with new OTP
         await db
@@ -138,20 +171,32 @@ export const resendOtp = async (req: Request, res: Response) => {
             })
             .where(eq(users.id, user.id));
 
-        // Send OTP email
-        const emailResult = await sendOTPEmail(email, otp, 10);
-
-        if (!emailResult.success) {
-            return res.status(500).json({
-                status: false,
-                message: "Failed to send OTP email. Please try again.",
+        // Send OTP via SMS or Email
+        if (isPhoneResend) {
+            const smsResult = await sendOTPSMS(phone, otp, 10);
+            if (!smsResult.success) {
+                return res.status(500).json({
+                    status: false,
+                    message: "Failed to send OTP SMS. Please try again.",
+                });
+            }
+            return res.json({
+                status: true,
+                message: "OTP has been resent to your phone",
+            });
+        } else {
+            const emailResult = await sendOTPEmail(email, otp, 10);
+            if (!emailResult.success) {
+                return res.status(500).json({
+                    status: false,
+                    message: "Failed to send OTP email. Please try again.",
+                });
+            }
+            return res.json({
+                status: true,
+                message: "OTP has been resent to your email",
             });
         }
-
-        return res.json({
-            status: true,
-            message: "OTP has been resent to your email",
-        });
     } catch (error) {
         console.error("Resend OTP error:", error);
         return res.status(500).json({

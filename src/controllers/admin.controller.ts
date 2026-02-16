@@ -160,10 +160,18 @@ export const adminRegistration = async (
       designation,
     } = req.body;
 
-    // Generate OTP for email verification
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpiry = new Date();
-    otpExpiry.setMinutes(otpExpiry.getMinutes() + 10); // OTP valid for 10 minutes
+    otpExpiry.setMinutes(otpExpiry.getMinutes() + 10);
+
+    // Check verification settings
+    const verificationSettings = await SettingsModel.getFirst();
+    const isSmsVerificationEnabled =
+      verificationSettings?.isSmsVerificationEnabled === "Enabled";
+    const isEmailVerificationEnabled =
+      verificationSettings?.isEmailVerificationEnabled === "Enabled";
+    const needsVerification =
+      isSmsVerificationEnabled || isEmailVerificationEnabled;
 
     const userData = (req as unknown as { user: DecodedUser | null })?.user;
     if (!username) {
@@ -317,15 +325,21 @@ export const adminRegistration = async (
               ? referringAdmin?.commission_percent / 2
               : commission_percent,
           designation,
-          otp,
-          otp_expiry: otpExpiry,
-          isVerified: false,
-          isEmailVerified: false,
-          isPhoneVerified: false,
+          otp: needsVerification ? otp : undefined,
+          otp_expiry: needsVerification ? otpExpiry : undefined,
+          isVerified: !needsVerification,
+          isEmailVerified: !isEmailVerificationEnabled,
+          isPhoneVerified: !isSmsVerificationEnabled,
         });
 
-        if (email) {
-          await sendOTPEmail(email, otp, 10);
+        // Send OTP: priority phone SMS, then email
+        if (needsVerification) {
+          if (phone && isSmsVerificationEnabled) {
+            const { sendOTPSMS } = await import("../utils/smsService");
+            await sendOTPSMS(phone, otp, 10);
+          } else if (email && isEmailVerificationEnabled) {
+            await sendOTPEmail(email, otp, 10);
+          }
         }
 
 
@@ -395,15 +409,20 @@ export const adminRegistration = async (
       referred_by,
       commission_percent,
       designation,
-      otp,
-      otp_expiry: otpExpiry,
-      isVerified: ["admin", "superAdmin"].includes(role),
-      isEmailVerified: ["admin", "superAdmin"].includes(role),
-      isPhoneVerified: ["admin", "superAdmin"].includes(role),
+      otp: needsVerification ? otp : undefined,
+      otp_expiry: needsVerification ? otpExpiry : undefined,
+      isVerified: ["admin", "superAdmin"].includes(role) || !needsVerification,
+      isEmailVerified: ["admin", "superAdmin"].includes(role) || !isEmailVerificationEnabled,
+      isPhoneVerified: ["admin", "superAdmin"].includes(role) || !isSmsVerificationEnabled,
     });
 
-    if (!["admin", "superAdmin"].includes(role) && email) {
-      await sendOTPEmail(email, otp, 10);
+    if (!["admin", "superAdmin"].includes(role) && needsVerification) {
+      if (phone && isSmsVerificationEnabled) {
+        const { sendOTPSMS } = await import("../utils/smsService");
+        await sendOTPSMS(phone, otp, 10);
+      } else if (email && isEmailVerificationEnabled) {
+        await sendOTPEmail(email, otp, 10);
+      }
     }
 
 
@@ -484,59 +503,70 @@ export const adminLogin = async (
     const isSmsVerificationEnabled =
       settings?.isSmsVerificationEnabled === "Enabled";
 
-    // 1. Check Email Verification
-    if (isEmailVerificationEnabled && !admin.isEmailVerified) {
-      const now = new Date();
-      const otpExpiry = admin.otp_expiry ? new Date(admin.otp_expiry) : null;
-      const isOtpValid = otpExpiry && otpExpiry > now;
+    // If user is not verified, send OTP: priority phone SMS, then email
+    if (!admin.isVerified) {
+      // 1. Check SMS Verification (priority if phone present)
+      if (isSmsVerificationEnabled && admin.phone && !admin.isPhoneVerified) {
+        const now = new Date();
+        const otpExpiry = admin.otp_expiry ? new Date(admin.otp_expiry) : null;
+        const isOtpValid = otpExpiry && otpExpiry > now;
 
-      if (isOtpValid) {
-        res.status(403).json({
-          status: false,
-          message:
-            "Email not verified. Please verify your email with the One Time Password (OTP) sent to your registered email address.",
-          requiresVerification: true,
-          verificationType: "email",
-          email: admin.email,
-        });
-        return;
-      } else {
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        const newOtpExpiry = new Date();
-        newOtpExpiry.setMinutes(newOtpExpiry.getMinutes() + 10);
+        if (!isOtpValid) {
+          const otp = Math.floor(100000 + Math.random() * 900000).toString();
+          const newOtpExpiry = new Date();
+          newOtpExpiry.setMinutes(newOtpExpiry.getMinutes() + 10);
 
-        await updateAdmin(admin.id, {
-          otp,
-          otp_expiry: newOtpExpiry,
-        });
+          await updateAdmin(admin.id, {
+            otp,
+            otp_expiry: newOtpExpiry,
+          });
 
-        if (admin.email) {
-          await sendOTPEmail(admin.email, otp, 10);
+          const { sendOTPSMS } = await import("../utils/smsService");
+          await sendOTPSMS(admin.phone, otp, 10);
         }
 
         res.status(403).json({
           status: false,
           message:
-            "Email not verified. A new One Time Password (OTP) has been sent to your registered email address.",
+            "Phone not verified. Please verify your phone with the OTP sent.",
+          requiresVerification: true,
+          verificationType: "phone",
+          phone: admin.phone,
+        });
+        return;
+      }
+
+      // 2. Check Email Verification
+      if (isEmailVerificationEnabled && admin.email && !admin.isEmailVerified) {
+        const now = new Date();
+        const otpExpiry = admin.otp_expiry ? new Date(admin.otp_expiry) : null;
+        const isOtpValid = otpExpiry && otpExpiry > now;
+
+        if (!isOtpValid) {
+          const otp = Math.floor(100000 + Math.random() * 900000).toString();
+          const newOtpExpiry = new Date();
+          newOtpExpiry.setMinutes(newOtpExpiry.getMinutes() + 10);
+
+          await updateAdmin(admin.id, {
+            otp,
+            otp_expiry: newOtpExpiry,
+          });
+
+          if (admin.email) {
+            await sendOTPEmail(admin.email, otp, 10);
+          }
+        }
+
+        res.status(403).json({
+          status: false,
+          message:
+            "Email not verified. Please verify your email with the OTP sent.",
           requiresVerification: true,
           verificationType: "email",
           email: admin.email,
         });
         return;
       }
-    }
-
-    // 2. Check SMS Verification
-    if (isSmsVerificationEnabled && !admin.isPhoneVerified) {
-      res.status(403).json({
-        status: false,
-        message:
-          "Phone number not verified. Please verify your phone number.",
-        requiresVerification: true,
-        verificationType: "phone",
-        phone: admin.phone,
-      });
-      return;
     }
     const isMatch = password === admin.password;
     if (!isMatch) {
