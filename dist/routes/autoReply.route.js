@@ -1,0 +1,13 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.autoReplyRoute = void 0;
+const express_1 = require("express");
+const autoReply_controller_1 = require("../controllers/autoReply.controller");
+const verifyToken_1 = require("../middlewares/verifyToken");
+const router = (0, express_1.Router)();
+router.post("/", verifyToken_1.verifyToken, autoReply_controller_1.AutoReplyController.createAutoReply);
+router.get("/", verifyToken_1.verifyToken, autoReply_controller_1.AutoReplyController.getAllAutoReplies);
+router.get("/:id", verifyToken_1.verifyToken, autoReply_controller_1.AutoReplyController.getAutoReplyById);
+router.put("/:id", verifyToken_1.verifyToken, autoReply_controller_1.AutoReplyController.updateAutoReply);
+router.delete("/:id", verifyToken_1.verifyToken, autoReply_controller_1.AutoReplyController.deleteAutoReply);
+exports.autoReplyRoute = router;

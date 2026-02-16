@@ -1,0 +1,14 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.messageRoute = void 0;
+const express_1 = require("express");
+const message_controller_1 = require("../controllers/message.controller");
+const verifyToken_1 = require("../middlewares/verifyToken");
+const router = (0, express_1.Router)();
+router.get("/chat/:chatId", verifyToken_1.verifyToken, message_controller_1.MessageController.getChatMessages);
+router.post("/read/:chatId", verifyToken_1.verifyToken, message_controller_1.MessageController.markMessagesAsRead);
+router.post("/send-message", message_controller_1.MessageController.sendMessage);
+router.get("/sender/:senderId/:senderType", verifyToken_1.verifyToken, message_controller_1.MessageController.getMessagesBySender);
+router.get("/user-admin/:id/:type", verifyToken_1.verifyToken, message_controller_1.MessageController.getMessagesByUserIdOrAdminId);
+router.get("/guest-sender/:guestSenderId", message_controller_1.MessageController.getMessagesByGuestSenderId);
+exports.messageRoute = router;

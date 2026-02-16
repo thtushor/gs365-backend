@@ -1,0 +1,18 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const verifyToken_1 = require("../middlewares/verifyToken");
+const userPhone_controller_1 = require("../controllers/userPhone.controller");
+const router = (0, express_1.Router)();
+router.use(verifyToken_1.verifyToken);
+router.post("/", userPhone_controller_1.createUserPhone);
+router.get("/", userPhone_controller_1.getUserPhones);
+router.get("/user/:userId", userPhone_controller_1.getUserPhonesByUser);
+router.get("/:id", userPhone_controller_1.getUserPhoneById);
+router.post("/update/:id", userPhone_controller_1.updateUserPhone);
+router.post("/delete/:id", userPhone_controller_1.deleteUserPhone);
+router.patch("/:id/set-primary", userPhone_controller_1.setPrimaryUserPhone);
+router.patch("/:id/verify", userPhone_controller_1.verifyUserPhone);
+router.post("/:id/send-otp", userPhone_controller_1.sendPhoneOtp);
+router.post("/:id/verify-otp", userPhone_controller_1.verifyPhoneOtp);
+exports.default = router;

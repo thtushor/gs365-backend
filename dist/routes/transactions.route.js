@@ -1,0 +1,18 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const transactions_controller_1 = require("../controllers/transactions.controller");
+const asyncHandler_1 = require("../utils/asyncHandler");
+const verifyToken_1 = require("../middlewares/verifyToken");
+const router = (0, express_1.Router)();
+router.use(verifyToken_1.verifyToken);
+router.post("/deposit", (0, asyncHandler_1.asyncHandler)(transactions_controller_1.createDeposit));
+router.post("/withdraw", (0, asyncHandler_1.asyncHandler)(transactions_controller_1.createWithdraw));
+router.post("/affiliate-withdraw", (0, asyncHandler_1.asyncHandler)(transactions_controller_1.createAffiliateWithdraw));
+router.get("/", (0, asyncHandler_1.asyncHandler)(transactions_controller_1.getTransactions));
+router.post("/:id/status", (0, asyncHandler_1.asyncHandler)(transactions_controller_1.updateTransactionStatus));
+router.post("/affiliate-withdraw/:id/status", (0, asyncHandler_1.asyncHandler)(transactions_controller_1.updateAffiliateWithdrawStatus));
+router.get("/withdraw-capability/:userId", (0, asyncHandler_1.asyncHandler)(transactions_controller_1.checkWithdrawCapability));
+router.post("/claim-notification", (0, asyncHandler_1.asyncHandler)(transactions_controller_1.claimNotification));
+router.post("/claim-spin-bonus", (0, asyncHandler_1.asyncHandler)(transactions_controller_1.claimSpinBonus));
+exports.default = router;

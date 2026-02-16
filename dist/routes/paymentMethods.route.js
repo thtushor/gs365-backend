@@ -1,0 +1,13 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const paymentMethods_controller_1 = require("../controllers/paymentMethods.controller");
+const asyncHandler_1 = require("../utils/asyncHandler");
+const router = (0, express_1.Router)();
+router.get("/", (0, asyncHandler_1.asyncHandler)(paymentMethods_controller_1.getAllPaymentMethod));
+router.get("/:id", (0, asyncHandler_1.asyncHandler)(paymentMethods_controller_1.getPaymentMethodById));
+router.get("/name/:name", (0, asyncHandler_1.asyncHandler)(paymentMethods_controller_1.getPaymentMethodByName));
+router.post("/", (0, asyncHandler_1.asyncHandler)(paymentMethods_controller_1.createPaymentMethod));
+router.post("/update/:id", (0, asyncHandler_1.asyncHandler)(paymentMethods_controller_1.updatePaymentMethod));
+router.delete("/delete/:id", (0, asyncHandler_1.asyncHandler)(paymentMethods_controller_1.deletePaymentMethod));
+exports.default = router;

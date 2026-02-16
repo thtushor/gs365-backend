@@ -1,0 +1,15 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const verifyToken_1 = require("../middlewares/verifyToken");
+const backupRestore_controller_1 = require("../controllers/backupRestore.controller");
+const asyncHandler_1 = require("../utils/asyncHandler");
+const router = (0, express_1.Router)();
+router.post("/backup", verifyToken_1.verifyToken, backupRestore_controller_1.createBackup);
+router.post("/restore", verifyToken_1.verifyToken, (0, asyncHandler_1.asyncHandler)(backupRestore_controller_1.restoreBackup));
+router.post("/backup-files", verifyToken_1.verifyToken, backupRestore_controller_1.getBackupList);
+router.post("/download-backup", verifyToken_1.verifyToken, (0, asyncHandler_1.asyncHandler)(backupRestore_controller_1.downloadBackup));
+router.post("/delete-backup", verifyToken_1.verifyToken, (0, asyncHandler_1.asyncHandler)(backupRestore_controller_1.deleteBackup));
+router.post("/drop-all-tables", verifyToken_1.verifyToken, (0, asyncHandler_1.asyncHandler)(backupRestore_controller_1.dropAllTables));
+const autoReplyRoute = router;
+exports.default = autoReplyRoute;

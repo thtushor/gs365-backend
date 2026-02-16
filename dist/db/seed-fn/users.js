@@ -1,0 +1,95 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.seedUsers = void 0;
+require("dotenv/config");
+const schema_1 = require("../schema");
+const connection_1 = require("../connection");
+const drizzle_orm_1 = require("drizzle-orm");
+const seedUsers = async () => {
+    try {
+        await connection_1.db
+            .insert(schema_1.users)
+            .values([
+            {
+                username: "alice123",
+                fullname: "Alice Smith",
+                phone: "1234567890",
+                email: "alice@example.com",
+                password: "hashedpassword1",
+                currency_id: 1,
+                refer_code: "REFALICE",
+                isAgreeWithTerms: true,
+                isLoggedIn: true,
+                isVerified: true,
+                lastIp: "192.168.1.10",
+                lastLogin: new Date(),
+                device_type: "Desktop",
+                status: "active",
+                device_name: "Windows PC",
+                os_version: "Windows 10",
+                browser: "Chrome",
+                browser_version: "120.0.0.0",
+                ip_address: "192.168.1.10",
+                device_token: "token-alice-123",
+                created_at: new Date(),
+            },
+            {
+                username: "bob456",
+                fullname: "Bob Brown",
+                phone: "2345678901",
+                email: "bob@example.com",
+                password: "hashedpassword2",
+                currency_id: 2,
+                refer_code: "REFBOB",
+                status: "inactive",
+                isAgreeWithTerms: true,
+                isLoggedIn: false,
+                isVerified: false,
+                lastIp: "10.0.0.5",
+                lastLogin: new Date(),
+                device_type: "Mobile",
+                device_name: "iPhone 13",
+                os_version: "iOS 17.2",
+                browser: "Safari",
+                browser_version: "17.0",
+                ip_address: "10.0.0.5",
+                device_token: "token-bob-456",
+                created_at: new Date(),
+            },
+            {
+                username: "charlie789",
+                fullname: "Charlie Davis",
+                phone: "3456789012",
+                email: "sishufol.cse@gmail.com",
+                password: "hashedpassword3",
+                currency_id: 1,
+                refer_code: "REFCHARLIE",
+                status: "active",
+                isAgreeWithTerms: true,
+                isLoggedIn: true,
+                isVerified: true,
+                lastIp: "172.16.0.10",
+                lastLogin: new Date(),
+                device_type: "Desktop",
+                device_name: "Windows 11",
+                os_version: "Windows 11",
+                browser: "Chrome",
+                browser_version: "120.0.0.0",
+                ip_address: "172.16.0.10",
+                device_token: "token-charlie-789",
+                created_at: new Date(),
+            },
+        ])
+            .onDuplicateKeyUpdate({
+            set: {
+                email: (0, drizzle_orm_1.sql) `values(${schema_1.users.email})`,
+                phone: (0, drizzle_orm_1.sql) `values(${schema_1.users.phone})`,
+            },
+        });
+        console.log("✅ User seed data inserted successfully!");
+    }
+    catch (error) {
+        console.error("❌ Failed to insert User seed data:", error);
+    }
+};
+exports.seedUsers = seedUsers;
