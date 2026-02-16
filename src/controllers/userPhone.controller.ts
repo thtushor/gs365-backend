@@ -9,12 +9,12 @@ const isAdminOrSuperAdmin = (req: AuthenticatedRequest): boolean => {
   return role === "admin" || role === "superAdmin";
 };
 
+const getLoggedInUserId = (req: AuthenticatedRequest): number | undefined => {
+  return (req as any).user?.id;
+};
+
 export const createUserPhone = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   try {
-    if (!isAdminOrSuperAdmin(req)) {
-      return res.status(403).json({ status: false, message: "Only admin/superAdmin can add phone numbers" });
-    }
-
     const {
       userId,
       phoneNumber,
@@ -27,6 +27,14 @@ export const createUserPhone = asyncHandler(async (req: AuthenticatedRequest, re
       return res.status(400).json({ status: false, message: "userId and phoneNumber are required" });
     }
 
+    const isAdmin = isAdminOrSuperAdmin(req);
+    const loggedInUserId = getLoggedInUserId(req);
+
+    // Players can only add phones for themselves
+    if (!isAdmin && Number(userId) !== loggedInUserId) {
+      return res.status(403).json({ status: false, message: "You can only add phone numbers for yourself" });
+    }
+
     // Check if user already has 3 phone numbers
     const existingPhones = await UserPhoneModel.getByUserId(Number(userId));
     if (existingPhones.length >= 3) {
@@ -37,7 +45,7 @@ export const createUserPhone = asyncHandler(async (req: AuthenticatedRequest, re
       userId: Number(userId),
       phoneNumber,
       isPrimary,
-      isVerified: false, // Force false for new phones initially if they must be verified manually
+      isVerified: isAdmin ? isVerified : false, // Only admin can set verified on create
       isSmsCapable,
     });
 
@@ -75,10 +83,6 @@ export const getUserPhoneById = asyncHandler(async (req: AuthenticatedRequest, r
 
 export const updateUserPhone = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   try {
-    if (!isAdminOrSuperAdmin(req)) {
-      return res.status(403).json({ status: false, message: "Only admin/superAdmin can update phone numbers" });
-    }
-
     const { id } = req.params;
     const existingPhone = await UserPhoneModel.getById(Number(id));
 
@@ -86,7 +90,21 @@ export const updateUserPhone = asyncHandler(async (req: AuthenticatedRequest, re
       return res.status(404).json({ status: false, message: "Phone not found" });
     }
 
-    // If attempting to update phone number, check if it's verified
+    const isAdmin = isAdminOrSuperAdmin(req);
+    const loggedInUserId = getLoggedInUserId(req);
+
+    if (!isAdmin) {
+      // Player can only update their own phone
+      if (existingPhone.userId !== loggedInUserId) {
+        return res.status(403).json({ status: false, message: "You can only update your own phone numbers" });
+      }
+      // Player cannot update verified phone numbers
+      if (existingPhone.isVerified) {
+        return res.status(400).json({ status: false, message: "Cannot update a verified phone number" });
+      }
+    }
+
+    // If attempting to update phone number, check if it's verified (admin also can't change verified number)
     if (req.body.phoneNumber && req.body.phoneNumber !== existingPhone.phoneNumber) {
       if (existingPhone.isVerified) {
         return res.status(400).json({ status: false, message: "Cannot edit phone number once it is verified" });
@@ -97,7 +115,7 @@ export const updateUserPhone = asyncHandler(async (req: AuthenticatedRequest, re
     const payload: any = {};
     if (typeof req.body.phoneNumber === "string") payload.phoneNumber = req.body.phoneNumber;
     if (typeof req.body.isPrimary === "boolean") payload.isPrimary = req.body.isPrimary;
-    if (typeof req.body.isVerified === "boolean") payload.isVerified = req.body.isVerified;
+    if (typeof req.body.isVerified === "boolean") payload.isVerified = isAdmin ? req.body.isVerified : undefined; // Only admin can toggle verified
     if (typeof req.body.isSmsCapable === "boolean") payload.isSmsCapable = req.body.isSmsCapable;
 
     const updated = await UserPhoneModel.update(Number(id), payload);
@@ -110,9 +128,24 @@ export const updateUserPhone = asyncHandler(async (req: AuthenticatedRequest, re
 
 export const deleteUserPhone = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
-  if (!isAdminOrSuperAdmin(req)) {
-    return res.status(403).json({ status: false, message: "Only admin/superAdmin can delete phone numbers" });
+  const existingPhone = await UserPhoneModel.getById(Number(id));
+
+  if (!existingPhone) {
+    return res.status(404).json({ status: false, message: "Phone not found" });
   }
+
+  const isAdmin = isAdminOrSuperAdmin(req);
+  const loggedInUserId = getLoggedInUserId(req);
+
+  if (!isAdmin) {
+    if (existingPhone.userId !== loggedInUserId) {
+      return res.status(403).json({ status: false, message: "You can only delete your own phone numbers" });
+    }
+    if (existingPhone.isVerified) {
+      return res.status(400).json({ status: false, message: "Cannot delete a verified phone number" });
+    }
+  }
+
   await UserPhoneModel.delete(Number(id));
   return res.json({ status: true, message: "Deleted" });
 });
@@ -192,5 +225,3 @@ export const verifyPhoneOtp = asyncHandler(async (req: AuthenticatedRequest, res
 
   return res.json({ status: true, message: result.message });
 });
-
-
