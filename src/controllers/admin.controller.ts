@@ -174,7 +174,9 @@ export const adminRegistration = async (
     const needsVerification =
       isSmsVerificationEnabled || isEmailVerificationEnabled;
 
+    // If created by admin/superAdmin, skip verification
     const userData = (req as unknown as { user: DecodedUser | null })?.user;
+    const isAdminCreated = userData?.role === "admin" || userData?.role === "superAdmin";
     if (!username) {
       res.status(400).json({ status: false, message: "Username is required" });
       return;
@@ -326,15 +328,15 @@ export const adminRegistration = async (
               ? referringAdmin?.commission_percent / 2
               : commission_percent,
           designation,
-          otp: needsVerification ? otp : undefined,
-          otp_expiry: needsVerification ? otpExpiry : undefined,
-          isVerified: !needsVerification,
-          isEmailVerified: !isEmailVerificationEnabled,
-          isPhoneVerified: !isSmsVerificationEnabled,
+          otp: (!isAdminCreated && needsVerification) ? otp : undefined,
+          otp_expiry: (!isAdminCreated && needsVerification) ? otpExpiry : undefined,
+          isVerified: isAdminCreated ? true : !needsVerification,
+          isEmailVerified: isAdminCreated ? true : !isEmailVerificationEnabled,
+          isPhoneVerified: isAdminCreated ? true : !isSmsVerificationEnabled,
         });
 
-        // Send OTP: priority phone SMS, then email
-        if (needsVerification) {
+        // Send OTP: priority phone SMS, then email (only if not admin-created)
+        if (!isAdminCreated && needsVerification) {
           if (phone && isSmsVerificationEnabled) {
             const { sendOTPSMS } = await import("../utils/smsService");
             await sendOTPSMS(phone, otp, 10);
@@ -410,14 +412,14 @@ export const adminRegistration = async (
       referred_by,
       commission_percent,
       designation,
-      otp: needsVerification ? otp : undefined,
-      otp_expiry: needsVerification ? otpExpiry : undefined,
-      isVerified: ["admin", "superAdmin"].includes(role) || !needsVerification,
-      isEmailVerified: ["admin", "superAdmin"].includes(role) || !isEmailVerificationEnabled,
-      isPhoneVerified: ["admin", "superAdmin"].includes(role) || !isSmsVerificationEnabled,
+      otp: (!isAdminCreated && needsVerification) ? otp : undefined,
+      otp_expiry: (!isAdminCreated && needsVerification) ? otpExpiry : undefined,
+      isVerified: isAdminCreated || ["admin", "superAdmin"].includes(role) || !needsVerification,
+      isEmailVerified: isAdminCreated || ["admin", "superAdmin"].includes(role) || !isEmailVerificationEnabled,
+      isPhoneVerified: isAdminCreated || ["admin", "superAdmin"].includes(role) || !isSmsVerificationEnabled,
     });
 
-    if (!["admin", "superAdmin"].includes(role) && needsVerification) {
+    if (!isAdminCreated && !["admin", "superAdmin"].includes(role) && needsVerification) {
       if (phone && isSmsVerificationEnabled) {
         const { sendOTPSMS } = await import("../utils/smsService");
         await sendOTPSMS(phone, otp, 10);

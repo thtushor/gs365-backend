@@ -4,8 +4,17 @@ import { AuthenticatedRequest } from "../utils/types";
 import { UserPhoneModel } from "../models/userPhone.model";
 import { sendOTPSMS } from "../utils/smsService";
 
+const isAdminOrSuperAdmin = (req: AuthenticatedRequest): boolean => {
+  const role = (req as any).user?.role;
+  return role === "admin" || role === "superAdmin";
+};
+
 export const createUserPhone = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   try {
+    if (!isAdminOrSuperAdmin(req)) {
+      return res.status(403).json({ status: false, message: "Only admin/superAdmin can add phone numbers" });
+    }
+
     const {
       userId,
       phoneNumber,
@@ -66,6 +75,10 @@ export const getUserPhoneById = asyncHandler(async (req: AuthenticatedRequest, r
 
 export const updateUserPhone = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   try {
+    if (!isAdminOrSuperAdmin(req)) {
+      return res.status(403).json({ status: false, message: "Only admin/superAdmin can update phone numbers" });
+    }
+
     const { id } = req.params;
     const existingPhone = await UserPhoneModel.getById(Number(id));
 
@@ -97,12 +110,18 @@ export const updateUserPhone = asyncHandler(async (req: AuthenticatedRequest, re
 
 export const deleteUserPhone = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
+  if (!isAdminOrSuperAdmin(req)) {
+    return res.status(403).json({ status: false, message: "Only admin/superAdmin can delete phone numbers" });
+  }
   await UserPhoneModel.delete(Number(id));
   return res.json({ status: true, message: "Deleted" });
 });
 
 export const setPrimaryUserPhone = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
+  if (!isAdminOrSuperAdmin(req)) {
+    return res.status(403).json({ status: false, message: "Only admin/superAdmin can set primary phone" });
+  }
   const ok = await UserPhoneModel.setPrimary(Number(id));
   if (!ok) return res.status(400).json({ status: false, message: "Failed to set primary" });
   return res.json({ status: true, message: "Set as primary" });
@@ -110,6 +129,9 @@ export const setPrimaryUserPhone = asyncHandler(async (req: AuthenticatedRequest
 
 export const verifyUserPhone = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
+  if (!isAdminOrSuperAdmin(req)) {
+    return res.status(403).json({ status: false, message: "Only admin/superAdmin can verify phones" });
+  }
   const row = await UserPhoneModel.verify(Number(id));
   return res.json({ status: true, message: "Verified", data: row });
 });

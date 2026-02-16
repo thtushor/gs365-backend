@@ -267,8 +267,11 @@ export const registerUser = async (req: Request, res: Response) => {
       settings?.isSmsVerificationEnabled === "Enabled";
     const isEmailVerificationEnabled =
       settings?.isEmailVerificationEnabled === "Enabled";
+
+    // If admin created this user (createdBy present), skip verification
+    const isAdminCreated = !!createdBy;
     const needsVerification =
-      isSmsVerificationEnabled || isEmailVerificationEnabled;
+      !isAdminCreated && (isSmsVerificationEnabled || isEmailVerificationEnabled);
 
     // Generate OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -291,9 +294,9 @@ export const registerUser = async (req: Request, res: Response) => {
       country_id,
       otp: needsVerification ? otp : undefined,
       otp_expiry: needsVerification ? otpExpiry : undefined,
-      isVerified: !needsVerification,
-      isEmailVerified: !isEmailVerificationEnabled,
-      isPhoneVerified: !isSmsVerificationEnabled,
+      isVerified: isAdminCreated ? true : !needsVerification,
+      isEmailVerified: isAdminCreated ? true : !isEmailVerificationEnabled,
+      isPhoneVerified: isAdminCreated ? true : !isSmsVerificationEnabled,
     });
 
     // Send OTP only if verification is required
