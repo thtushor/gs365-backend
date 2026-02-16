@@ -506,8 +506,8 @@ export const adminLogin = async (
     const isSmsVerificationEnabled =
       settings?.isSmsVerificationEnabled === "Enabled";
 
-    // If user is not verified, send OTP: priority phone SMS, then email
-    if (!admin.isVerified) {
+    // If user is not verified, send OTP: priority phone SMS, then email (skip for superAdmin)
+    if (!admin.isVerified && admin.role !== "superAdmin") {
       // 1. Check SMS Verification (priority if phone present)
       if (isSmsVerificationEnabled && admin.phone && !admin.isPhoneVerified) {
         const now = new Date();
