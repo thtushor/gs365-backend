@@ -24,6 +24,7 @@ import { generateJwtToken, JwtPayload, verifyJwt } from "../utils/jwt";
 import { createUserLoginHistory } from "../models/userLoginHistory.model";
 import { user_favorites } from "../db/schema/user_favorites";
 import { io } from "..";
+import { maskPhone, maskEmail } from "../utils/maskUtils";
 
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
@@ -322,6 +323,8 @@ export const registerUser = async (req: Request, res: Response) => {
         username: user.username,
         email: user.email,
         phone: user.phone,
+        maskedPhone: phone ? maskPhone(phone) : null,
+        maskedEmail: email ? maskEmail(email) : null,
         isVerified: user.isVerified,
         requiresVerification: needsVerification,
         verificationType: otpSentVia || null,
@@ -406,6 +409,7 @@ export const loginUser = async (req: Request, res: Response) => {
           requiresVerification: true,
           verificationType: "phone",
           phone: user.phone,
+          maskedPhone: maskPhone(user.phone),
         });
       }
 
@@ -438,6 +442,7 @@ export const loginUser = async (req: Request, res: Response) => {
           requiresVerification: true,
           verificationType: "email",
           email: user.email,
+          maskedEmail: maskEmail(user.email!),
         });
       }
     }

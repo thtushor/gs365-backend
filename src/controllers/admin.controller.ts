@@ -100,6 +100,7 @@ import { PromotionDataType } from "../utils/types";
 import { generateUniqueRefCode } from "../utils/refCode";
 import { kyc } from "../db/schema/kyc";
 import { alias } from "drizzle-orm/mysql-core";
+import { maskPhone, maskEmail } from "../utils/maskUtils";
 
 /**
  * Helper function to get client IP address
@@ -532,6 +533,7 @@ export const adminLogin = async (
           requiresVerification: true,
           verificationType: "phone",
           phone: admin.phone,
+          maskedPhone: maskPhone(admin.phone!),
         });
         return;
       }
@@ -564,6 +566,7 @@ export const adminLogin = async (
           requiresVerification: true,
           verificationType: "email",
           email: admin.email,
+          maskedEmail: maskEmail(admin.email!),
         });
         return;
       }
