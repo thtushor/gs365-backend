@@ -7,8 +7,7 @@ dotenv.config();
 async function testSMS() {
     console.log("Testing SMS Service...");
 
-    const testNumber = "8801625265912";
-    // const testNumber = "8801854107699";
+    const testNumber = "8801854107699";
 
     console.log(`Sending test SMS to ${testNumber}...`);
 

@@ -70,7 +70,7 @@ class BdZamanItChannel extends BaseSmsChannel {
         const url = new URL(`${this.baseUrl}/api/sendsms`);
         url.searchParams.append("api_key", this.apiKey);
         url.searchParams.append("type", "text");
-        url.searchParams.append("phone", payload.to);
+        url.searchParams.append("phone", payload.to.replace("+", ""));
         url.searchParams.append("senderid", this.senderId);
         url.searchParams.append("message", payload.message);
 
