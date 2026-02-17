@@ -3,7 +3,7 @@ import { db } from "../db/connection";
 import { users } from "../db/schema";
 import { eq, and, gt, or } from "drizzle-orm";
 import { sendOTPEmail, sendPasswordResetEmail } from "../utils/emailService";
-import { sendOTPSMS } from "../utils/smsService";
+import { sendOTPSMS, sendSMS } from "../utils/smsService";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 
@@ -213,32 +213,33 @@ export const resendOtp = async (req: Request, res: Response) => {
  */
 export const forgotPassword = async (req: Request, res: Response) => {
     try {
-        const { email } = req.body;
+        const { email, phone } = req.body;
 
-        if (!email) {
+        if (!email && !phone) {
             return res.status(400).json({
                 status: false,
-                message: "Email is required",
+                message: "Email or Phone is required",
             });
         }
 
-        // Find user by email
+        // Find user by email or phone
         const user = await db.query.users.findFirst({
-            where: eq(users.email, email),
+            where: phone ? eq(users.phone, phone) : eq(users.email, email!),
         });
 
         if (!user) {
-            // Return success even if user not found (security best practice)
-            return res.json({
-                status: true,
-                message: "If the email exists, a password reset link has been sent.",
+            return res.status(404).json({
+                status: false,
+                message: phone
+                    ? "User with this phone number not found"
+                    : "User with this email not found",
             });
         }
 
         // Generate reset token
         const resetToken = crypto.randomBytes(32).toString("hex");
         const resetTokenExpiry = new Date();
-        resetTokenExpiry.setMinutes(resetTokenExpiry.getMinutes() + 30); // Token valid for 30 minutes
+        resetTokenExpiry.setMinutes(resetTokenExpiry.getMinutes() + 30);
 
         // Update user with reset token
         await db
@@ -249,24 +250,42 @@ export const forgotPassword = async (req: Request, res: Response) => {
             })
             .where(eq(users.id, user.id));
 
-        // Create reset link (adjust frontend URL as needed)
+        // Create reset link
         const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
         const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
 
-        // Send password reset email
-        const emailResult = await sendPasswordResetEmail(email, resetLink, 30);
+        if (phone) {
+            const smsMessage = `Your password reset link: ${resetLink}`;
+            const smsResult = await sendSMS(phone, smsMessage);
 
-        if (!emailResult.success) {
-            return res.status(500).json({
-                status: false,
-                message: "Failed to send password reset email. Please try again.",
+            console.log({ smsResult })
+
+            if (!smsResult.success) {
+                return res.status(500).json({
+                    status: false,
+                    message: "Failed to send password reset SMS. Please try again.",
+                });
+            }
+
+            return res.json({
+                status: true,
+                message: "If the phone number exists, a password reset link has been sent via SMS.",
+            });
+        } else {
+            const emailResult = await sendPasswordResetEmail(email!, resetLink, 30);
+
+            if (!emailResult.success) {
+                return res.status(500).json({
+                    status: false,
+                    message: "Failed to send password reset email. Please try again.",
+                });
+            }
+
+            return res.json({
+                status: true,
+                message: "If the email exists, a password reset link has been sent.",
             });
         }
-
-        return res.json({
-            status: true,
-            message: "If the email exists, a password reset link has been sent.",
-        });
     } catch (error) {
         console.error("Forgot password error:", error);
         return res.status(500).json({
