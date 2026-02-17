@@ -124,10 +124,11 @@ export const sendWelcomeEmail = async (
  * Send password reset email
  */
 export const sendPasswordResetEmail = async (
-  email: string,
+  email: string = "",
   resetLink: string,
   expiryMinutes: number = 30
 ): Promise<EmailResponse> => {
+  if (!email) return { success: false, error: "Email address is required" };
   return sendEmail({
     to: email,
     subject: "Reset Your Password - GameStar365",
