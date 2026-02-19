@@ -15,7 +15,7 @@ async function testSMS() {
         // Test 1: Generic SMS via Zaman IT
         const res1 = await sendSMS(
             testNumber,
-            "Hello from Fashion Glory! This is a test message.",
+            "Hello from TrueIt! This is a test message.",
             SmsChannel.BD_ZamanIt
         );
         console.log("Test 1 Result:", res1);
