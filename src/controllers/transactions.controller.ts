@@ -74,10 +74,10 @@ export const createDeposit = async (req: Request, res: Response) => {
 
     const [promotionData] = promotionId
       ? await db
-          .select()
-          .from(promotions)
-          .where(eq(promotions.id, promotionId))
-          .limit(1)
+        .select()
+        .from(promotions)
+        .where(eq(promotions.id, promotionId))
+        .limit(1)
       : [];
     const bonusAmount = promotionId
       ? Number(amount) * (promotionData.bonus / 100)
@@ -85,33 +85,33 @@ export const createDeposit = async (req: Request, res: Response) => {
 
     const [gatewayData] = gatewayId
       ? await db
-          .select({
-            paymentMethod: paymentMethods,
-          })
-          .from(paymentGateway)
-          .leftJoin(
-            paymentMethods,
-            eq(paymentGateway.methodId, paymentMethods.id),
-          )
-          .where(eq(paymentGateway.id, gatewayId))
-          .limit(1)
+        .select({
+          paymentMethod: paymentMethods,
+        })
+        .from(paymentGateway)
+        .leftJoin(
+          paymentMethods,
+          eq(paymentGateway.methodId, paymentMethods.id),
+        )
+        .where(eq(paymentGateway.id, gatewayId))
+        .limit(1)
       : [];
 
     const paymentMethodName = gatewayData?.paymentMethod?.name?.toLowerCase();
 
     const [currencyData] =
       paymentMethodName?.includes("international") ||
-      paymentMethodName?.includes("crypto")
+        paymentMethodName?.includes("crypto")
         ? await db
-            .select()
-            .from(currencies)
-            .where(eq(currencies.code, "USD"))
-            .limit(1)
+          .select()
+          .from(currencies)
+          .where(eq(currencies.code, "USD"))
+          .limit(1)
         : await db
-            .select()
-            .from(currencies)
-            .where(eq(currencies.code, "BDT"))
-            .limit(1);
+          .select()
+          .from(currencies)
+          .where(eq(currencies.code, "BDT"))
+          .limit(1);
 
     // console.log({ paymentMethodName })
 
@@ -269,10 +269,10 @@ export const claimNotification = async (req: Request, res: Response) => {
     const promotionId = Number(note.promotionId || 0);
     const [promotionData] = promotionId
       ? await db
-          .select()
-          .from(promotions)
-          .where(eq(promotions.id, promotionId))
-          .limit(1)
+        .select()
+        .from(promotions)
+        .where(eq(promotions.id, promotionId))
+        .limit(1)
       : [];
     const promotionTurnoverMultiply = promotionData
       ? Number(promotionData.turnoverMultiply || 0)
@@ -748,13 +748,12 @@ export const createAffiliateWithdraw = async (req: Request, res: Response) => {
           Affiliate ID <strong>#${affiliateId})</strong> has requested a withdrawal.<br/>
           Amount: <strong>${amount.toFixed(2)}</strong><br/>
           Method: <strong>${withdrawMethod}</strong><br/>
-          ${
-            withdrawMethod === "bank"
-              ? `
+          ${withdrawMethod === "bank"
+            ? `
               Bank: <strong>${bankName ?? "N/A"}</strong><br/>
               Account Holder: <strong>${accountHolderName ?? "N/A"}</strong><br/>
               Account No: <strong>${accountNumber ?? "N/A"}</strong><br/>`
-              : `
+            : `
               Wallet Address: <strong>${walletAddress ?? "N/A"}</strong><br/>
               Network: <strong>${network ?? "N/A"}</strong><br/>`
           }
@@ -764,7 +763,7 @@ export const createAffiliateWithdraw = async (req: Request, res: Response) => {
         turnoverMultiply: null,
         playerIds: String(affiliateId),
         promotionId: null,
-        link: `/affiliate-list/${affiliateId}/withdraw-history`,
+        link: `/affiliate-withdraw-requests`,
         startDate: new Date(),
         endDate: new Date(new Date().setDate(new Date().getDate() + 7)),
         status: "active",
@@ -778,13 +777,12 @@ export const createAffiliateWithdraw = async (req: Request, res: Response) => {
           Affiliate ID <strong>#${affiliateId})</strong> has requested a withdrawal.<br/>
           Amount: <strong>${amount.toFixed(2)}</strong><br/>
           Method: <strong>${withdrawMethod}</strong><br/>
-          ${
-            withdrawMethod === "bank"
-              ? `
+          ${withdrawMethod === "bank"
+            ? `
               Bank: <strong>${bankName ?? "N/A"}</strong><br/>
               Account Holder: <strong>${accountHolderName ?? "N/A"}</strong><br/>
               Account No: <strong>${accountNumber ?? "N/A"}</strong><br/>`
-              : `
+            : `
               Wallet Address: <strong>${walletAddress ?? "N/A"}</strong><br/>
               Network: <strong>${network ?? "N/A"}</strong><br/>`
           }
@@ -997,17 +995,17 @@ export const createWithdraw = async (req: Request, res: Response) => {
 
     const [currencyData] =
       paymentMethodName?.includes("international") ||
-      paymentMethodName?.includes("crypto")
+        paymentMethodName?.includes("crypto")
         ? await db
-            .select()
-            .from(currencies)
-            .where(eq(currencies.code, "USD"))
-            .limit(1)
+          .select()
+          .from(currencies)
+          .where(eq(currencies.code, "USD"))
+          .limit(1)
         : await db
-            .select()
-            .from(currencies)
-            .where(eq(currencies.code, "BDT"))
-            .limit(1);
+          .select()
+          .from(currencies)
+          .where(eq(currencies.code, "BDT"))
+          .limit(1);
 
     const [currentConversionRate] = await db
       .select({
