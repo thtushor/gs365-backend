@@ -37,7 +37,7 @@ export const website_popups = mysqlTable("website_popups", {
 });
 export const faqs = mysqlTable("faqs", {
   id: int("id").primaryKey().autoincrement(),
-  dropdownOptionsId: int("dropdown_option_id"),
+  dropdownOptionsId: int("dropdown_option_id").notNull(),
   title: varchar("title", { length: 255 }).notNull(),
   message: varchar("message", { length: 3000 }).notNull(),
   status: mysqlEnum("status", ["active", "inactive"]).default("inactive"),

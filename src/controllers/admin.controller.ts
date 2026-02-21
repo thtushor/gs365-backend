@@ -2320,12 +2320,12 @@ export const createOrUpdateWebsiteFaq = async (req: Request, res: Response) => {
         message: "Faq answer is required.",
       });
     }
-    // if (!dropdownOptionsId) {
-    //   return res.status(400).json({
-    //     status: false,
-    //     message: "Category is required.",
-    //   });
-    // }
+    if (!dropdownOptionsId) {
+      return res.status(400).json({
+        status: false,
+        message: "Category is required.",
+      });
+    }
     const validatedStatus = status === "active" ? "active" : "inactive";
 
     const finalTitle =
@@ -2340,6 +2340,7 @@ export const createOrUpdateWebsiteFaq = async (req: Request, res: Response) => {
           message,
           status: validatedStatus,
           title: finalTitle,
+          dropdownOptionsId: dropdownOptionsId,
         })
         .where(eq(faqs.id, id));
 
@@ -2352,6 +2353,7 @@ export const createOrUpdateWebsiteFaq = async (req: Request, res: Response) => {
         message,
         status: validatedStatus,
         title: finalTitle,
+        dropdownOptionsId: dropdownOptionsId,
       });
 
       return res.status(201).json({
