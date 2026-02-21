@@ -137,7 +137,7 @@ export function getClientIp(req: Request): string {
 
 export const adminRegistration = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   try {
     const {
@@ -176,7 +176,8 @@ export const adminRegistration = async (
 
     // If created by admin/superAdmin, skip verification
     const userData = (req as unknown as { user: DecodedUser | null })?.user;
-    const isAdminCreated = userData?.role === "admin" || userData?.role === "superAdmin";
+    const isAdminCreated =
+      userData?.role === "admin" || userData?.role === "superAdmin";
     if (!username) {
       res.status(400).json({ status: false, message: "Username is required" });
       return;
@@ -224,7 +225,7 @@ export const adminRegistration = async (
     if (
       userData?.role === "agent" &&
       ["admin", "superAgent", "agent", "superAffiliate", "affiliate"].includes(
-        role
+        role,
       )
     ) {
       res
@@ -247,7 +248,7 @@ export const adminRegistration = async (
     if (
       userData?.role === "affiliate" &&
       ["admin", "superAgent", "agent", "superAffiliate", "affiliate"].includes(
-        role
+        role,
       )
     ) {
       res.status(400).json({
@@ -328,8 +329,9 @@ export const adminRegistration = async (
               ? referringAdmin?.commission_percent / 2
               : commission_percent,
           designation,
-          otp: (!isAdminCreated && needsVerification) ? otp : undefined,
-          otp_expiry: (!isAdminCreated && needsVerification) ? otpExpiry : undefined,
+          otp: !isAdminCreated && needsVerification ? otp : undefined,
+          otp_expiry:
+            !isAdminCreated && needsVerification ? otpExpiry : undefined,
           isVerified: isAdminCreated ? true : !needsVerification,
           isEmailVerified: isAdminCreated ? true : !isEmailVerificationEnabled,
           isPhoneVerified: isAdminCreated ? true : !isSmsVerificationEnabled,
@@ -344,8 +346,6 @@ export const adminRegistration = async (
             await sendOTPEmail(email, otp, 10);
           }
         }
-
-
 
         if (["superAffiliate", "affiliate"].includes(role)) {
           // ✅ Notification for new affiliate (created via referral)
@@ -383,7 +383,6 @@ export const adminRegistration = async (
           });
         }
 
-
         res.status(201).json({
           status: true,
           message: "Admin registered successfully",
@@ -412,14 +411,27 @@ export const adminRegistration = async (
       referred_by,
       commission_percent,
       designation,
-      otp: (!isAdminCreated && needsVerification) ? otp : undefined,
-      otp_expiry: (!isAdminCreated && needsVerification) ? otpExpiry : undefined,
-      isVerified: isAdminCreated || ["admin", "superAdmin"].includes(role) || !needsVerification,
-      isEmailVerified: isAdminCreated || ["admin", "superAdmin"].includes(role) || !isEmailVerificationEnabled,
-      isPhoneVerified: isAdminCreated || ["admin", "superAdmin"].includes(role) || !isSmsVerificationEnabled,
+      otp: !isAdminCreated && needsVerification ? otp : undefined,
+      otp_expiry: !isAdminCreated && needsVerification ? otpExpiry : undefined,
+      isVerified:
+        isAdminCreated ||
+        ["admin", "superAdmin"].includes(role) ||
+        !needsVerification,
+      isEmailVerified:
+        isAdminCreated ||
+        ["admin", "superAdmin"].includes(role) ||
+        !isEmailVerificationEnabled,
+      isPhoneVerified:
+        isAdminCreated ||
+        ["admin", "superAdmin"].includes(role) ||
+        !isSmsVerificationEnabled,
     });
 
-    if (!isAdminCreated && !["admin", "superAdmin"].includes(role) && needsVerification) {
+    if (
+      !isAdminCreated &&
+      !["admin", "superAdmin"].includes(role) &&
+      needsVerification
+    ) {
       if (phone && isSmsVerificationEnabled) {
         const { sendOTPSMS } = await import("../utils/smsService");
         await sendOTPSMS(phone, otp, 10);
@@ -427,8 +439,6 @@ export const adminRegistration = async (
         await sendOTPEmail(email, otp, 10);
       }
     }
-
-
 
     if (["superAffiliate", "affiliate"].includes(role)) {
       // ✅ Notification for new affiliate (created via referral)
@@ -464,9 +474,6 @@ export const adminRegistration = async (
       });
     }
 
-
-
-
     res.status(201).json({
       status: true,
       message: "Admin registered successfully",
@@ -482,7 +489,7 @@ export const adminRegistration = async (
 
 export const adminLogin = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   try {
     const { userNameOrEmailorPhone, password, userType } = req.body;
@@ -679,7 +686,7 @@ const getAdminFromToken = async (req: Request) => {
 
 export const adminLogout = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -706,7 +713,7 @@ export const adminLogout = async (
 
 export const adminProfile = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -761,7 +768,7 @@ export const adminProfile = async (
 
 export const getPlayers = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   const {
     playerId,
@@ -797,7 +804,7 @@ export const getPlayers = async (
 
 export const getUserProfile = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   try {
     const { id } = req.params;
@@ -926,7 +933,7 @@ export const getAgents = async (req: Request, res: Response) => {
     // If no role is specified, filter the result to only include superAgent and agent
     if (!roleFilter && result?.data) {
       result.data = result.data.filter((admin: any) =>
-        roles.includes(admin.role)
+        roles.includes(admin.role),
       );
     }
     res.json({ status: true, ...result });
@@ -989,7 +996,7 @@ export const getAffiliates = async (req: Request, res: Response) => {
     // If no role is specified, filter the result to only include superAffiliate and affiliate
     if (!roleFilter && result?.data) {
       result.data = result.data.filter((admin: any) =>
-        roles.includes(admin.role)
+        roles.includes(admin.role),
       );
     }
     res.json({ status: true, ...result });
@@ -1001,7 +1008,7 @@ export const getAffiliates = async (req: Request, res: Response) => {
 };
 export const getSubAffiliatesListByAffiliateId = async (
   req: Request,
-  res: Response
+  res: Response,
 ) => {
   try {
     const affiliateId = Number(req.params.id);
@@ -1027,7 +1034,7 @@ export const getSubAffiliatesListByAffiliateId = async (
     const whereClauses = [
       or(
         eq(adminUsers.createdBy, affiliateId),
-        eq(adminUsers.referred_by, affiliateId)
+        eq(adminUsers.referred_by, affiliateId),
       ),
       eq(adminUsers.role, "affiliate"), // ✅ Only include users with role "affiliate"
     ];
@@ -1076,7 +1083,7 @@ export const getSubAffiliatesListByAffiliateId = async (
 };
 export const getPlayersListByAffiliateId = async (
   req: Request,
-  res: Response
+  res: Response,
 ) => {
   try {
     const affiliateId = Number(req.params.id);
@@ -1102,7 +1109,7 @@ export const getPlayersListByAffiliateId = async (
     const whereClauses = [
       or(
         eq(users.referred_by_admin_user, affiliateId),
-        eq(users.referred_by, affiliateId)
+        eq(users.referred_by, affiliateId),
       ),
     ];
 
@@ -1152,7 +1159,7 @@ export const getPlayersListByAffiliateId = async (
 export const updateAdminProfile = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> => {
   try {
     const { id } = req.params;
@@ -1248,7 +1255,7 @@ export const getDropdownsList = async (req: Request, res: Response) => {
 };
 export const addOrUpdateDropdownOption = async (
   req: Request,
-  res: Response
+  res: Response,
 ) => {
   try {
     const { id, dropdownId, title, status, imgUrl, isMenu } = req.body;
@@ -1295,8 +1302,8 @@ export const addOrUpdateDropdownOption = async (
           and(
             eq(dropdownOptions.dropdown_id, dropdownId),
             sql`LOWER(${dropdownOptions.title}) = ${title.toLowerCase()}`,
-            sql`${dropdownOptions.id} != ${id}`
-          )
+            sql`${dropdownOptions.id} != ${id}`,
+          ),
         );
 
       if (duplicate) {
@@ -1340,8 +1347,8 @@ export const addOrUpdateDropdownOption = async (
         and(
           eq(dropdownOptions.dropdown_id, dropdownId),
           eq(dropdownOptions.dropdown_id, dropdownId),
-          sql`LOWER(${dropdownOptions.title}) = ${title.toLowerCase()}`
-        )
+          sql`LOWER(${dropdownOptions.title}) = ${title.toLowerCase()}`,
+        ),
       );
 
     if (existingOption) {
@@ -1422,7 +1429,7 @@ export const deleteDropdownOption = async (req: Request, res: Response) => {
 };
 export const updateDropdownOptionStatus = async (
   req: Request,
-  res: Response
+  res: Response,
 ) => {
   try {
     const { id } = req.params;
@@ -1497,7 +1504,7 @@ export const getDropdownOptionsList = async (req: Request, res: Response) => {
 
     const result = await getPaginatedDropdownOptions(
       Number(page),
-      Number(pageSize)
+      Number(pageSize),
     );
 
     console.log(result);
@@ -1527,7 +1534,7 @@ export const addOrUpdatePromotion = async (req: Request, res: Response) => {
 
     // Validation
     for (const [field, errorMessage] of Object.entries(
-      createPromotionRequiredFields
+      createPromotionRequiredFields,
     )) {
       if (!req.body?.[field]) {
         return res.status(400).json({ status: false, message: errorMessage });
@@ -1581,8 +1588,8 @@ export const addOrUpdatePromotion = async (req: Request, res: Response) => {
       .where(
         and(
           inArray(dropdownOptions.id, promotionTypeIds),
-          eq(dropdownOptions.status, "active")
-        )
+          eq(dropdownOptions.status, "active"),
+        ),
       );
 
     if (validTypeOptions.length !== promotionTypeIds.length) {
@@ -1685,7 +1692,7 @@ export const getPromotionsList = async (req: Request, res: Response) => {
       Number(page),
       Number(pageSize),
       String(name),
-      statusFilter
+      statusFilter,
     );
 
     return res.status(200).json({
@@ -2060,7 +2067,7 @@ export const getFeaturedGame = async (req: Request, res: Response) => {
 
 export const createOrUpdateAnnouncement = async (
   req: Request,
-  res: Response
+  res: Response,
 ) => {
   try {
     const { id, description, status, title, dateRange } = req.body;
@@ -2141,7 +2148,7 @@ export const getAllAnnouncements = async (req: Request, res: Response) => {
 
     const result = await getPaginatedAnnouncements(
       Number(page),
-      Number(pageSize)
+      Number(pageSize),
     );
 
     return res.status(200).json({
@@ -2179,7 +2186,7 @@ export const deleteAnnouncement = async (req: Request, res: Response) => {
 
 export const createOrUpdateWebsitePopup = async (
   req: Request,
-  res: Response
+  res: Response,
 ) => {
   try {
     const { id, message, status, title, dateRange } = req.body;
@@ -2313,12 +2320,12 @@ export const createOrUpdateWebsiteFaq = async (req: Request, res: Response) => {
         message: "Faq answer is required.",
       });
     }
-    if (!dropdownOptionsId) {
-      return res.status(400).json({
-        status: false,
-        message: "Category is required.",
-      });
-    }
+    // if (!dropdownOptionsId) {
+    //   return res.status(400).json({
+    //     status: false,
+    //     message: "Category is required.",
+    //   });
+    // }
     const validatedStatus = status === "active" ? "active" : "inactive";
 
     const finalTitle =
@@ -2333,7 +2340,6 @@ export const createOrUpdateWebsiteFaq = async (req: Request, res: Response) => {
           message,
           status: validatedStatus,
           title: finalTitle,
-          dropdownOptionsId: dropdownOptionsId,
         })
         .where(eq(faqs.id, id));
 
@@ -2346,7 +2352,6 @@ export const createOrUpdateWebsiteFaq = async (req: Request, res: Response) => {
         message,
         status: validatedStatus,
         title: finalTitle,
-        dropdownOptionsId: dropdownOptionsId,
       });
 
       return res.status(201).json({
@@ -2425,7 +2430,7 @@ export const deleteFaq = async (req: Request, res: Response) => {
 
 export const createOrUpdateVideoAdvertisement = async (
   req: Request,
-  res: Response
+  res: Response,
 ) => {
   try {
     const { id, description, videoUrl, status, title, dateRange } = req.body;
@@ -2787,7 +2792,7 @@ export const deleteAmbassador = async (req: Request, res: Response) => {
 
 export const createOrUpdateGamingLicenses = async (
   req: Request,
-  res: Response
+  res: Response,
 ) => {
   try {
     const { id, name, icon, duration, status } = req.body;
@@ -2894,7 +2899,7 @@ export const deleteGamingLicenses = async (req: Request, res: Response) => {
 
 export const createOrUpdateResponsibleGaming = async (
   req: Request,
-  res: Response
+  res: Response,
 ) => {
   try {
     const { id, name, icon, duration, status } = req.body;
@@ -3138,7 +3143,7 @@ export const getGameProvidersList = async (req: Request, res: Response) => {
 
     if (parentId) {
       const allSubProviders = await getGameSubProviderByGameProviderId(
-        Number(parentId)
+        Number(parentId),
       );
       return res.status(200).json({
         status: true,
@@ -3169,7 +3174,7 @@ export const getGameProvidersList = async (req: Request, res: Response) => {
       Number(pageSize),
       Number(parentId),
       String(name),
-      statusFilter
+      statusFilter,
     );
 
     return res.status(200).json({
@@ -3303,7 +3308,7 @@ export const getGameList = async (req: Request, res: Response) => {
       Number(page),
       Number(pageSize),
       String(name),
-      statusFilter
+      statusFilter,
     );
 
     return res.status(200).json({
@@ -3324,7 +3329,7 @@ export const getGameList = async (req: Request, res: Response) => {
 // sports provider
 export const addOrUpdateSportsProvider = async (
   req: Request,
-  res: Response
+  res: Response,
 ) => {
   try {
     const userData = (req as unknown as { user: DecodedUser | null })?.user;
@@ -3462,7 +3467,7 @@ export const getSportsProvidersList = async (req: Request, res: Response) => {
 
     if (parentId) {
       const allSubProviders = await getSportSubProviderBySportProviderId(
-        Number(parentId)
+        Number(parentId),
       );
       return res.status(200).json({
         status: true,
@@ -3494,7 +3499,7 @@ export const getSportsProvidersList = async (req: Request, res: Response) => {
       Number(pageSize),
       parentId,
       String(name),
-      statusFilter
+      statusFilter,
     );
 
     return res.status(200).json({
@@ -3632,7 +3637,7 @@ export const getSportList = async (req: Request, res: Response) => {
       Number(pageSize),
       validPublicList,
       String(name),
-      statusFilter
+      statusFilter,
     );
 
     return res.status(200).json({
@@ -3719,7 +3724,7 @@ export const updateMenuPriority = async (req: Request, res: Response) => {
     const swapMenuPriorityIfExists = async (
       table: any,
       updatedPosition: number,
-      currentPosition: number
+      currentPosition: number,
     ) => {
       const existingItem = await db
         .select()
@@ -3740,17 +3745,17 @@ export const updateMenuPriority = async (req: Request, res: Response) => {
       await swapMenuPriorityIfExists(
         game_providers,
         updatedPosition,
-        currentPosition
+        currentPosition,
       );
       await swapMenuPriorityIfExists(
         sports_providers,
         updatedPosition,
-        currentPosition
+        currentPosition,
       );
       await swapMenuPriorityIfExists(
         dropdownOptions,
         updatedPosition,
-        currentPosition
+        currentPosition,
       );
     }
 
@@ -3873,10 +3878,9 @@ export const createUpdateKyc = async (req: Request, res: Response) => {
       }
     };
 
-
     const insertKycNotification = async (isUpdate: boolean) => {
       const type: "admin_player_kyc" | "admin_affiliate_kyc" =
-        (holderType === "player" ? "admin_player_kyc" : "admin_affiliate_kyc");
+        holderType === "player" ? "admin_player_kyc" : "admin_affiliate_kyc";
 
       const title = isUpdate
         ? `KYC updated for ${holderType} #${holderId}`
@@ -3895,7 +3899,10 @@ export const createUpdateKyc = async (req: Request, res: Response) => {
         description,
         playerIds: String(holderId),
         startDate: new Date(),
-        link: holderType === "player" ? `/kyc-request-history` : `/affiliate-list/${holderId}/kyc-verification`,
+        link:
+          holderType === "player"
+            ? `/kyc-request-history`
+            : `/affiliate-list/${holderId}/kyc-verification`,
         endDate: new Date(new Date().setDate(new Date().getDate() + 7)), // visible for 7 days
         status: "active",
         createdBy: holderId, // or admin ID if available
@@ -3954,7 +3961,7 @@ export const createUpdateKyc = async (req: Request, res: Response) => {
 
 export const sendKycVerificationRequest = async (
   req: Request,
-  res: Response
+  res: Response,
 ) => {
   try {
     const { holderType, holderId } = req.body;
@@ -3997,8 +4004,8 @@ export const sendKycVerificationRequest = async (
         .where(
           and(
             eq(kyc.holderId, Number(holderId)),
-            eq(kyc.holderType, holderType)
-          )
+            eq(kyc.holderType, holderType),
+          ),
         );
 
       if (updatedKyc.length) {
@@ -4008,8 +4015,8 @@ export const sendKycVerificationRequest = async (
           .where(
             and(
               eq(kyc.holderId, Number(holderId)),
-              eq(kyc.holderType, holderType)
-            )
+              eq(kyc.holderType, holderType),
+            ),
           );
         console.log("updated kyc", result);
       }
@@ -4036,8 +4043,8 @@ export const sendKycVerificationRequest = async (
         .where(
           and(
             eq(kyc.holderId, Number(holderId)),
-            eq(kyc.holderType, holderType)
-          )
+            eq(kyc.holderType, holderType),
+          ),
         );
 
       if (updatedKyc.length) {
@@ -4047,8 +4054,8 @@ export const sendKycVerificationRequest = async (
           .where(
             and(
               eq(kyc.holderId, Number(holderId)),
-              eq(kyc.holderType, holderType)
-            )
+              eq(kyc.holderType, holderType),
+            ),
           );
         console.log("updated kyc", result);
       }
@@ -4142,8 +4149,8 @@ export const updateKycStatus = async (req: Request, res: Response) => {
           .where(
             and(
               eq(kyc.holderId, Number(holderId)),
-              eq(kyc.holderType, holderType)
-            )
+              eq(kyc.holderType, holderType),
+            ),
           );
 
         if (updatedKyc.length) {
@@ -4153,8 +4160,8 @@ export const updateKycStatus = async (req: Request, res: Response) => {
             .where(
               and(
                 eq(kyc.holderId, Number(holderId)),
-                eq(kyc.holderType, holderType)
-              )
+                eq(kyc.holderType, holderType),
+              ),
             );
           console.log("updated kyc", result);
         }
@@ -4181,8 +4188,8 @@ export const updateKycStatus = async (req: Request, res: Response) => {
           .where(
             and(
               eq(kyc.holderId, Number(holderId)),
-              eq(kyc.holderType, holderType)
-            )
+              eq(kyc.holderType, holderType),
+            ),
           );
 
         if (updatedKyc.length) {
@@ -4192,8 +4199,8 @@ export const updateKycStatus = async (req: Request, res: Response) => {
             .where(
               and(
                 eq(kyc.holderId, Number(holderId)),
-                eq(kyc.holderType, holderType)
-              )
+                eq(kyc.holderType, holderType),
+              ),
             );
           console.log("updated kyc", result);
         }
@@ -4242,16 +4249,14 @@ export const getKycList = async (req: Request, res: Response) => {
     // Single KYC by ID
     // Add kycId and holderType filter if provided
     if (Boolean(Number(kycId || 0))) {
-
       whereClauses.push(eq(kyc.holderId, Number(kycId || 0)));
 
       if (holderType) {
         whereClauses.push(
-          eq(kyc.holderType, holderType as "player" | "affiliate" | "agent")
+          eq(kyc.holderType, holderType as "player" | "affiliate" | "agent"),
         );
       }
     }
-
 
     // Base query with LEFT JOINs for holder details
     const baseQuery = db
@@ -4272,31 +4277,30 @@ export const getKycList = async (req: Request, res: Response) => {
         dob: kyc.dob,
         holderUsername:
           sql<string>`COALESCE(users.username, admin_users.username)`.as(
-            "holderUsername"
+            "holderUsername",
           ),
         holderEmail: sql<string>`COALESCE(users.email, admin_users.email)`.as(
-          "holderEmail"
+          "holderEmail",
         ),
         holderKycStatus:
           sql<string>`COALESCE(users.kyc_status, admin_users.kyc_status)`.as(
-            "holderKycStatus"
+            "holderKycStatus",
           ),
       })
       .from(kyc)
       .leftJoin(
         users,
-        and(eq(kyc.holderId, users.id), eq(kyc.holderType, "player"))
+        and(eq(kyc.holderId, users.id), eq(kyc.holderType, "player")),
       )
       .leftJoin(
         adminUsers,
         and(
           eq(kyc.holderId, adminUsers.id),
-          inArray(kyc.holderType, ["affiliate", "agent"])
-        )
+          inArray(kyc.holderType, ["affiliate", "agent"]),
+        ),
       )
       .where(and(...whereClauses))
       .orderBy(desc(kyc.created_at));
-
 
     // Paginated list
     const [totalCountResult] = await db
@@ -4363,8 +4367,8 @@ export const createOrUpdateConversion = async (req: Request, res: Response) => {
         .where(
           and(
             eq(currencyConversion.fromCurrency, fromCurrency),
-            eq(currencyConversion.toCurrency, toCurrency)
-          )
+            eq(currencyConversion.toCurrency, toCurrency),
+          ),
         );
     }
 
@@ -4467,14 +4471,14 @@ export const getConversionList = async (req: Request, res: Response) => {
       .from(currencyConversion)
       .leftJoin(
         fromCurrency,
-        eq(currencyConversion.fromCurrency, fromCurrency.id)
+        eq(currencyConversion.fromCurrency, fromCurrency.id),
       )
       .leftJoin(toCurrency, eq(currencyConversion.toCurrency, toCurrency.id));
 
     if (id) {
       // Add where clause directly before execution
       const [single] = await baseQuery.where(
-        eq(currencyConversion.id, Number(id))
+        eq(currencyConversion.id, Number(id)),
       );
 
       if (!single) {
@@ -4542,8 +4546,8 @@ export const createCustomNotification = async (req: Request, res: Response) => {
     try {
       const targetIds: number[] = Array.isArray(playerIds)
         ? playerIds
-          .map((v: any) => Number(v))
-          .filter((v: any) => Number.isFinite(v) && v > 0)
+            .map((v: any) => Number(v))
+            .filter((v: any) => Number.isFinite(v) && v > 0)
         : [];
       const uniqueIds = Array.from(new Set(targetIds));
       uniqueIds.forEach((uid) => {
