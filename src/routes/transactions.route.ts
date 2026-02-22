@@ -11,6 +11,7 @@ import {
   claimSpinBonus,
   getAffiliateBalanceHistory,
   settleAffiliateCommissions,
+  getDetailedAffiliateStats,
 } from "../controllers/transactions.controller";
 import { asyncHandler } from "../utils/asyncHandler";
 import { verifyToken } from "../middlewares/verifyToken";
@@ -24,6 +25,7 @@ router.post("/withdraw", asyncHandler(createWithdraw));
 router.post("/affiliate-withdraw", asyncHandler(createAffiliateWithdraw));
 router.get("/affiliate-balance/:affiliateId", asyncHandler(getAffiliateBalanceHistory));
 router.post("/affiliate/settle-commissions", asyncHandler(settleAffiliateCommissions));
+router.get("/affiliate-detailed-stats/:affiliateId", asyncHandler(getDetailedAffiliateStats));
 router.get("/", asyncHandler(getTransactions));
 router.post("/:id/status", asyncHandler(updateTransactionStatus));
 router.post(

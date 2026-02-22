@@ -11,6 +11,15 @@ export interface AffiliateBalance {
     pendingWithdrawal: number;
 }
 
+export interface DetailedAffiliateStats {
+    totalCommission: number;
+    settledCommission: number;
+    totalWithdraw: number;
+    settledWithdraw: number;
+    pendingWithdraw: number;
+    rejectedWithdraw: number;
+}
+
 export class AffiliateBalanceModel {
     /**
      * Calculates balance and statistics for a specific affiliate.
@@ -67,6 +76,50 @@ export class AffiliateBalanceModel {
             };
         } catch (error) {
             console.error("Error calculating affiliate balance:", error);
+            throw error;
+        }
+    }
+
+    /**
+     * Fetches detailed statistics for an affiliate including commissions and withdrawals.
+     * 
+     * @param affiliateId The ID of the affiliate
+     * @returns Detailed statistics object
+     */
+    static async getDetailedAffiliateStats(affiliateId: number): Promise<DetailedAffiliateStats> {
+        try {
+            // 1. Commission Statistics
+            const [commissionStats] = await db
+                .select({
+                    totalCommission: sql<number>`COALESCE(SUM(${commission.commissionAmount}), 0)`,
+                    settledCommission: sql<number>`COALESCE(SUM(CASE WHEN ${commission.status} = 'settled' THEN ${commission.commissionAmount} ELSE 0 END), 0)`,
+                })
+                .from(commission)
+                .where(eq(commission.adminUserId, affiliateId));
+
+            // 2. Withdrawal Statistics
+            const [withdrawStats] = await db
+                .select({
+                    totalWithdraw: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.status} = 'approved' THEN ${transactions.amount} ELSE 0 END), 0)`,
+                    settledWithdraw: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.status} = 'approved' AND ${transactions.settledByTransactionId} IS NOT NULL THEN ${transactions.amount} ELSE 0 END), 0)`,
+                    pendingWithdraw: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.status} = 'pending' THEN ${transactions.amount} ELSE 0 END), 0)`,
+                    rejectedWithdraw: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.status} = 'rejected' THEN ${transactions.amount} ELSE 0 END), 0)`,
+                })
+                .from(transactions)
+                .where(
+                    sql`${transactions.affiliateId} = ${affiliateId} AND ${transactions.type} = 'withdraw'`
+                );
+
+            return {
+                totalCommission: Number(commissionStats?.totalCommission || 0),
+                settledCommission: Number(commissionStats?.settledCommission || 0),
+                totalWithdraw: Number(withdrawStats?.totalWithdraw || 0),
+                settledWithdraw: Number(withdrawStats?.settledWithdraw || 0),
+                pendingWithdraw: Number(withdrawStats?.pendingWithdraw || 0),
+                rejectedWithdraw: Number(withdrawStats?.rejectedWithdraw || 0),
+            };
+        } catch (error) {
+            console.error("Error fetching detailed affiliate stats:", error);
             throw error;
         }
     }

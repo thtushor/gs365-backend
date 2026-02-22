@@ -1887,3 +1887,32 @@ export const settleAffiliateCommissions = async (req: Request, res: Response) =>
     });
   }
 };
+
+export const getDetailedAffiliateStats = async (req: Request, res: Response) => {
+  try {
+    const { affiliateId } = req.params;
+
+    if (!affiliateId || Number.isNaN(Number(affiliateId))) {
+      return res.status(400).json({
+        status: false,
+        message: "Valid Affiliate ID is required",
+      });
+    }
+
+    const stats = await AffiliateBalanceModel.getDetailedAffiliateStats(
+      Number(affiliateId),
+    );
+
+    return res.status(200).json({
+      status: true,
+      data: stats,
+    });
+  } catch (error) {
+    console.error("Error fetching detailed affiliate stats:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Internal Server Error",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
