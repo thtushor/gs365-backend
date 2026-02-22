@@ -886,3 +886,22 @@ export const updateNotificationStatus = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const updateUserActivity = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    if (!user || user.userType !== "user") {
+      return res.status(401).json({ status: false, message: "Unauthorized" });
+    }
+
+    await db
+      .update(users)
+      .set({ lastActivity: new Date() })
+      .where(eq(users.id, user.id));
+
+    return res.json({ status: true, message: "Activity updated" });
+  } catch (error) {
+    console.error("Update activity error:", error);
+    return res.status(500).json({ status: false, message: "Internal Server Error" });
+  }
+};

@@ -6,7 +6,7 @@ import { betResults } from "../db/schema/betResults";
 import { transactions } from "../db/schema/transactions";
 import { BalanceModel } from "./balance.model";
 import { generateJWT, verifyJwt } from "../utils/jwt";
-import { dropdownOptions, turnover } from "../db/schema";
+import { dropdownOptions, turnover, users } from "../db/schema";
 import { CommissionData, CommissionModel } from "./commission.model";
 import { getUserById } from "./user.model";
 import { getAdminById } from "./admin.model";
@@ -534,6 +534,13 @@ export const GameModel = {
         }
 
         console.log("Update result:", result);
+
+        // Update user last activity
+        await db
+          .update(users)
+          .set({ lastActivity: new Date() })
+          .where(eq(users.id, gameResult.userId));
+
       } catch (updateError) {
         console.error("Error during update:", updateError);
         console.error("Update data:", updateData);

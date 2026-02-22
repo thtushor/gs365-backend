@@ -15,6 +15,7 @@ import {
   logoutUser,
   getMyNotifications,
   updateNotificationStatus,
+  updateUserActivity,
 } from "../controllers/user.controller";
 import { verifyToken } from "../middlewares/verifyToken";
 import { asyncHandler } from "../utils/asyncHandler";
@@ -56,6 +57,8 @@ router.use(verifyToken);
 router.get("/profile", (req, res, next) => {
   userProfile(req, res).catch(next);
 });
+
+router.post("/update-activity", asyncHandler(updateUserActivity));
 
 // Admin/Management routes
 router.get("/", (req, res, next) => {
