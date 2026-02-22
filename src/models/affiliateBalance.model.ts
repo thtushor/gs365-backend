@@ -12,7 +12,11 @@ export interface AffiliateBalance {
 }
 
 export interface DetailedAffiliateStats {
+    totalProfit: number;
+    totalLoss: number;
     totalCommission: number;
+    settledProfit: number;
+    settledLoss: number;
     settledCommission: number;
     totalWithdraw: number;
     settledWithdraw: number;
@@ -91,11 +95,19 @@ export class AffiliateBalanceModel {
             // 1. Commission Statistics
             const [commissionStats] = await db
                 .select({
-                    totalCommission: sql<number>`COALESCE(SUM(${commission.commissionAmount}), 0)`,
-                    settledCommission: sql<number>`COALESCE(SUM(CASE WHEN ${commission.status} = 'settled' THEN ${commission.commissionAmount} ELSE 0 END), 0)`,
+                    totalProfit: sql<number>`COALESCE(SUM(CASE WHEN ${betResults.betStatus} = 'loss' THEN ${commission.commissionAmount} ELSE 0 END), 0)`,
+                    totalLoss: sql<number>`COALESCE(SUM(CASE WHEN ${betResults.betStatus} = 'win' THEN ${commission.commissionAmount} ELSE 0 END), 0)`,
+                    settledProfit: sql<number>`COALESCE(SUM(CASE WHEN ${commission.status} = 'settled' AND ${betResults.betStatus} = 'loss' THEN ${commission.commissionAmount} ELSE 0 END), 0)`,
+                    settledLoss: sql<number>`COALESCE(SUM(CASE WHEN ${commission.status} = 'settled' AND ${betResults.betStatus} = 'win' THEN ${commission.commissionAmount} ELSE 0 END), 0)`,
                 })
                 .from(commission)
+                .leftJoin(betResults, eq(commission.betResultId, betResults.id))
                 .where(eq(commission.adminUserId, affiliateId));
+
+            const totalProfit = Number(commissionStats?.totalProfit || 0);
+            const totalLoss = Number(commissionStats?.totalLoss || 0);
+            const settledProfit = Number(commissionStats?.settledProfit || 0);
+            const settledLoss = Number(commissionStats?.settledLoss || 0);
 
             // 2. Withdrawal Statistics
             const [withdrawStats] = await db
@@ -111,8 +123,12 @@ export class AffiliateBalanceModel {
                 );
 
             return {
-                totalCommission: Number(commissionStats?.totalCommission || 0),
-                settledCommission: Number(commissionStats?.settledCommission || 0),
+                totalProfit,
+                totalLoss,
+                totalCommission: totalProfit - totalLoss,
+                settledProfit,
+                settledLoss,
+                settledCommission: settledProfit - settledLoss,
                 totalWithdraw: Number(withdrawStats?.totalWithdraw || 0),
                 settledWithdraw: Number(withdrawStats?.settledWithdraw || 0),
                 pendingWithdraw: Number(withdrawStats?.pendingWithdraw || 0),
