@@ -1,6 +1,6 @@
+import "dotenv/config";
 import { db, pool } from "./db/connection";
 import { betResults, commission, transactions } from "./db/schema";
-import "dotenv/config";
 
 const clearHistory = async () => {
     try {
