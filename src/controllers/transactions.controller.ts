@@ -1602,7 +1602,6 @@ export const updateAffiliateWithdrawStatus = async (
         .json({ status: false, message: "Transaction not found" });
     }
 
-    const affiliateId = existing.affiliateId;
     const processedBy = (req as any)?.user?.id ?? null;
     const updatePayload: any = {
       status: status as any,
@@ -1620,13 +1619,6 @@ export const updateAffiliateWithdrawStatus = async (
     await AdminMainBalanceModel.updateByTransactionId(id, {
       status: status as any, // Update status to match transaction
     });
-
-    // Apply extra logic based on status
-    if (status === "approved") {
-      // Logic removed as per request
-    } else if (status === "rejected") {
-      // Logic removed as per request
-    }
 
     const [updated] = await db
       .select()
