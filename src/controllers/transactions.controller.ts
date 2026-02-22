@@ -661,6 +661,7 @@ export const createAffiliateWithdraw = async (req: Request, res: Response) => {
       iban?: string;
       walletAddress?: string;
       network?: string;
+      settleCommissions?: boolean;
     };
 
     const user = (req as unknown as { user: any }).user as any;
@@ -726,6 +727,7 @@ export const createAffiliateWithdraw = async (req: Request, res: Response) => {
         iban: iban ?? null,
         walletAddress: walletAddress ?? null,
         network: network ?? null,
+        isSettlementRequested: !!req.body.settleCommissions,
       } as any);
 
       // ✅ Create admin notification
@@ -787,18 +789,17 @@ export const createAffiliateWithdraw = async (req: Request, res: Response) => {
       return { transactionId, customTransactionId, askUserToSettleCommissions };
     });
 
-    return res.status(201).json({
+    return res.status(200).json({
       status: true,
-      message: "Withdrawal request created successfully",
+      message: "Affiliate withdrawal request created successfully",
       data: result,
-      askUserToSettleCommissions: result.askUserToSettleCommissions
     });
-  } catch (err) {
-    console.error("createAffiliateWithdraw error", err);
+  } catch (error) {
+    console.error("Error creating affiliate withdrawal:", error);
     return res.status(500).json({
       status: false,
       message: "Internal Server Error",
-      errors: err,
+      error: error instanceof Error ? error.message : "Unknown error",
     });
   }
 };
@@ -1580,7 +1581,6 @@ export const updateAffiliateWithdrawStatus = async (
   req: Request,
   res: Response,
 ) => {
-  const tx = db; // If you use transaction wrapper, replace with `await db.transaction(...)`
   try {
     const id = Number(req.params.id);
     const { status, notes } = req.body as { status?: string; notes?: string };
@@ -1600,50 +1600,83 @@ export const updateAffiliateWithdrawStatus = async (
       });
     }
 
-    const [existing] = await db
-      .select()
-      .from(transactions)
-      .where(eq(transactions.id, id));
-
-    if (!existing) {
-      return res
-        .status(404)
-        .json({ status: false, message: "Transaction not found" });
-    }
-
     const processedBy = (req as any)?.user?.id ?? null;
-    const updatePayload: any = {
-      status: status as any,
-      processedAt: new Date(),
-    };
-    if (processedBy) updatePayload.processedBy = Number(processedBy);
-    if (typeof notes === "string") updatePayload.notes = notes;
 
-    await tx
-      .update(transactions)
-      .set(updatePayload)
-      .where(eq(transactions.id, id));
+    const result = await db.transaction(async (tx) => {
+      const [existing] = await tx
+        .select()
+        .from(transactions)
+        .where(eq(transactions.id, id))
+        .for("update");
 
-    // Update corresponding adminMainBalance records to match transaction status
-    await AdminMainBalanceModel.updateByTransactionId(id, {
-      status: status as any, // Update status to match transaction
+      if (!existing) {
+        throw new Error("Transaction not found");
+      }
+
+      // 1. Update Transaction status
+      const updatePayload: any = {
+        status: status as any,
+        processedAt: new Date(),
+      };
+      if (processedBy) updatePayload.processedBy = Number(processedBy);
+      if (typeof notes === "string") updatePayload.notes = notes;
+
+      await tx
+        .update(transactions)
+        .set(updatePayload)
+        .where(eq(transactions.id, id));
+
+      // 2. Handle Commission Settlement Logic
+      if (status === "approved" && existing.isSettlementRequested) {
+        // Mark all 'approved' commissions for this affiliate as 'settled'
+        await tx
+          .update(commission)
+          .set({
+            status: "settled",
+            settlementTransactionId: id,
+          })
+          .where(
+            and(
+              eq(commission.adminUserId, Number(existing.affiliateId)),
+              eq(commission.status, "approved")
+            )
+          );
+      } else if (status === "rejected") {
+        // If it was previously approved and settled, we revert the commissions
+        // Find commissions tied to THIS transaction
+        await tx
+          .update(commission)
+          .set({
+            status: "approved",
+            settlementTransactionId: null,
+          })
+          .where(eq(commission.settlementTransactionId, id));
+      }
+
+      // 3. Update corresponding adminMainBalance records (if any)
+      await AdminMainBalanceModel.updateByTransactionId(id, {
+        status: status as any,
+      }, tx);
+
+      const [updated] = await tx
+        .select()
+        .from(transactions)
+        .where(eq(transactions.id, id));
+
+      return updated;
     });
-
-    const [updated] = await db
-      .select()
-      .from(transactions)
-      .where(eq(transactions.id, id));
 
     return res.status(200).json({
       status: true,
       message: `Transaction status updated to ${status}`,
-      data: updated,
+      data: result,
     });
   } catch (err) {
-    console.error("updateTransactionStatus error", err);
-    return res
-      .status(500)
-      .json({ status: false, message: "Internal Server Error", errors: err });
+    console.error("updateAffiliateWithdrawStatus error", err);
+    return res.status(500).json({
+      status: false,
+      message: err instanceof Error ? err.message : "Internal Server Error",
+    });
   }
 };
 
@@ -1784,7 +1817,11 @@ export const getAffiliateBalanceHistory = async (req: Request, res: Response) =>
 
 export const settleAffiliateCommissions = async (req: Request, res: Response) => {
   try {
-    const { affiliateId, settle } = req.body as { affiliateId: number; settle: boolean };
+    const { affiliateId, settle, transactionId } = req.body as {
+      affiliateId: number;
+      settle: boolean;
+      transactionId?: number;
+    };
 
     if (!affiliateId) {
       return res.status(400).json({
@@ -1803,7 +1840,10 @@ export const settleAffiliateCommissions = async (req: Request, res: Response) =>
     // Mark all 'approved' commissions as 'settled' for this affiliate
     await db
       .update(commission)
-      .set({ status: "settled" })
+      .set({
+        status: "settled",
+        settlementTransactionId: transactionId || null
+      })
       .where(
         and(
           eq(commission.adminUserId, Number(affiliateId)),

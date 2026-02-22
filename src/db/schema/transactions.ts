@@ -6,6 +6,7 @@ import {
   text,
   datetime,
   mysqlEnum,
+  boolean,
 } from "drizzle-orm/mysql-core";
 import { relations, sql } from "drizzle-orm";
 import { users } from "./users";
@@ -87,6 +88,7 @@ export const transactions = mysqlTable("transactions", {
   processedBy: int("processed_by"),
   processedByUser: int("processedByUser"),
   processedAt: datetime("processed_at"),
+  isSettlementRequested: boolean("is_settlement_requested").default(false),
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updated_at").default(
     sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`,

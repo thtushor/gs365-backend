@@ -22,12 +22,12 @@ import { currencies } from "../db/schema/currency";
 export interface AdminMainBalanceData {
   amount: number;
   type:
-    | "admin_deposit"
-    | "player_deposit"
-    | "promotion"
-    | "spin_bonus"
-    | "player_withdraw"
-    | "admin_withdraw";
+  | "admin_deposit"
+  | "player_deposit"
+  | "promotion"
+  | "spin_bonus"
+  | "player_withdraw"
+  | "admin_withdraw";
   status?: "approved" | "pending" | "rejected";
   promotionId?: number;
   transactionId?: number;
@@ -196,6 +196,7 @@ export const AdminMainBalanceModel = {
   async updateByTransactionId(
     transactionId: number,
     data: Partial<AdminMainBalanceData>,
+    tx?: any,
   ): Promise<boolean> {
     try {
       const updateData: any = {};
@@ -217,7 +218,7 @@ export const AdminMainBalanceModel = {
         updateData.createdByAdmin = data.createdByAdmin;
       if (data.notes !== undefined) updateData.notes = data.notes;
 
-      await db
+      await (tx ?? db)
         .update(adminMainBalance)
         .set(updateData)
         .where(eq(adminMainBalance.transactionId, transactionId));

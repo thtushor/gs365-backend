@@ -42,6 +42,7 @@ export const commission = mysqlTable("commission", {
 
   // Additional tracking
   notes: varchar("notes", { length: 500 }),
+  settlementTransactionId: int("settlement_transaction_id"),
 
   // Audit fields
   createdBy: varchar("created_by", { length: 200 }),
