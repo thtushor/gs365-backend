@@ -373,113 +373,113 @@ export const GameModel = {
 
         const getPlayerData = await getUserById(gameResult.userId)
 
-        const affiliateData = getPlayerData.referred_by_admin_user ? await getAdminById(getPlayerData.referred_by_admin_user): undefined
+        const affiliateData = getPlayerData.referred_by_admin_user ? await getAdminById(getPlayerData.referred_by_admin_user) : undefined
 
         // console.log({affiliateData,getPlayerData})
 
         if (affiliateData && (affiliateData.role === "affiliate" || affiliateData.role === "superAffiliate")) {
           const lossAmount = Number(update?.lossAmount || 0);
           const winAmount = Number(update?.winAmount || 0);
-      
-          
+
+
           // Calculate commission based on loss or win
           const baseAmount = lossAmount > 0 ? lossAmount : (winAmount > 0 ? winAmount : 0);
-          
+
           if (baseAmount > 0) {
             const affiliateCommissionPercent = Number(affiliateData?.commission_percent || 0);
-            
+
             if (affiliateData.role === "superAffiliate") {
               // Super Affiliate: Only one commission entry with full percentage
-              const calculatedCommission = lossAmount > 0 
+              const calculatedCommission = lossAmount > 0
                 ? baseAmount * (affiliateCommissionPercent / 100)
                 : -baseAmount * (affiliateCommissionPercent / 100);
-              
+
               const superAffiliateCommissionData: CommissionData = {
                 adminUserId: affiliateData.id,
                 playerId: gameResult.userId,
-                commissionAmount: calculatedCommission.toFixed(2),
+                commissionAmount: Math.round(calculatedCommission).toString(),
                 status: "approved",
                 createdBy: "system",
                 betResultId: result?.[0]?.insertId,
                 percentage: affiliateCommissionPercent.toString(),
               };
-              
-             Number(calculatedCommission)!=0 && await CommissionModel.createCommission(superAffiliateCommissionData);
-              
+
+              Number(calculatedCommission) != 0 && await CommissionModel.createCommission(superAffiliateCommissionData);
+
             } else if (affiliateData.role === "affiliate") {
               // Affiliate: Check if they have a super affiliate upline
               const superAffiliateData = affiliateData.referred_by ? await getAdminById(affiliateData.referred_by) : undefined;
 
-              console.log({superAffiliateData})
-              
+              console.log({ superAffiliateData })
+
               if (superAffiliateData && superAffiliateData.role === "superAffiliate") {
                 const affiliateCommissionPercent = Number(affiliateData?.commission_percent || 0);
-                const superAffiliateCommissionPercent = Number(superAffiliateData?.commission_percent || 0)-Number(affiliateCommissionPercent);
-                
+                const superAffiliateCommissionPercent = Number(superAffiliateData?.commission_percent || 0) - Number(affiliateCommissionPercent);
+
                 // Calculate affiliate commission (their own percentage)
-                const affiliateCommission = lossAmount > 0 
+                const affiliateCommission = lossAmount > 0
                   ? baseAmount * (affiliateCommissionPercent / 100)
                   : -baseAmount * (affiliateCommissionPercent / 100);
-                
+
                 // Calculate super affiliate commission (their percentage from sub-affiliate)
-                const superAffiliateCommission = lossAmount > 0 
+                const superAffiliateCommission = lossAmount > 0
                   ? baseAmount * (superAffiliateCommissionPercent / 100)
                   : -baseAmount * (superAffiliateCommissionPercent / 100);
-                
+
                 // Create commission for affiliate
                 const affiliateCommissionData: CommissionData = {
                   adminUserId: affiliateData.id,
                   playerId: gameResult.userId,
-                  commissionAmount: affiliateCommission.toFixed(2),
+                  commissionAmount: Math.round(affiliateCommission).toString(),
                   status: "approved",
                   createdBy: "system",
                   betResultId: result?.[0]?.insertId,
                   percentage: affiliateCommissionPercent.toString(),
                 };
-                
+
                 // Create commission for super affiliate
                 const superAffiliateCommissionData: CommissionData = {
                   adminUserId: superAffiliateData.id,
                   playerId: gameResult.userId,
-                  commissionAmount: superAffiliateCommission.toFixed(2),
+                  commissionAmount: Math.round(superAffiliateCommission).toString(),
                   status: "approved",
                   createdBy: "system",
                   betResultId: result?.[0]?.insertId,
                   percentage: superAffiliateCommissionPercent.toString(),
                 };
-                
+
                 // Insert both commissions
-                affiliateCommission!=0 &&  await CommissionModel.createCommission(affiliateCommissionData);
-                superAffiliateCommission!=0 && await CommissionModel.createCommission(superAffiliateCommissionData);
-                
+                affiliateCommission != 0 && await CommissionModel.createCommission(affiliateCommissionData);
+                superAffiliateCommission != 0 && await CommissionModel.createCommission(superAffiliateCommissionData);
+
               }
             }
           }
         }
 
 
-          // Create transaction record
-      if (update.betStatus === "win" && update.winAmount) {
-        await db.insert(transactions).values({
-          userId: tokenData.userId,
-          type: "win",
-          gameId: gameResult.gameId,
-          amount: update.winAmount.toString(),
-          status: "approved",
-          currencyId: 1, // Default currency, you might want to get this from user
-          createdAt: new Date(),
-        });
-      } else if (update.betStatus === "loss" && update.lossAmount) {
-        await db.insert(transactions).values({
-          userId: tokenData.userId,
-          type: "loss",
-          gameId: gameResult.gameId,
-          amount: update.lossAmount.toString(),
-          status: "approved",
-          currencyId: 1, // Default currency, you might want to get this from user
-          createdAt: new Date(),
-        });
-      }
+        // Create transaction record
+        if (update.betStatus === "win" && update.winAmount) {
+          await db.insert(transactions).values({
+            userId: tokenData.userId,
+            type: "win",
+            gameId: gameResult.gameId,
+            amount: update.winAmount.toString(),
+            status: "approved",
+            currencyId: 1, // Default currency, you might want to get this from user
+            createdAt: new Date(),
+          });
+        } else if (update.betStatus === "loss" && update.lossAmount) {
+          await db.insert(transactions).values({
+            userId: tokenData.userId,
+            type: "loss",
+            gameId: gameResult.gameId,
+            amount: update.lossAmount.toString(),
+            status: "approved",
+            currencyId: 1, // Default currency, you might want to get this from user
+            createdAt: new Date(),
+          });
+        }
 
 
 
@@ -513,9 +513,9 @@ export const GameModel = {
                 .update(turnover)
                 .set({
                   remainingTurnover: (
-                    Math.max(Number(item?.remainingTurnover) - Number(turnOverReduction),0)
+                    Math.max(Number(item?.remainingTurnover) - Number(turnOverReduction), 0)
                   ).toString(),
-                  status: (Math.max(Number(item?.remainingTurnover) - Number(turnOverReduction),0)) <= 0 ? "completed" : undefined
+                  status: (Math.max(Number(item?.remainingTurnover) - Number(turnOverReduction), 0)) <= 0 ? "completed" : undefined
                 })
                 .where(eq(turnover.id, item?.id));
               turnOverReduction = 0;
@@ -541,7 +541,7 @@ export const GameModel = {
         throw updateError;
       }
 
-    
+
 
       return true;
     } catch (error) {

@@ -27,7 +27,11 @@ export interface CommissionUpdateData {
 export class CommissionModel {
   // Create new commission
   static createCommission = async (data: CommissionData) => {
-    const [newCommission] = await db.insert(commission).values(data);
+    const insertionData = {
+      ...data,
+      commissionAmount: Math.round(Number(data.commissionAmount || 0)).toString(),
+    };
+    const [newCommission] = await db.insert(commission).values(insertionData);
     return newCommission;
   };
 

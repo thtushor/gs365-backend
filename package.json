@@ -45,6 +45,7 @@
     "test:email": "tsx src/test-email.ts",
     "test:sms": "tsx src/test-sms.ts",
     "db:clear-history": "tsx src/clear-history.ts",
+    "db:round-commissions": "tsx src/fix-commissions.ts",
     "build": "tsc"
   }
 }
