@@ -44,7 +44,7 @@ export class AffiliateBalanceModel {
             const [commissionStats] = await db
                 .select({
                     profit: sql<number>`COALESCE(SUM(CASE WHEN ${betResults.betStatus} = 'loss' THEN ${commission.commissionAmount} ELSE 0 END), 0)`,
-                    loss: sql<number>`COALESCE(SUM(CASE WHEN ${betResults.betStatus} = 'win' THEN ${commission.commissionAmount} ELSE 0 END), 0)`,
+                    loss: sql<number>`COALESCE(ABS(SUM(CASE WHEN ${betResults.betStatus} = 'win' THEN ${commission.commissionAmount} ELSE 0 END)), 0)`,
                 })
                 .from(commission)
                 .leftJoin(betResults, eq(commission.betResultId, betResults.id))
@@ -96,9 +96,9 @@ export class AffiliateBalanceModel {
             const [commissionStats] = await db
                 .select({
                     totalProfit: sql<number>`COALESCE(SUM(CASE WHEN ${betResults.betStatus} = 'loss' THEN ${commission.commissionAmount} ELSE 0 END), 0)`,
-                    totalLoss: sql<number>`COALESCE(SUM(CASE WHEN ${betResults.betStatus} = 'win' THEN ${commission.commissionAmount} ELSE 0 END), 0)`,
+                    totalLoss: sql<number>`COALESCE(ABS(SUM(CASE WHEN ${betResults.betStatus} = 'win' THEN ${commission.commissionAmount} ELSE 0 END)), 0)`,
                     settledProfit: sql<number>`COALESCE(SUM(CASE WHEN ${commission.status} = 'settled' AND ${betResults.betStatus} = 'loss' THEN ${commission.commissionAmount} ELSE 0 END), 0)`,
-                    settledLoss: sql<number>`COALESCE(SUM(CASE WHEN ${commission.status} = 'settled' AND ${betResults.betStatus} = 'win' THEN ${commission.commissionAmount} ELSE 0 END), 0)`,
+                    settledLoss: sql<number>`COALESCE(ABS(SUM(CASE WHEN ${commission.status} = 'settled' AND ${betResults.betStatus} = 'win' THEN ${commission.commissionAmount} ELSE 0 END)), 0)`,
                 })
                 .from(commission)
                 .leftJoin(betResults, eq(commission.betResultId, betResults.id))

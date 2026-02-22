@@ -71,7 +71,7 @@ export const seedAffiliateStats = async () => {
                 betResultId: betId,
                 playerId: playerId,
                 adminUserId: affiliateId,
-                commissionAmount: bet.betStatus === "loss" ? "100.00" : "50.00",
+                commissionAmount: bet.betStatus === "loss" ? "100.00" : "-50.00",
                 percentage: "10.00",
                 status: "approved",
                 notes: `Commission for ${bet.betStatus} bet`,
