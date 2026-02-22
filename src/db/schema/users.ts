@@ -34,6 +34,7 @@ export const users = mysqlTable("users", {
   isPhoneVerified: boolean("is_phone_verified").default(false),
   lastIp: varchar("last_ip", { length: 120 }),
   lastLogin: datetime("last_login"),
+  lastActivity: datetime("last_activity").default(sql`CURRENT_TIMESTAMP`),
   tokenVersion: int("token_version").default(0),
 
   // ✅ Email verification fields

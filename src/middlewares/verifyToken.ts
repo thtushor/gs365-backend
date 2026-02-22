@@ -83,6 +83,30 @@ export async function verifyToken(
         return;
       }
 
+      // --- Inactivity Timeout Check (5 Minutes) ---
+      const now = new Date();
+      const lastActivity = player.lastActivity ? new Date(player.lastActivity) : now;
+      const inactivityLimit = 5 * 60 * 1000; // 5 minutes in ms
+
+      if (now.getTime() - lastActivity.getTime() > inactivityLimit) {
+        await db
+          .update(users)
+          .set({ isLoggedIn: false })
+          .where(eq(users.id, player.id));
+
+        res.status(401).json({
+          status: false,
+          message: "Session expired due to inactivity. Please login again.",
+        });
+        return;
+      }
+
+      // Update last activity timestamp
+      await db
+        .update(users)
+        .set({ lastActivity: now })
+        .where(eq(users.id, player.id));
+
       (req as any).user = decoded;
       next();
       return;
@@ -96,17 +120,6 @@ export async function verifyToken(
         res.status(401).json({ status: false, message: "Admin not found" });
         return;
       }
-
-      //  const tokenVerifyDB = await db.query.userTokens.findFirst({
-      //   where: and(eq(userTokens.token, token), eq(userTokens.admin_id, admin.id), eq(userTokens.type, "verify"))
-      // })
-
-      // if (!tokenVerifyDB?.id) {
-      //   res.status(401).json({
-      //     status: false,
-      //     message: "Invalid,logged in ito another devices or expired token",
-      //   });
-      // }
 
       (req as any).user = decoded;
       next();

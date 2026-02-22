@@ -497,6 +497,7 @@ export const loginUser = async (req: Request, res: Response) => {
         browser_version,
         lastIp: ip_address,
         lastLogin: new Date(),
+        lastActivity: new Date(),
         tokenVersion: (user.tokenVersion || 0) + 1,
       })
       .where(eq(users.id, user.id));
@@ -577,11 +578,22 @@ export const logoutUser = async (req: Request, res: Response) => {
       return;
     }
 
-    user.id &&
-      (await db
+    if (user.id) {
+      await db
         .update(users)
         .set({ isLoggedIn: false })
-        .where(eq(users.id, user.id)));
+        .where(eq(users.id, user.id));
+
+      // Remove verification token
+      await db
+        .delete(userTokens)
+        .where(
+          and(
+            eq(userTokens.user_id, user.id),
+            eq(userTokens.type, "verify")
+          )
+        );
+    }
 
     return res
       .status(200)
