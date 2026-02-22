@@ -702,23 +702,6 @@ export const createAffiliateWithdraw = async (req: Request, res: Response) => {
     const customTransactionId = await generateUniqueTransactionId();
 
     const result = await db.transaction(async (tx) => {
-      await tx
-        .update(commission)
-        .set({ status: "paid" })
-        .where(
-          and(
-            eq(commission.adminUserId, Number(affiliateId)),
-            eq(commission.status, "approved"),
-          ),
-        );
-
-      await tx
-        .update(adminUsers)
-        .set({
-          remainingBalance: remainingBalance,
-        })
-        .where(eq(adminUsers.id, Number(affiliateId)));
-
       const [createdTxn] = await tx.insert(transactions).values({
         affiliateId: Number(affiliateId),
         type: "withdraw" as any,
@@ -1640,54 +1623,9 @@ export const updateAffiliateWithdrawStatus = async (
 
     // Apply extra logic based on status
     if (status === "approved") {
-      // ✅ Mark all 'paid' commissions as 'settled' for this affiliate
-      await tx
-        .update(commission)
-        .set({ status: "settled" })
-        .where(
-          and(
-            eq(commission.adminUserId, Number(affiliateId)),
-            eq(commission.status, "paid"),
-          ),
-        );
+      // Logic removed as per request
     } else if (status === "rejected") {
-      const paidCommissions = await tx
-        .select()
-        .from(commission)
-        .where(
-          and(
-            eq(commission.adminUserId, Number(affiliateId)),
-            eq(commission.status, "paid"),
-          ),
-        );
-      console.log("paidCommissions", paidCommissions);
-      if (paidCommissions.length > 0) {
-        await tx
-          .update(commission)
-          .set({ status: "approved" })
-          .where(
-            and(
-              eq(commission.adminUserId, Number(affiliateId)),
-              eq(commission.status, "paid"),
-            ),
-          );
-
-        // ✅ Set remaining balance to 0
-        await tx
-          .update(adminUsers)
-          .set({ remainingBalance: 0 })
-          .where(eq(adminUsers.id, Number(affiliateId)));
-      } else {
-        // ✅ No 'paid' commissions, so restore the amount back to remaining balance
-        await tx
-          .update(adminUsers)
-          .set({
-            remainingBalance: sql`${adminUsers.remainingBalance} + ${Number(
-              existing.amount,
-            )}`,
-          })
-          .where(eq(adminUsers.id, Number(affiliateId)));
-      }
+      // Logic removed as per request
     }
 
     const [updated] = await db
