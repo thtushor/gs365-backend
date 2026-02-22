@@ -834,7 +834,7 @@ export const getUserProfileById = async (id: number): Promise<any> => {
       // Balance information
       balance: {
         currentBalance: balance.currentBalance,
-        totalDeposits: balance.totalDeposits,
+        totalDeposits: balance.totalOnlyDeposit,
         totalWithdrawals: balance.totalWithdrawals,
         totalWins: balance.totalWins,
         totalLosses: balance.totalLosses,
@@ -843,7 +843,7 @@ export const getUserProfileById = async (id: number): Promise<any> => {
         approvedDeposits: balance.approvedDeposits,
         approvedWithdrawals: balance.approvedWithdrawals,
         currencyCode: balance.currencyCode,
-        totalBonusAmount: totalBonusAmount.totalBonus,
+        totalBonusAmount: balance.totalBonus + balance.totalSpinBonus,
       },
 
       // Transaction summary
