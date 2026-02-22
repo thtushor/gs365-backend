@@ -16,8 +16,8 @@ export class AffiliateBalanceModel {
      * Calculates balance and statistics for a specific affiliate.
      * 
      * Formula:
-     * - Lifetime Profit: Total commission where bet result is 'loss'
-     * - Lifetime Loss: Total commission where bet result is 'win'
+     * - Lifetime Profit: Total commission where bet result is 'loss' AND commission status is 'approved'
+     * - Lifetime Loss: Total commission where bet result is 'win' AND commission status is 'approved'
      * - Lifetime Withdraw: Total approved withdrawals for the affiliate
      * - Current Balance: Lifetime Profit - Lifetime Loss - Lifetime Withdraw
      * - Pending Withdrawal: Total transactions for the affiliate that are currently 'pending'
@@ -35,7 +35,9 @@ export class AffiliateBalanceModel {
                 })
                 .from(commission)
                 .leftJoin(betResults, eq(commission.betResultId, betResults.id))
-                .where(eq(commission.adminUserId, affiliateId));
+                .where(
+                    sql`${commission.adminUserId} = ${affiliateId} AND ${commission.status} = 'approved'`
+                );
 
             const lifetimeProfit = Number(commissionStats?.profit || 0);
             const lifetimeLoss = Number(commissionStats?.loss || 0);

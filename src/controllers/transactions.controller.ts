@@ -781,13 +781,17 @@ export const createAffiliateWithdraw = async (req: Request, res: Response) => {
       const transactionId =
         (createdTxn as any).insertId ?? (createdTxn as any)?.id;
 
-      return { transactionId, customTransactionId };
+      // Check if this is a full withdrawal of the current available balance
+      const askUserToSettleCommissions = Number(amount) === affiliateBalanceStats.currentBalance;
+
+      return { transactionId, customTransactionId, askUserToSettleCommissions };
     });
 
     return res.status(201).json({
       status: true,
       message: "Withdrawal request created successfully",
       data: result,
+      askUserToSettleCommissions: result.askUserToSettleCommissions
     });
   } catch (err) {
     console.error("createAffiliateWithdraw error", err);
@@ -1770,6 +1774,49 @@ export const getAffiliateBalanceHistory = async (req: Request, res: Response) =>
     });
   } catch (error) {
     console.error("Error getting affiliate balance history:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Internal Server Error",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
+
+export const settleAffiliateCommissions = async (req: Request, res: Response) => {
+  try {
+    const { affiliateId, settle } = req.body as { affiliateId: number; settle: boolean };
+
+    if (!affiliateId) {
+      return res.status(400).json({
+        status: false,
+        message: "Affiliate ID is required",
+      });
+    }
+
+    if (!settle) {
+      return res.status(200).json({
+        status: true,
+        message: "Commission settlement skipped as requested",
+      });
+    }
+
+    // Mark all 'approved' commissions as 'settled' for this affiliate
+    await db
+      .update(commission)
+      .set({ status: "settled" })
+      .where(
+        and(
+          eq(commission.adminUserId, Number(affiliateId)),
+          eq(commission.status, "approved")
+        )
+      );
+
+    return res.status(200).json({
+      status: true,
+      message: "All approved commissions have been settled successfully",
+    });
+  } catch (error) {
+    console.error("Error settling affiliate commissions:", error);
     return res.status(500).json({
       status: false,
       message: "Internal Server Error",
