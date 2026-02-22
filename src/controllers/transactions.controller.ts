@@ -34,6 +34,8 @@ import { AdminMainBalanceModel } from "../models/adminMainBalance.model";
 import { notifications } from "../db/schema/notifications";
 import { io } from "..";
 import { SpinBonusModel } from "../models/spinBonusModel";
+import { AffiliateBalanceModel } from "../models/affiliateBalance.model";
+
 
 type CreateDepositBody = {
   userId: number;
@@ -643,12 +645,10 @@ export const createAffiliateWithdraw = async (req: Request, res: Response) => {
       // Wallet fields
       walletAddress,
       network,
-      remainingBalance,
     } = req.body as {
       affiliateId: number;
       amount: number;
       currencyId: number;
-      remainingBalance: number;
       withdrawMethod: "bank" | "wallet";
       notes?: string;
       attachment?: string;
@@ -673,10 +673,15 @@ export const createAffiliateWithdraw = async (req: Request, res: Response) => {
           "Affiliate Id, Amount, Withdraw Method or Currencies are required",
       });
     }
-    if (typeof remainingBalance !== "number" || remainingBalance < 0) {
+
+    // ✅ Calculate current balance using dynamic logic
+    const affiliateBalanceStats = await AffiliateBalanceModel.calculateAffiliateBalance(Number(affiliateId));
+
+    if (amount > affiliateBalanceStats.currentBalance) {
       return res.status(400).json({
         status: false,
-        message: "remainingBalance is not valid",
+        message: `Insufficient balance. Available balance: ${affiliateBalanceStats.currentBalance.toFixed(2)}`,
+        data: affiliateBalanceStats
       });
     }
 
@@ -1737,6 +1742,34 @@ export const checkWithdrawCapability = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Error checking withdraw capability:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Internal Server Error",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
+
+export const getAffiliateBalanceHistory = async (req: Request, res: Response) => {
+  try {
+    const affiliateId = Number(req.params.affiliateId);
+
+    if (Number.isNaN(affiliateId)) {
+      return res.status(400).json({
+        status: false,
+        message: "Invalid affiliate ID",
+      });
+    }
+
+    const stats = await AffiliateBalanceModel.calculateAffiliateBalance(affiliateId);
+
+    return res.status(200).json({
+      status: true,
+      message: "Affiliate balance stats fetched successfully",
+      data: stats,
+    });
+  } catch (error) {
+    console.error("Error getting affiliate balance history:", error);
     return res.status(500).json({
       status: false,
       message: "Internal Server Error",
