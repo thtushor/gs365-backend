@@ -15,6 +15,7 @@ import { seedGameProviderAndGame } from "./seed-fn/gameProviderSeed";
 import { seedBetResults } from "./seed-fn/betResults";
 import { seedTransactions } from "./seed-fn/transactions";
 import { seedAdminMainBalance } from "./seed-fn/adminMainBalance";
+import { seedAffiliateStats } from "./seed-fn/affiliateStatsSeed";
 
 async function seed() {
   try {
@@ -36,7 +37,7 @@ async function seed() {
     await seedSettings();
 
     await seedGameProviderAndGame();
-    
+
     // Seed bet results (after games and users are seeded)
     // await seedBetResults();
 
@@ -45,6 +46,9 @@ async function seed() {
 
     // Seed admin main balance (after transactions are seeded)
     // await seedAdminMainBalance();
+
+    // seed affiliate stats (referral, commissions, balance)
+    await seedAffiliateStats();
   } catch (error) {
     console.error("❌ Failed to insert seed data:", error);
   } finally {
