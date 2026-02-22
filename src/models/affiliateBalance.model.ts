@@ -72,11 +72,11 @@ export class AffiliateBalanceModel {
             const currentBalance = lifetimeProfit - lifetimeLoss - lifetimeWithdraw - pendingWithdrawal;
 
             return {
-                lifetimeProfit,
-                lifetimeLoss,
-                lifetimeWithdraw,
-                currentBalance,
-                pendingWithdrawal,
+                lifetimeProfit: Math.round(lifetimeProfit),
+                lifetimeLoss: Math.round(lifetimeLoss),
+                lifetimeWithdraw: Math.round(lifetimeWithdraw),
+                currentBalance: Math.round(currentBalance),
+                pendingWithdrawal: Math.round(pendingWithdrawal),
             };
         } catch (error) {
             console.error("Error calculating affiliate balance:", error);
@@ -123,16 +123,16 @@ export class AffiliateBalanceModel {
                 );
 
             return {
-                totalProfit,
-                totalLoss,
-                totalCommission: totalProfit - totalLoss,
-                settledProfit,
-                settledLoss,
-                settledCommission: settledProfit - settledLoss,
-                totalWithdraw: Number(withdrawStats?.totalWithdraw || 0),
-                settledWithdraw: Number(withdrawStats?.settledWithdraw || 0),
-                pendingWithdraw: Number(withdrawStats?.pendingWithdraw || 0),
-                rejectedWithdraw: Number(withdrawStats?.rejectedWithdraw || 0),
+                totalProfit: Math.round(totalProfit),
+                totalLoss: Math.round(totalLoss),
+                totalCommission: Math.round(totalProfit - totalLoss),
+                settledProfit: Math.round(settledProfit),
+                settledLoss: Math.round(settledLoss),
+                settledCommission: Math.round(settledProfit - settledLoss),
+                totalWithdraw: Math.round(Number(withdrawStats?.totalWithdraw || 0)),
+                settledWithdraw: Math.round(Number(withdrawStats?.settledWithdraw || 0)),
+                pendingWithdraw: Math.round(Number(withdrawStats?.pendingWithdraw || 0)),
+                rejectedWithdraw: Math.round(Number(withdrawStats?.rejectedWithdraw || 0)),
             };
         } catch (error) {
             console.error("Error fetching detailed affiliate stats:", error);
