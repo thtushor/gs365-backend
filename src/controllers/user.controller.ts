@@ -377,6 +377,7 @@ export const loginUser = async (req: Request, res: Response) => {
 
     // Check if email is verified
     // Check global settings for verification requirements
+    /*
     const settings = await SettingsModel.getFirst();
     const isEmailVerificationEnabled =
       settings?.isEmailVerificationEnabled === "Enabled";
@@ -449,6 +450,7 @@ export const loginUser = async (req: Request, res: Response) => {
         });
       }
     }
+    */
 
     // Check for password match (Plain text, as per registration flow)
     const isMatch = password === user.password;
@@ -456,7 +458,7 @@ export const loginUser = async (req: Request, res: Response) => {
     if (!isMatch) {
       return res
         .status(401)
-        .json({ status: false, message: "Invalid credentials" });
+        .json({ status: false, message: "Invalid password" });
     }
     // --- Device Info Extraction ---
     const userAgent = req.headers["user-agent"] || "";
