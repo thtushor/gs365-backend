@@ -89,6 +89,7 @@ export const transactions = mysqlTable("transactions", {
   processedByUser: int("processedByUser"),
   processedAt: datetime("processed_at"),
   isSettlementRequested: boolean("is_settlement_requested").default(false),
+  settledByTransactionId: int("settled_by_transaction_id"),
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updated_at").default(
     sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`,

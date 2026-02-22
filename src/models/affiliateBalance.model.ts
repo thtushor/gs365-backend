@@ -45,7 +45,7 @@ export class AffiliateBalanceModel {
             // 2. Calculate Lifetime Withdraw and Pending Withdrawals from transactions
             const [txStats] = await db
                 .select({
-                    totalWithdraw: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'withdraw' AND ${transactions.status} = 'approved' THEN ${transactions.amount} ELSE 0 END), 0)`,
+                    totalWithdraw: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'withdraw' AND ${transactions.status} = 'approved' AND ${transactions.settledByTransactionId} IS NULL THEN ${transactions.amount} ELSE 0 END), 0)`,
                     pendingWithdraw: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.status} = 'pending' THEN ${transactions.amount} ELSE 0 END), 0)`,
                 })
                 .from(transactions)

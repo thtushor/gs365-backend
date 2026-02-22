@@ -1626,7 +1626,7 @@ export const updateAffiliateWithdrawStatus = async (
         .set(updatePayload)
         .where(eq(transactions.id, id));
 
-      // 2. Handle Commission Settlement Logic
+      // 2. Handle Commission & Transaction Settlement Logic
       if (status === "approved" && existing.isSettlementRequested) {
         // Mark all 'approved' commissions for this affiliate as 'settled'
         await tx
@@ -1641,9 +1641,24 @@ export const updateAffiliateWithdrawStatus = async (
               eq(commission.status, "approved")
             )
           );
+
+        // ALSO Mark all previous 'approved' but 'unsettled' withdrawals for this affiliate as 'settled'
+        // This includes the current transaction (id) itself
+        await tx
+          .update(transactions)
+          .set({
+            settledByTransactionId: id,
+          })
+          .where(
+            and(
+              eq(transactions.affiliateId, Number(existing.affiliateId)),
+              eq(transactions.type, "withdraw"),
+              eq(transactions.status, "approved"),
+              sql`${transactions.settledByTransactionId} IS NULL`
+            )
+          );
       } else if (status === "rejected") {
         // If it was previously approved and settled, we revert the commissions
-        // Find commissions tied to THIS transaction
         await tx
           .update(commission)
           .set({
@@ -1651,6 +1666,14 @@ export const updateAffiliateWithdrawStatus = async (
             settlementTransactionId: null,
           })
           .where(eq(commission.settlementTransactionId, id));
+
+        // ALSO Revert any transactions that were marked as settled by this transaction
+        await tx
+          .update(transactions)
+          .set({
+            settledByTransactionId: null,
+          })
+          .where(eq(transactions.settledByTransactionId, id));
       }
 
       // 3. Update corresponding adminMainBalance records (if any)
