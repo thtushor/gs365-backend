@@ -6,7 +6,7 @@ export const seedAdminMainBalance = async () => {
     console.log("🌱 Seeding admin main balance data...");
 
     // Sample admin main balance records
-    const adminMainBalanceData = [
+    const adminMainBalanceData: (typeof adminMainBalance.$inferInsert)[] = [
       {
         amount: "10000.00",
         type: "admin_deposit",

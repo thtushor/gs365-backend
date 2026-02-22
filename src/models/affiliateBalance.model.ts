@@ -54,8 +54,9 @@ export class AffiliateBalanceModel {
             const lifetimeWithdraw = Number(txStats?.totalWithdraw || 0);
             const pendingWithdrawal = Number(txStats?.pendingWithdraw || 0);
 
-            // 3. Calculate Current Balance
-            const currentBalance = lifetimeProfit - lifetimeLoss - lifetimeWithdraw;
+            // 3. Calculate Current Balance (Available for withdrawal)
+            // Subtract both approved and pending withdrawals to prevent double-withdrawing
+            const currentBalance = lifetimeProfit - lifetimeLoss - lifetimeWithdraw - pendingWithdrawal;
 
             return {
                 lifetimeProfit,
