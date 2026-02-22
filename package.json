@@ -44,6 +44,7 @@
     "db:seed": "tsx src/db/seeder.ts",
     "test:email": "tsx src/test-email.ts",
     "test:sms": "tsx src/test-sms.ts",
+    "db:clear-history": "tsx src/clear-history.ts",
     "build": "tsc"
   }
 }
