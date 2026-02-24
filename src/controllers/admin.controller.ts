@@ -780,6 +780,7 @@ export const getPlayers = async (
     referred_by,
     dateFrom,
     dateTo,
+    createdBy,
   } = req.query;
 
   const userData = (req as unknown as { user: DecodedUser }).user;
@@ -793,7 +794,8 @@ export const getPlayers = async (
     page: page ? Number(page) : 1,
     pageSize: pageSize ? Number(pageSize) : 10,
     referred_by: Number(referred_by || 0),
-    referred_by_admin_user: Number(referred_by_admin_user || 0),
+    referred_by_admin_user:
+      Number(createdBy) || Number(referred_by_admin_user || 0) || undefined,
     dateFrom: typeof dateFrom === "string" ? dateFrom : undefined,
     dateTo: typeof dateTo === "string" ? dateTo : undefined,
   };

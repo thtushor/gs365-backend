@@ -316,6 +316,10 @@ export const getUsersWithFilters = async (filters: UserFilters) => {
     whereClauses.push(eq(users.referred_by, referred_by));
   }
 
+  if (createdBy) {
+    whereClauses.push(eq(users.created_by, createdBy));
+  }
+
   if (currencyId) {
     whereClauses.push(eq(users.currency_id, currencyId));
   }
