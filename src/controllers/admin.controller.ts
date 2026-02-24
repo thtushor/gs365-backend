@@ -790,12 +790,11 @@ export const getPlayers = async (
     phone: phone as string | undefined,
     status: status as string | undefined,
     keyword: keyword as string | undefined,
-    createdBy: userData.role !== "admin" ? userData.id : undefined,
+    createdBy: Number(createdBy) || (userData.role !== "admin" && userData.role !== "superAdmin" ? userData.id : undefined),
     page: page ? Number(page) : 1,
     pageSize: pageSize ? Number(pageSize) : 10,
-    referred_by: Number(referred_by || 0),
-    referred_by_admin_user:
-      Number(createdBy) || Number(referred_by_admin_user || 0) || undefined,
+    referred_by: referred_by ? Number(referred_by) : undefined,
+    referred_by_admin_user: referred_by_admin_user ? Number(referred_by_admin_user) : undefined,
     dateFrom: typeof dateFrom === "string" ? dateFrom : undefined,
     dateTo: typeof dateTo === "string" ? dateTo : undefined,
   };
