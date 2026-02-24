@@ -1,7 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { sendOTPEmail } from "../utils/emailService";
 
-import jwt from "jsonwebtoken";
 import {
   findAdminByUsernameOrEmail,
   createAdmin,
@@ -4548,8 +4547,8 @@ export const createCustomNotification = async (req: Request, res: Response) => {
     try {
       const targetIds: number[] = Array.isArray(playerIds)
         ? playerIds
-            .map((v: any) => Number(v))
-            .filter((v: any) => Number.isFinite(v) && v > 0)
+          .map((v: any) => Number(v))
+          .filter((v: any) => Number.isFinite(v) && v > 0)
         : [];
       const uniqueIds = Array.from(new Set(targetIds));
       uniqueIds.forEach((uid) => {
