@@ -34,6 +34,7 @@ import dashboardRouter from "./routes/dashboard.route";
 import gameStatsRouter from "./routes/gameStats.route";
 import withdrawalPaymentAccountRouter from "./routes/withdrawalPaymentAccount.route";
 import adminMainBalanceRouter from "./routes/adminMainBalance.route";
+import vexoraDemoRouter from "./routes/vexora.route";
 import { chatRoute } from "./routes/chat.route";
 import { messageRoute } from "./routes/message.route";
 import { autoReplyRoute } from "./routes/autoReply.route";
@@ -113,6 +114,7 @@ app.use("/api/users", userRouter);
 app.use("/api/admin", adminRouter);
 
 app.use("/api/countries", countryRouter);
+app.use("/api/demo/vexora", vexoraDemoRouter);
 
 app.use("/api/payment-method", paymentMethodRouter);
 app.use("/api/payment-method-types", paymentMethodTypeRouter);

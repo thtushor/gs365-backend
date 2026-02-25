@@ -18,6 +18,7 @@ export * from "./schema/sportsProvider";
 export * from "./schema/sports";
 export * from "./schema/paymentGatewayProviderAccount";
 export * from "./schema/transactions";
+export * from "./schema/vexora.schema";
 export * from "./schema/turnover";
 export * from "./schema/settings";
 export * from "./schema/betResults";
