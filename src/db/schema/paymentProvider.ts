@@ -1,4 +1,4 @@
-import { mysqlTable, int, varchar, text } from "drizzle-orm/mysql-core";
+import { mysqlTable, int, varchar, text, boolean } from "drizzle-orm/mysql-core";
 import { ActivityStatus } from "./users";
 
 export const paymentProvider = mysqlTable("payment_provider", {
@@ -6,6 +6,7 @@ export const paymentProvider = mysqlTable("payment_provider", {
   name: varchar("name", { length: 100 }).unique().notNull(),
   contactInfo: text("contact_info"),
   commissionPercentage: int("commission_percentage").default(0),
+  isAutomated: boolean("is_automated").default(false),
   status: ActivityStatus.default("active"),
 });
 
