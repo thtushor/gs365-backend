@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { PaymentGatewayModel } from "../models/paymentGateway.model";
+import { PaymentProviderModel } from "../models/paymentProvider.model";
 import { paymentGateway } from "../db/schema/paymentGateway";
 import { eq, and, sql, like } from "drizzle-orm";
 
@@ -106,5 +107,46 @@ export const deletePaymentGateway = async (req: Request, res: Response) => {
     res
       .status(500)
       .json({ error: "Failed to delete payment gateway", errors: err });
+  }
+};
+
+export const initializeAutomatedPayment = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { gatewayId, providerId } = req.body;
+
+    if (!gatewayId || !providerId) {
+      return res.status(400).json({
+        status: false,
+        message: "gatewayId and providerId are required",
+      });
+    }
+
+    const [gateway] = await PaymentGatewayModel.getById(Number(gatewayId));
+    const [provider] = await PaymentProviderModel.getById(Number(providerId));
+
+    if (!gateway || !provider) {
+      return res.status(404).json({
+        status: false,
+        message: "Gateway or Provider not found",
+      });
+    }
+
+    res.json({
+      status: true,
+      data: {
+        gateway,
+        provider,
+      },
+      message: "Automated payment initialization data fetched",
+    });
+  } catch (err) {
+    res.status(500).json({
+      status: false,
+      message: "Failed to initialize automated payment",
+      errors: err,
+    });
   }
 };
