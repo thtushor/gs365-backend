@@ -3,6 +3,15 @@ import { PaymentGatewayModel } from "../models/paymentGateway.model";
 import { PaymentProviderModel } from "../models/paymentProvider.model";
 import { paymentGateway } from "../db/schema/paymentGateway";
 import { eq, and, sql, like } from "drizzle-orm";
+// import { vexoraSandboxClient } from "../../services/vexora/vexoraSandbox.service";
+// import { generateVexoraSign } from "../../services/vexora/sign.service";
+// import { getTimestamp } from "../../utils/timestamp";
+import { db } from "../db/connection";
+import { vexoraPayins } from "../db/schema";
+import crypto from "crypto";
+import { vexoraSandboxClient } from "../services/vexora/vexoraSandbox.service";
+import { generateVexoraSign } from "../services/vexora/sign.service";
+import { getTimestamp } from "../utils/timestamp";
 
 // Helper to build where conditions for search/filter
 function buildWhereCondition(query: any) {
@@ -134,7 +143,61 @@ export const initializeAutomatedPayment = async (
       });
     }
 
-    res.json({
+    if (provider.isAutomated && provider.tag === "VEXORA") {
+      // Generate Trade Number
+      const tradeNo = req.body.tradeNo || `VEX_${crypto.randomBytes(4).toString("hex").toUpperCase()}_${Date.now()}`;
+      const timestamp = getTimestamp();
+
+      // Setup payload properties for Vexora request
+      const payload: Record<string, any> = {
+        timestamp,
+        tradeNo,
+        amount: amount.toString(), // ensure amount is string
+        wayCode: gateway.name.toUpperCase(), // assuming wayCode matches gateway name like "BKASH"
+        notifyUrl: "https://yourdomain.com/webhook/vexora", // TODO: Update to real domain
+        returnUrl: "https://yourdomain.com/success", // TODO: Update to real domain
+        remark: `Deposit via ${gateway.name}`,
+      };
+
+      // Generate cryptographic sign
+      const sign = generateVexoraSign(payload);
+
+      const requestBody = {
+        ...payload,
+        sign,
+      };
+
+      console.log("Vexora Request:", requestBody);
+
+      // Call Vexora Sandbox Checkout API
+      const response = (await vexoraSandboxClient.post(
+        "/v1/vexora/checkout",
+        requestBody
+      )) as any;
+
+      const { data: vexoraData } = response;
+
+      // Save to DB
+      await db.insert(vexoraPayins).values({
+        tradeNo,
+        platFormTradeNo: vexoraData?.data?.platFormTradeNo ?? null,
+        amount: amount.toString(),
+        wayCode: gateway.name.toUpperCase(),
+        status: vexoraData?.data?.status ?? "UNKNOWN",
+        paymentLink: vexoraData?.data?.paymentLink ?? null,
+        remark: payload.remark,
+        rawResponse: vexoraData,
+      });
+
+      return res.json({
+        success: true,
+        request: requestBody,
+        response: vexoraData,
+      });
+    }
+
+    // Default fallback for manual or other automated payment tags
+    return res.json({
       status: true,
       data: {
         gateway,
@@ -143,11 +206,12 @@ export const initializeAutomatedPayment = async (
       },
       message: "Automated payment initialization data fetched",
     });
-  } catch (err) {
+  } catch (err: any) {
+    console.error("Vexora Checkout Error:", err?.response?.data || err);
     res.status(500).json({
       status: false,
       message: "Failed to initialize automated payment",
-      errors: err,
+      error: err?.response?.data || err?.message,
     });
   }
 };
