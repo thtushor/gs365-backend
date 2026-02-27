@@ -3,6 +3,8 @@ import { PaymentGatewayModel } from "../models/paymentGateway.model";
 import { PaymentProviderModel } from "../models/paymentProvider.model";
 import { paymentGateway } from "../db/schema/paymentGateway";
 import { eq, and, sql, like } from "drizzle-orm";
+import { db } from "../db/connection";
+import { AutomatedPaymentService } from "../services/payment/AutomatedPaymentService";
 
 // Helper to build where conditions for search/filter
 function buildWhereCondition(query: any) {
@@ -134,20 +136,35 @@ export const initializeAutomatedPayment = async (
       });
     }
 
-    res.json({
+    if (provider.isAutomated && provider.tag) {
+      // Defer to the AutomatedPaymentService 
+      const initResult = await AutomatedPaymentService.initializeDeposit({
+        gateway,
+        provider,
+        amount,
+        tradeNo: req.body.tradeNo,
+        username: (req as any).user?.username || "", // Optional, inject user context if available
+      });
+
+      return res.json(initResult);
+    }
+
+    // Default fallback for manual or unsupported automated payment tags
+    return res.json({
       status: true,
       data: {
         gateway,
         provider,
         amount,
       },
-      message: "Automated payment initialization data fetched",
+      message: "Manual payment initialization data fetched",
     });
-  } catch (err) {
+  } catch (err: any) {
+    console.error("Automated Payment Init Error:", err?.response?.data || err);
     res.status(500).json({
       status: false,
       message: "Failed to initialize automated payment",
-      errors: err,
+      error: err?.response?.data || err?.message,
     });
   }
 };
