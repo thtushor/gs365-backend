@@ -115,12 +115,12 @@ export const initializeAutomatedPayment = async (
   res: Response
 ) => {
   try {
-    const { gatewayId, providerId } = req.body;
+    const { gatewayId, providerId, amount } = req.body;
 
-    if (!gatewayId || !providerId) {
+    if (!gatewayId || !providerId || amount === undefined) {
       return res.status(400).json({
         status: false,
-        message: "gatewayId and providerId are required",
+        message: "gatewayId, providerId and amount are required",
       });
     }
 
@@ -139,6 +139,7 @@ export const initializeAutomatedPayment = async (
       data: {
         gateway,
         provider,
+        amount,
       },
       message: "Automated payment initialization data fetched",
     });
