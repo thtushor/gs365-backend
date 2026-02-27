@@ -18,5 +18,9 @@ router.post(
   "/delete/:id",
   asyncHandler(paymentGatewayController.deletePaymentGateway)
 );
+router.post(
+  "/automate/initialize",
+  asyncHandler(paymentGatewayController.initializeAutomatedPayment)
+);
 
 export default router;

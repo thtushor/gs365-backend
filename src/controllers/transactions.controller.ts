@@ -28,6 +28,7 @@ import {
   paymentGatewayProvider,
   paymentGatewayProviderAccount,
   paymentMethods,
+  paymentProvider,
 } from "../db/schema";
 import { BalanceModel } from "../models/balance.model";
 import { AdminMainBalanceModel } from "../models/adminMainBalance.model";
@@ -35,6 +36,7 @@ import { notifications } from "../db/schema/notifications";
 import { io } from "..";
 import { SpinBonusModel } from "../models/spinBonusModel";
 import { AffiliateBalanceModel } from "../models/affiliateBalance.model";
+import { AutomatedPaymentService } from "../services/payment/AutomatedPaymentService";
 
 
 type CreateDepositBody = {
@@ -89,13 +91,35 @@ export const createDeposit = async (req: Request, res: Response) => {
       ? await db
         .select({
           paymentMethod: paymentMethods,
+          network: paymentGateway.network,
+          providerAccount: paymentGatewayProviderAccount,
+          provider: paymentProvider,
         })
         .from(paymentGateway)
         .leftJoin(
           paymentMethods,
           eq(paymentGateway.methodId, paymentMethods.id),
         )
-        .where(eq(paymentGateway.id, gatewayId))
+        .leftJoin(
+          paymentGatewayProvider,
+          eq(paymentGateway.id, paymentGatewayProvider.gatewayId)
+        )
+        .leftJoin(
+          paymentProvider,
+          eq(paymentGatewayProvider.providerId, paymentProvider.id)
+        )
+        .leftJoin(
+          paymentGatewayProviderAccount,
+          eq(paymentGatewayProvider.id, paymentGatewayProviderAccount.paymentGatewayProviderId)
+        )
+        .where(
+          and(
+            eq(paymentGateway.id, gatewayId),
+            paymentGatewayProviderAccountId
+              ? eq(paymentGatewayProviderAccount.id, paymentGatewayProviderAccountId)
+              : undefined
+          )
+        )
         .limit(1)
       : [];
 
@@ -137,6 +161,28 @@ export const createDeposit = async (req: Request, res: Response) => {
         ? Number(bonusAmount || 0)
         : Number(bonusAmount) * Number(currentConversionRate?.rate || 1);
 
+    // Automated Payment Logic
+    let automatedData: any = null;
+    if (gatewayData?.provider?.isAutomated) {
+      try {
+        automatedData = await AutomatedPaymentService.handleDeposit({
+          providerName: gatewayData.provider.name,
+          amount: Number(amount),
+          network: gatewayData.network || "",
+          customTransactionId,
+          givenTransactionId,
+          notes,
+          username: user.username,
+        });
+      } catch (error: any) {
+        console.error("Automated payment error:", error.message);
+        return res.status(400).json({
+          status: false,
+          message: error.message,
+        });
+      }
+    }
+
     const [createdTxn] = await db.insert(transactions).values({
       userId: Number(userId),
       type: "deposit",
@@ -150,7 +196,9 @@ export const createDeposit = async (req: Request, res: Response) => {
       paymentGatewayProviderAccountId: paymentGatewayProviderAccountId
         ? Number(paymentGatewayProviderAccountId)
         : null,
-      notes: notes ?? null,
+      notes: automatedData
+        ? `${notes || ""}\n[Vexora PlatFormTradeNo: ${automatedData.platFormTradeNo}]`.trim()
+        : notes ?? null,
       givenTransactionId: givenTransactionId ?? null,
       attachment: attachment ?? null,
       processedBy: user?.userType === "admin" ? user?.id : null,

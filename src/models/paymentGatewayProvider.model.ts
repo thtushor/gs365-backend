@@ -52,6 +52,8 @@ export const PaymentGatewayProviderModel = {
           contactInfo: paymentProvider.contactInfo,
           commissionPercentage: paymentProvider.commissionPercentage,
           status: paymentProvider.status,
+          isAutomated: paymentProvider.isAutomated,
+          tag: paymentProvider.tag,
         },
         gateway: {
           id: paymentGateway.id,
@@ -112,6 +114,8 @@ export const PaymentGatewayProviderModel = {
           contactInfo: paymentProvider.contactInfo,
           commissionPercentage: paymentProvider.commissionPercentage,
           status: paymentProvider.status,
+          isAutomated: paymentProvider.isAutomated,
+          tag: paymentProvider.tag,
         },
         gateway: {
           id: paymentGateway.id,
@@ -179,6 +183,8 @@ export const PaymentGatewayProviderModel = {
           contactInfo: paymentProvider.contactInfo,
           commissionPercentage: paymentProvider.commissionPercentage,
           status: paymentProvider.status,
+          isAutomated: paymentProvider.isAutomated,
+          tag: paymentProvider.tag,
         },
         gateway: {
           id: paymentGateway.id,

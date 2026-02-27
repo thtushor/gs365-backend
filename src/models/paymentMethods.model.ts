@@ -127,15 +127,15 @@ export const PaymentMethodModel = {
 
       const accountData = row?.gatewayProvider?.id
         ? await db
-            .select()
-            .from(paymentGatewayProviderAccount)
-            .where(
-              eq(
-                paymentGatewayProviderAccount.paymentGatewayProviderId,
-                row?.gatewayProvider?.id
-              )
+          .select()
+          .from(paymentGatewayProviderAccount)
+          .where(
+            eq(
+              paymentGatewayProviderAccount.paymentGatewayProviderId,
+              row?.gatewayProvider?.id
             )
-            .limit(1)
+          )
+          .limit(1)
         : [];
 
       if (row.provider) {
@@ -149,6 +149,7 @@ export const PaymentMethodModel = {
             licenseKey: row?.gatewayProvider?.licenseKey,
             commission: row?.gatewayProvider?.commission,
             isRecomended: row?.gatewayProvider?.isRecommended,
+            isAutomated: row?.provider?.isAutomated,
             gatewayProvider: {
               ...row?.gatewayProvider,
               account: accountData,
