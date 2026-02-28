@@ -247,14 +247,6 @@ export const AutomatedPaymentService = {
                 data: {}
             };
 
-            await db
-                .update(vexoraPayins)
-                .set({
-                    rawResponse: mockResponse,
-                    updatedAt: new Date(),
-                })
-                .where(eq(vexoraPayins.platFormTradeNo, platFormTradeNo));
-
             return {
                 success: true,
                 request: requestBody,
