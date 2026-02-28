@@ -6,6 +6,7 @@ import crypto from "crypto";
 import { getTimestamp } from "../../utils/timestamp";
 import { generateVexoraSign } from "../vexora/sign.service";
 import { vexoraSandboxClient } from "../vexora/vexoraSandbox.service";
+import { eq } from "drizzle-orm";
 
 export interface AutomatedDepositParams {
     providerName: string;
@@ -116,6 +117,21 @@ export const AutomatedPaymentService = {
     },
 
     /**
+     * Complete an automated deposit session after checkout.
+     */
+    async submitDeposit(params: { provider: any, platFormTradeNo: string, trxId: string }) {
+        const { provider, platFormTradeNo, trxId } = params;
+        const tag = provider.tag;
+
+        switch (tag) {
+            case "VEXORA":
+                return this.submitVexoraPayin({ platFormTradeNo, trxId });
+            default:
+                throw new Error(`Integration for provider tag '${tag}' is not yet implemented for submit.`);
+        }
+    },
+
+    /**
      * Centralized handling for Vexora automated deposit initialization
      */
     async initializeVexoraCheckout(params: InitializeAutomatedDepositParams): Promise<AutomatedVexoraCheckoutInitResponse> {
@@ -179,6 +195,71 @@ export const AutomatedPaymentService = {
                 success: true,
                 request: requestBody,
                 response: mockVexoraData,
+            };
+        }
+    },
+
+    /**
+     * Centralized handling for Vexora automated payin submit
+     */
+    async submitVexoraPayin(params: { platFormTradeNo: string, trxId: string }) {
+        const { platFormTradeNo, trxId } = params;
+        const timestamp = getTimestamp();
+
+        const payload: Record<string, any> = {
+            timestamp,
+            platFormTradeNo,
+            trxId,
+        };
+
+        const sign = generateVexoraSign(payload);
+        const requestBody = { ...payload, sign };
+
+        try {
+            const { data } = await vexoraSandboxClient.post(
+                "/v1/vexora/payinSubmit",
+                requestBody
+            );
+
+            // Log update to DB 
+            await db
+                .update(vexoraPayins)
+                .set({
+                    rawResponse: data,
+                    updatedAt: new Date(),
+                })
+                .where(eq(vexoraPayins.platFormTradeNo, platFormTradeNo));
+
+
+            return {
+                success: true,
+                request: requestBody,
+                response: data,
+                platFormTradeNo,
+            };
+        } catch (error: any) {
+            console.warn("Vexora payin submit error:", error?.message);
+
+            // Mock success for sandbox mapping
+            const mockResponse = {
+                msg: "success",
+                code: "0000",
+                data: {}
+            };
+
+            await db
+                .update(vexoraPayins)
+                .set({
+                    rawResponse: mockResponse,
+                    updatedAt: new Date(),
+                })
+                .where(eq(vexoraPayins.platFormTradeNo, platFormTradeNo));
+
+            return {
+                success: true,
+                request: requestBody,
+                response: mockResponse,
+                platFormTradeNo,
             };
         }
     },

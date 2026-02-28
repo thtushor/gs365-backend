@@ -49,6 +49,9 @@ type CreateDepositBody = {
   notes?: string;
   attachment?: string;
   gatewayId?: number;
+  providerId?: number;
+  tradeNo?: string;
+  platFormTradeNo?: string;
 };
 
 export const createDeposit = async (req: Request, res: Response) => {
@@ -60,6 +63,9 @@ export const createDeposit = async (req: Request, res: Response) => {
       promotionId,
       paymentGatewayProviderAccountId,
       gatewayId,
+      providerId,
+      tradeNo,
+      platFormTradeNo,
       notes,
       givenTransactionId,
       attachment,
@@ -115,6 +121,7 @@ export const createDeposit = async (req: Request, res: Response) => {
         .where(
           and(
             eq(paymentGateway.id, gatewayId),
+            providerId ? eq(paymentProvider.id, providerId) : undefined,
             paymentGatewayProviderAccountId
               ? eq(paymentGatewayProviderAccount.id, paymentGatewayProviderAccountId)
               : undefined
@@ -164,15 +171,17 @@ export const createDeposit = async (req: Request, res: Response) => {
     // Automated Payment Logic
     let automatedData: any = null;
     if (gatewayData?.provider?.isAutomated) {
+      if (!platFormTradeNo || !givenTransactionId) {
+        return res.status(400).json({
+          status: false,
+          message: "platFormTradeNo and trxId (givenTransactionId) are required for automated payments",
+        });
+      }
       try {
-        automatedData = await AutomatedPaymentService.handleDeposit({
-          providerName: gatewayData.provider.name,
-          amount: Number(amount),
-          network: gatewayData.network || "",
-          customTransactionId,
-          givenTransactionId,
-          notes,
-          username: user.username,
+        automatedData = await AutomatedPaymentService.submitDeposit({
+          provider: gatewayData.provider,
+          platFormTradeNo,
+          trxId: givenTransactionId,
         });
       } catch (error: any) {
         console.error("Automated payment error:", error.message);
