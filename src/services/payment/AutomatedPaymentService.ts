@@ -148,9 +148,9 @@ export const AutomatedPaymentService = {
             tradeNo: generatedTradeNo,
             amount: amount.toString(), // ensure amount is string
             wayCode: gateway.name.toUpperCase(), // assuming wayCode matches gateway name like "BKASH"
-            notifyUrl: "https://yourdomain.com/webhook/vexora", // TODO: Update to real domain
-            returnUrl: "https://yourdomain.com/success", // TODO: Update to real domain
-            remark: `Deposit via ${gateway.name} ${username ? `for ${username}` : ''}`.trim(),
+            notifyUrl: "https://gamestar365.com/api/demo/vexora/notify",
+            returnUrl: "https://gamestar365.com/success",
+            remark: "deposit",
         };
 
         // Generate cryptographic sign
