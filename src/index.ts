@@ -47,6 +47,7 @@ import databaseBackupRouter from "./routes/backupRestore.route";
 import { setupSocketIO } from "./socket";
 import path from "path";
 import { scheduleAutoBackup } from "./controllers/backupRestore.controller";
+import { initCronJobs } from "./jobs";
 // Ensure process.env.DATABASE_URL is defined and of correct type
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL environment variable is not set.");
@@ -163,3 +164,4 @@ httpServer.listen(PORT, () => {
 });
 
 scheduleAutoBackup();
+initCronJobs();
