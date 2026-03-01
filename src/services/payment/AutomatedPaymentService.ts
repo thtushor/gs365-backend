@@ -148,8 +148,8 @@ export const AutomatedPaymentService = {
             tradeNo: generatedTradeNo,
             amount: amount.toString(), // ensure amount is string
             wayCode: gateway.name.toUpperCase(), // assuming wayCode matches gateway name like "BKASH"
-            notifyUrl: "https://gamestar365.com/api/demo/vexora/notify",
-            returnUrl: "https://gamestar365.com/success",
+            notifyUrl: "https://api.gamestar365.com/api/demo/vexora/notify",
+            returnUrl: "https://api.gamestar365.com/api/demo/vexora/success",
             remark: "deposit",
         };
 

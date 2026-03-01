@@ -6,8 +6,14 @@ import { checkPayinStatusController } from "../controllers/vexora/queryPayInResu
 import { queryBalanceController } from "../controllers/vexora/queryBalance.controller";
 import { checkPayoutStatusController } from "../controllers/vexora/checkPayoutStatus.controller";
 import { disbursementController } from "../controllers/vexora/disbursement.controller";
+import { vexoraNotifyController, vexoraReturnController } from "../controllers/vexora/webhook.controller";
 
 const router = Router();
+
+// Callbacks & Redirects
+router.post("/notify", asyncHandler(vexoraNotifyController));
+router.post("/notify-payout", asyncHandler(vexoraNotifyController));
+router.get("/success", asyncHandler(vexoraReturnController));
 
 // Deposit / Checkout
 router.post("/checkout", asyncHandler(checkoutController));
