@@ -26,7 +26,7 @@ export const disbursementController = async (req: Request, res: Response) => {
       remark: remark || "",
       timestamp,
       tradeNo,
-      walletId,
+      walletId, // phone number
       wayCode, // BKASH, NAGAD, etc.
     };
 
