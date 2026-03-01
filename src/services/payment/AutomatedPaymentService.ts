@@ -262,6 +262,57 @@ export const AutomatedPaymentService = {
     },
 
     /**
+     * Entry point to disburse an automated withdrawal.
+     */
+    async disburse(params: { provider: any, tradeNo: string, amount: number, wayCode: string, walletId: string, remark?: string }) {
+        const { provider } = params;
+        const tag = provider.tag;
+
+        switch (tag) {
+            case "VEXORA":
+                return this.disburseVexora(params);
+            default:
+                throw new Error(`Disbursement for provider tag '${tag}' is not yet implemented.`);
+        }
+    },
+
+    /**
+     * Vexora disbursement implementation.
+     */
+    async disburseVexora(params: { tradeNo: string, amount: number, wayCode: string, walletId: string, remark?: string }) {
+        const { tradeNo, amount, wayCode, walletId, remark } = params;
+        const timestamp = getTimestamp();
+
+        const payload: Record<string, any> = {
+            amount: String(amount),
+            notifyUrl: "https://gamestar365.com/api/demo/vexora/notify-payout",
+            remark: remark || "Withdrawal",
+            timestamp,
+            tradeNo,
+            walletId,
+            wayCode,
+        };
+
+        const sign = generateVexoraSign(payload);
+        const requestBody = { ...payload, sign };
+
+        try {
+            const { data } = await vexoraSandboxClient.post(
+                "/v1/vexora/disbursements",
+                requestBody
+            );
+            return {
+                success: true,
+                request: requestBody,
+                response: data,
+            };
+        } catch (error: any) {
+            console.error("Vexora disbursement error:", error?.response?.data || error?.message);
+            throw error;
+        }
+    },
+
+    /**
      * Existing monolithic handleDeposit flow. Keep as is or decompose later.
      */
     async handleDeposit(params: AutomatedDepositParams) {

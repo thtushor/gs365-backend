@@ -4,8 +4,10 @@ import { transactions } from "../db/schema/transactions";
 import { settings } from "../db/schema/settings";
 import { turnover } from "../db/schema/turnover";
 import { promotions } from "../db/schema/promotions";
-import { adminMainBalance } from "../db/schema";
+import { adminMainBalance, paymentProvider, paymentGatewayProvider, paymentGatewayProviderAccount } from "../db/schema";
 import { AdminMainBalanceModel } from "../models/adminMainBalance.model";
+import { AutomatedPaymentService } from "./payment/AutomatedPaymentService";
+import { getVexoraWayCode } from "../utils/vexoraMapping";
 
 export class TransactionService {
     /**
@@ -47,6 +49,45 @@ export class TransactionService {
 
         // --- APPROVED FLOW ---
         if (status === "approved") {
+            // Handle automated disbursement for Vexora
+            if (existing.type === "withdraw" && existing.status !== "approved" && existing.paymentGatewayId) {
+                const [gatewayProviderData] = await db
+                    .select({
+                        provider: paymentProvider,
+                    })
+                    .from(paymentGatewayProvider)
+                    .innerJoin(
+                        paymentProvider,
+                        eq(paymentGatewayProvider.providerId, paymentProvider.id)
+                    )
+                    .where(eq(paymentGatewayProvider.gatewayId, existing.paymentGatewayId))
+                    .limit(1);
+
+                if (gatewayProviderData?.provider?.isAutomated && gatewayProviderData?.provider?.tag === "VEXORA") {
+                    const wayCode = getVexoraWayCode(existing.network || "");
+                    const walletId = existing.walletAddress || existing.accountNumber;
+
+                    if (wayCode && walletId) {
+                        try {
+                            console.log(`[DISBURSE] Initiating automated disbursement for TXN ${existing.customTransactionId}`);
+                            await AutomatedPaymentService.disburse({
+                                provider: gatewayProviderData.provider,
+                                tradeNo: existing.customTransactionId!,
+                                amount: Number(existing.amount),
+                                wayCode: wayCode,
+                                walletId: walletId,
+                                remark: existing.notes || `Withdrawal for User ${existing.userId}`,
+                            });
+                        } catch (error: any) {
+                            console.error(`[DISBURSE] Automated disbursement failed for TXN ${existing.customTransactionId}:`, error.message);
+                            // We log the error but continue with the approval status update 
+                            // as the admin chose to approve it manually/automatically.
+                        }
+                    } else {
+                        console.warn(`[DISBURSE] Skipping automated disbursement for TXN ${existing.customTransactionId}: Missing wayCode (${wayCode}) or walletId (${walletId})`);
+                    }
+                }
+            }
             const baseAmount = Number(existing.amount);
             const userIdExisting = Number(existing.userId);
 
