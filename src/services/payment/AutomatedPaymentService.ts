@@ -94,6 +94,8 @@ export interface AutomatedVexoraCheckoutInitResponse {
     request: VexoraCheckoutRequestPayload;
     /** Raw API response mapping the entire provider-returned data */
     response: VexoraCheckoutRawResponse;
+    /** Error object if any */
+    error?: any;
 }
 
 export const AutomatedPaymentService = {
@@ -188,13 +190,14 @@ export const AutomatedPaymentService = {
                     paymentLink: "https://sandbox-casher-bangladesh.vexora.com/mock-payment-link",
                     paymentInfo: "01854107699",
                     remark: payload.remark,
-                }
+                },
             };
 
             return {
                 success: true,
                 request: requestBody,
                 response: mockVexoraData,
+                error: error
             };
         }
     },
