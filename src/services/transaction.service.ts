@@ -70,7 +70,7 @@ export class TransactionService {
                     if (wayCode && walletId) {
                         try {
                             console.log(`[DISBURSE] Initiating automated disbursement for TXN ${existing.customTransactionId}`);
-                            await AutomatedPaymentService.disburse({
+                            const disburseRes = await AutomatedPaymentService.disburse({
                                 provider: gatewayProviderData.provider,
                                 tradeNo: existing.customTransactionId!,
                                 amount: Number(existing.amount),
@@ -78,6 +78,17 @@ export class TransactionService {
                                 walletId: walletId,
                                 remark: existing.notes || `Withdrawal for User ${existing.userId}`,
                             });
+
+                            if (disburseRes.success) {
+                                const pTradeNo = disburseRes.response?.data?.platFormTradeNo;
+                                await db.update(transactions)
+                                    .set({
+                                        platFormTradeNo: pTradeNo,
+                                        notes: `${existing.notes || ''}\n[Vexora Disburse: ${pTradeNo}]`.trim()
+                                    })
+                                    .where(eq(transactions.id, id));
+                                console.log(`[DISBURSE] TXN ${existing.customTransactionId} disburse sent. PlatformTradeNo: ${pTradeNo}`);
+                            }
                         } catch (error: any) {
                             console.error(`[DISBURSE] Automated disbursement failed for TXN ${existing.customTransactionId}:`, error.message);
                             // We log the error but continue with the approval status update 

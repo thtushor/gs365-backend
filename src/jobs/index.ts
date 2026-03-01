@@ -1,9 +1,11 @@
 import cron from "node-cron";
 import { ICronJob } from "./types";
 import { vexoraPayinQueryJob } from "./vexoraPayinQuery.job";
+import { vexoraPayoutQueryJob } from "./vexoraPayoutQuery.job";
 
 const jobs: ICronJob[] = [
     vexoraPayinQueryJob,
+    vexoraPayoutQueryJob,
     // Add additional jobs here over time
 ];
 
