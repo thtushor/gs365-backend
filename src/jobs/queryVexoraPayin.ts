@@ -8,6 +8,7 @@ import { generateVexoraSign } from "../services/vexora/sign.service";
 import { getTimestamp } from "../utils/timestamp";
 
 export const scheduleVexoraPayinQueryJob = () => {
+    // every 1 minute
     cron.schedule("* * * * *", async () => {
         try {
             const pendingTransactions = await db
@@ -45,6 +46,8 @@ export const scheduleVexoraPayinQueryJob = () => {
                         await TransactionService.updateStatus(tx.id, "approved", "Auto-approved by Vexora Cron", null);
                     } else if (data?.code === "0000" && data?.data?.status === "0008") {
                         // 0008 might be failed/closed, but the prompt only asked for auto-approval.
+                        console.log(`[CRON] Auto-failed transaction ${tx.id} (tradeNo: ${tx.tradeNo})`);
+                        await TransactionService.updateStatus(tx.id, "rejected", "Auto-rejected by Vexora Cron", null);
                     }
                 } catch (error: any) {
                     console.error(`[CRON] Error querying tradeNo ${tx.tradeNo}:`, error?.response?.data || error?.message);
