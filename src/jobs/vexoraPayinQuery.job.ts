@@ -45,6 +45,8 @@ export const vexoraPayinQueryJob: ICronJob = {
                     requestBody
                 );
 
+                console.log(`[Vexora Cron] Response for tradeNo ${tx.tradeNo}:`, data);
+
                 if (data?.code === "0000" && data?.data?.status === "0000") {
                     console.log(`[CRON] Auto-approving transaction ${tx.id} (tradeNo: ${tx.tradeNo})`);
                     await TransactionService.updateStatus(tx.id, "approved", "Auto-approved by Vexora Cron", null);
