@@ -12,8 +12,10 @@ export const initCronJobs = () => {
 
     for (const job of jobs) {
         cron.schedule(job.schedule, async () => {
+            console.log(`[CRON] Starting execution of job '${job.name}'...`);
             try {
                 await job.execute();
+                console.log(`[CRON] Execution of job '${job.name}' completed successfully.`);
             } catch (error) {
                 console.error(`[CRON] Unhandled error in job '${job.name}':`, error);
             }

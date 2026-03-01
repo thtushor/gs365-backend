@@ -11,6 +11,7 @@ export const vexoraPayinQueryJob: ICronJob = {
     name: "Vexora PayIn Query",
     schedule: "* * * * *", // Every minute
     execute: async () => {
+        console.log("[Vexora Cron] Fetching pending transactions...");
         const pendingTransactions = await db
             .select()
             .from(transactions)
@@ -21,7 +22,10 @@ export const vexoraPayinQueryJob: ICronJob = {
                 )
             );
 
+        console.log(`[Vexora Cron] Found ${pendingTransactions.length} pending transactions with tradeNo.`);
+
         if (pendingTransactions.length === 0) {
+            console.log("[Vexora Cron] No pending transactions to process.");
             return;
         }
 
