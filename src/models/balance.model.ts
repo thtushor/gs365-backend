@@ -5,6 +5,8 @@ import { currencies } from "../db/schema/currency";
 import { promotions } from "../db/schema";
 
 export interface PlayerBalance {
+  userId?: number;
+  currencyId?: number;
   totalSpinBonusUSD: number;
   totalSpinBonus: number;
   currencyCode: string;
@@ -191,21 +193,24 @@ export const BalanceModel = {
       const pendingDepositsUSD = Number(row.pendingDepositsUSD);
       const pendingWithdrawalsUSD = Number(row.pendingWithdrawalsUSD);
 
-      // Calculate current balance: deposits + wins - withdrawals - losses
       const currentBalance =
         totalDeposits +
         totalSpinBonus +
         totalWins -
         totalWithdrawals -
+        pendingWithdrawals -
         totalLosses;
       const currentBalanceUSD =
         totalDepositsUSD +
         totalSpinBonusUSD +
         totalWinsUSD -
         totalWithdrawalsUSD -
+        pendingWithdrawalsUSD -
         totalLossesUSD;
 
       return {
+        userId,
+        currencyId,
         currencyCode: "N/A", // Will be updated if currency info is needed
         totalOnlyDeposit,
         totalBonus,
@@ -307,12 +312,12 @@ export const BalanceModel = {
         const pendingDepositsUSD = Number(row.pendingDepositsUSD);
         const pendingWithdrawalsUSD = Number(row.pendingWithdrawalsUSD);
 
-        // Calculate current balance: deposits + wins - withdrawals - losses
         const currentBalance =
           totalDeposits +
           totalSpinBonus +
           totalWins -
           totalWithdrawals -
+          pendingWithdrawals -
           totalLosses;
         const currentBalanceUSD =
           totalDepositsUSD +
