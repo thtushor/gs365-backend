@@ -44,8 +44,19 @@ export const settings = mysqlTable("settings", {
     "24 hours",
     "Disabled",
   ])
-    .default("Disabled")
-    .notNull(),
+    .default("Disabled"),
+  withdrawalCooldown: mysqlEnum("withdrawal_cooldown", [
+    "30 min",
+    "1 hour",
+    "2 hours",
+    "3 hours",
+    "5 hours",
+    "7 hours",
+    "12 hours",
+    "24 hours",
+    "Disabled",
+  ])
+    .default("Disabled"),
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updated_at").default(
     sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`,

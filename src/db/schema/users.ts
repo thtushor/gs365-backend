@@ -68,6 +68,17 @@ export const users = mysqlTable("users", {
     "required",
     "pending",
   ]).default("unverified"),
+  withdrawalCooldown: mysqlEnum("withdrawal_cooldown", [
+    "30 min",
+    "1 hour",
+    "2 hours",
+    "3 hours",
+    "5 hours",
+    "7 hours",
+    "12 hours",
+    "24 hours",
+    "Disabled",
+  ]).default("Disabled"),
 });
 
 export const usersRelations = relations(users, ({ one, many }) => ({

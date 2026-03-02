@@ -1029,6 +1029,57 @@ export const createWithdraw = async (req: Request, res: Response) => {
     // Check if there are any pending transactions
     const hasPendingTransaction = !!pendingTxn;
 
+    // Check for cooldown
+    const activeCooldown = (userExists.withdrawalCooldown && userExists.withdrawalCooldown !== "Disabled")
+      ? userExists.withdrawalCooldown
+      : settingsRow.withdrawalCooldown;
+
+    if (activeCooldown && activeCooldown !== "Disabled") {
+      const timeoutMap: Record<string, number> = {
+        "30 min": 30,
+        "1 hour": 60,
+        "2 hours": 120,
+        "3 hours": 180,
+        "5 hours": 300,
+        "7 hours": 420,
+        "12 hours": 720,
+        "24 hours": 1440,
+      };
+      const cooldownMinutes = timeoutMap[activeCooldown as string];
+
+      if (cooldownMinutes) {
+        const [lastWithdrawal] = await db
+          .select({ createdAt: transactions.createdAt })
+          .from(transactions)
+          .where(
+            and(
+              eq(transactions.userId, userId),
+              eq(transactions.type, "withdraw")
+            )
+          )
+          .orderBy(desc(transactions.createdAt))
+          .limit(1);
+
+        if (lastWithdrawal) {
+          const lastTime = new Date(lastWithdrawal.createdAt as any).getTime();
+          const now = new Date().getTime();
+          const diffMinutes = (now - lastTime) / (1000 * 60);
+
+          if (diffMinutes < cooldownMinutes) {
+            const remainingMinutes = Math.ceil(cooldownMinutes - diffMinutes);
+            return res.status(400).json({
+              status: false,
+              message: `You have recently submitted a withdrawal request. Please wait ${remainingMinutes} more minutes before requesting another one.`,
+              data: {
+                cooldownMinutes,
+                remainingMinutes,
+              },
+            });
+          }
+        }
+      }
+    }
+
     // User can withdraw if: sufficient balance AND no pending turnover AND no pending transactions
     const canWithdraw =
       hasSufficientBalance &&
@@ -1680,11 +1731,58 @@ export const checkWithdrawCapability = async (req: Request, res: Response) => {
     // Check if there are any pending transactions
     const hasPendingTransaction = !!pendingTxn;
 
+    // Check for cooldown
+    let isCooldownActive = false;
+    let remainingCooldownMinutes = 0;
+    const activeCooldown = (user.withdrawalCooldown && user.withdrawalCooldown !== "Disabled")
+      ? user.withdrawalCooldown
+      : settingsRow.withdrawalCooldown;
+
+    if (activeCooldown && activeCooldown !== "Disabled") {
+      const timeoutMap: Record<string, number> = {
+        "30 min": 30,
+        "1 hour": 60,
+        "2 hours": 120,
+        "3 hours": 180,
+        "5 hours": 300,
+        "7 hours": 420,
+        "12 hours": 720,
+        "24 hours": 1440,
+      };
+      const cooldownMinutes = timeoutMap[activeCooldown as string];
+
+      if (cooldownMinutes) {
+        const [lastWithdrawal] = await db
+          .select({ createdAt: transactions.createdAt })
+          .from(transactions)
+          .where(
+            and(
+              eq(transactions.userId, userId),
+              eq(transactions.type, "withdraw")
+            )
+          )
+          .orderBy(desc(transactions.createdAt))
+          .limit(1);
+
+        if (lastWithdrawal) {
+          const lastTime = new Date(lastWithdrawal.createdAt as any).getTime();
+          const now = new Date().getTime();
+          const diffMinutes = (now - lastTime) / (1000 * 60);
+
+          if (diffMinutes < cooldownMinutes) {
+            isCooldownActive = true;
+            remainingCooldownMinutes = Math.ceil(cooldownMinutes - diffMinutes);
+          }
+        }
+      }
+    }
+
     // User can withdraw if: sufficient balance AND no pending turnover AND no pending transactions
     const canWithdraw =
       hasSufficientBalance &&
       !hasPendingTurnover &&
       !hasPendingTransaction &&
+      !isCooldownActive &&
       user.kyc_status !== "required" &&
       user.status === "active";
 
@@ -1711,12 +1809,14 @@ export const checkWithdrawCapability = async (req: Request, res: Response) => {
       message: "Withdraw capability check completed",
       data: {
         canWithdraw,
+        isCooldownActive,
+        remainingCooldownMinutes,
         currentBalance: Number(currentBalance.toFixed(2)),
         minWithdrawableBalance,
         hasSufficientBalance,
         hasPendingTurnover,
         hasPendingTransaction,
-        withdrawReason,
+        withdrawReason: withdrawReason || (isCooldownActive ? `You have recently submitted a withdrawal request. Please wait ${remainingCooldownMinutes} more minutes before requesting another one.` : null),
         pendingTurnover: pendingTurnover.map((t) => ({
           id: t.id,
           remainingTurnover: Number(t.remainingTurnover),

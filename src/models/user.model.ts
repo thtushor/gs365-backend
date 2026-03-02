@@ -95,6 +95,8 @@ export const getUserDetailsById = async (
         status: users.status,
         created_at: users.created_at,
         device_type: users.device_type,
+        kyc_status: users.kyc_status,
+        withdrawalCooldown: users.withdrawalCooldown,
         ip_address: users.ip_address,
         // Currency info
         currencyCode: currencies.code,
@@ -258,7 +260,8 @@ export interface UserWithDetails {
   email: string | null;
   phone: string | null;
   isVerified: boolean | null;
-  status: string | null;
+  kyc_status: string | null;
+  withdrawalCooldown: string | null;
   created_at: Date | null;
   device_type: string | null;
   ip_address: string | null;
@@ -389,6 +392,7 @@ export const getUsersWithFilters = async (filters: UserFilters) => {
       isPhoneVerified: users.isPhoneVerified,
       status: users.status,
       kyc_status: users.kyc_status,
+      withdrawalCooldown: users.withdrawalCooldown,
       created_at: users.created_at,
       device_type: users.device_type,
       ip_address: users.ip_address,
@@ -553,6 +557,7 @@ export const updateUser = async (
     isVerified?: boolean;
     isEmailVerified?: boolean;
     isPhoneVerified?: boolean;
+    withdrawalCooldown?: "30 min" | "1 hour" | "2 hours" | "3 hours" | "5 hours" | "7 hours" | "12 hours" | "24 hours" | "Disabled";
   }>,
 ) => {
   if (data.password) {
@@ -615,6 +620,7 @@ export const getUserProfileById = async (id: number): Promise<any> => {
         lastIp: users.lastIp,
         isLoggedIn: users.isLoggedIn,
         kyc_status: users.kyc_status,
+        withdrawalCooldown: users.withdrawalCooldown,
         // Currency info
         currencyId: users.currency_id,
         currencyCode: currencies.code,

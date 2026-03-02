@@ -25,7 +25,7 @@ export const autoCancelWithdrawalJob: ICronJob = {
             return;
         }
 
-        const timeoutMinutes = timeoutMap[settingsRow.withdrawalTimeout];
+        const timeoutMinutes = timeoutMap[settingsRow.withdrawalTimeout as string];
         if (!timeoutMinutes) return;
 
         const now = new Date();
