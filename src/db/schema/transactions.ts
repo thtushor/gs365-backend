@@ -16,6 +16,7 @@ import { promotions } from "./promotions";
 import { games } from "./games";
 import { adminUsers } from "./AdminUsers";
 import { paymentGateway } from "./paymentGateway";
+import { paymentProvider } from "./paymentProvider";
 
 export const TransactionStatus = mysqlEnum("transaction_status", [
   "approved",
@@ -83,6 +84,9 @@ export const transactions = mysqlTable("transactions", {
   paymentGatewayId: int("gateWayId").references(() => paymentGateway.id, {
     onDelete: "cascade",
   }),
+  providerId: int("provider_id").references(() => paymentProvider.id, {
+    onDelete: "cascade",
+  }),
   // Bank-specific fields
   accountNumber: varchar("account_number", { length: 100 }),
   accountHolderName: varchar("account_holder_name", { length: 100 }),
@@ -125,6 +129,10 @@ export const transactionsRelations = relations(transactions, ({ one }) => ({
   paymentGatewayProviderAccount: one(paymentGatewayProviderAccount, {
     fields: [transactions.paymentGatewayProviderAccountId],
     references: [paymentGatewayProviderAccount.id],
+  }),
+  provider: one(paymentProvider, {
+    fields: [transactions.providerId],
+    references: [paymentProvider.id],
   }),
 }));
 

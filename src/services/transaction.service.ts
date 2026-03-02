@@ -18,7 +18,8 @@ export class TransactionService {
         id: number,
         status: "approved" | "pending" | "rejected",
         notes?: string | null,
-        processedBy?: number | null
+        processedBy?: number | null,
+        providerId?: number | null
     ) {
         const validStatuses = ["approved", "pending", "rejected"] as const;
         if (!status || !(validStatuses as readonly string[]).includes(status)) {
@@ -43,6 +44,20 @@ export class TransactionService {
         if (processedBy) updatePayload.processedBy = Number(processedBy);
         if (typeof notes === "string") updatePayload.notes = notes;
 
+        let targetProvider: any = null;
+        if (providerId) {
+            const [providerExists] = await db
+                .select()
+                .from(paymentProvider)
+                .where(eq(paymentProvider.id, providerId))
+                .limit(1);
+            if (!providerExists) {
+                throw new Error("Payment provider not found");
+            }
+            targetProvider = providerExists;
+            updatePayload.providerId = providerId;
+        }
+
         await db
             .update(transactions)
             .set(updatePayload)
@@ -51,28 +66,34 @@ export class TransactionService {
         // --- APPROVED FLOW ---
         if (status === "approved") {
             // Handle automated disbursement for Vexora
-            if (existing.type === "withdraw" && existing.status !== "approved" && existing.paymentGatewayId) {
-                const [gatewayProviderData] = await db
-                    .select({
-                        provider: paymentProvider,
-                    })
-                    .from(paymentGatewayProvider)
-                    .innerJoin(
-                        paymentProvider,
-                        eq(paymentGatewayProvider.providerId, paymentProvider.id)
-                    )
-                    .where(eq(paymentGatewayProvider.gatewayId, existing.paymentGatewayId))
-                    .limit(1);
+            if (existing.type === "withdraw" && existing.status !== "approved") {
+                let providerToUse = targetProvider;
 
-                if (gatewayProviderData?.provider?.isAutomated && gatewayProviderData?.provider?.tag === "VEXORA") {
+                // If no manual providerId sent, fall back to the one linked via gateway
+                if (!providerToUse && existing.paymentGatewayId) {
+                    const [gatewayProviderData] = await db
+                        .select({
+                            provider: paymentProvider,
+                        })
+                        .from(paymentGatewayProvider)
+                        .innerJoin(
+                            paymentProvider,
+                            eq(paymentGatewayProvider.providerId, paymentProvider.id)
+                        )
+                        .where(eq(paymentGatewayProvider.gatewayId, existing.paymentGatewayId))
+                        .limit(1);
+                    providerToUse = gatewayProviderData?.provider;
+                }
+
+                if (providerToUse?.isAutomated && providerToUse?.tag === "VEXORA") {
                     const wayCode = getVexoraWayCode(existing.network || "");
                     const walletId = existing.walletAddress || existing.accountNumber;
 
                     if (wayCode && walletId) {
                         try {
-                            console.log(`[DISBURSE] Initiating automated disbursement for TXN ${existing.customTransactionId}`);
+                            console.log(`[DISBURSE] Initiating automated disbursement for TXN ${existing.customTransactionId} via ${providerToUse.tag} (ID: ${providerToUse.id})`);
                             const disburseRes = await AutomatedPaymentService.disburse({
-                                provider: gatewayProviderData.provider,
+                                provider: providerToUse,
                                 tradeNo: existing.customTransactionId!,
                                 amount: Number(existing.amount),
                                 wayCode: wayCode,
@@ -92,8 +113,6 @@ export class TransactionService {
                             }
                         } catch (error: any) {
                             console.error(`[DISBURSE] Automated disbursement failed for TXN ${existing.customTransactionId}:`, error.message);
-                            // We log the error but continue with the approval status update 
-                            // as the admin chose to approve it manually/automatically.
                         }
                     } else {
                         console.warn(`[DISBURSE] Skipping automated disbursement for TXN ${existing.customTransactionId}: Missing wayCode (${wayCode}) or walletId (${walletId})`);

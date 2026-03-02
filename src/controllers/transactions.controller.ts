@@ -220,6 +220,7 @@ export const createDeposit = async (req: Request, res: Response) => {
       userId: Number(userId),
       type: "deposit",
       paymentGatewayId: gatewayId,
+      providerId: providerId || gatewayData?.provider?.id,
       amount: Number(convertedAmount),
       currencyId: currencyData?.id,
       promotionId: promotionId ? Number(promotionId) : null,
@@ -966,9 +967,12 @@ export const createWithdraw = async (req: Request, res: Response) => {
         id: paymentGateway.id,
         name: paymentGateway.name,
         paymentMethodName: paymentMethods?.name,
+        providerId: paymentProvider.id,
       })
       .from(paymentGateway)
       .leftJoin(paymentMethods, eq(paymentMethods.id, paymentGateway.methodId))
+      .leftJoin(paymentGatewayProvider, eq(paymentGateway.id, paymentGatewayProvider.gatewayId))
+      .leftJoin(paymentProvider, eq(paymentGatewayProvider.providerId, paymentProvider.id))
       .where(eq(paymentGateway.id, paymentGatewayId));
     console.log({ getGateWayData });
 
@@ -1335,6 +1339,7 @@ export const getTransactions = async (req: Request, res: Response) => {
         gameId: transactions.gameId,
         status: transactions.status,
         gatewayStatus: transactions.gatewayStatus,
+        providerId: transactions.providerId,
         customTransactionId: transactions.customTransactionId,
         givenTransactionId: transactions.givenTransactionId,
         attachment: transactions.attachment,
@@ -1448,7 +1453,7 @@ END
 export const updateTransactionStatus = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
-    const { status, notes } = req.body as { status?: string; notes?: string };
+    const { status, notes, providerId } = req.body as { status?: string; notes?: string; providerId?: number };
 
     if (Number.isNaN(id)) {
       return res
@@ -1458,7 +1463,7 @@ export const updateTransactionStatus = async (req: Request, res: Response) => {
 
     const processedBy = (req as any)?.user?.id ?? null;
 
-    const updated = await TransactionService.updateStatus(id, status as any, notes, processedBy);
+    const updated = await TransactionService.updateStatus(id, status as any, notes, processedBy, providerId);
 
     return res.status(200).json({
       status: true,
