@@ -23,6 +23,12 @@ export const TransactionStatus = mysqlEnum("transaction_status", [
   "rejected",
 ]);
 
+export const GatewayStatus = mysqlEnum("gateway_status", [
+  "approved",
+  "pending",
+  "rejected",
+]);
+
 export const TransactionType = mysqlEnum("transaction_type", [
   "deposit",
   "withdraw",
@@ -58,6 +64,7 @@ export const transactions = mysqlTable("transactions", {
     },
   ),
   status: TransactionStatus.default("pending"),
+  gatewayStatus: GatewayStatus.default("pending"),
   customTransactionId: varchar("custom_transaction_id", {
     length: 100,
   }).unique(),

@@ -37,6 +37,7 @@ export class TransactionService {
 
         const updatePayload: any = {
             status: status as any,
+            gatewayStatus: status as any,
             processedAt: new Date(),
         };
         if (processedBy) updatePayload.processedBy = Number(processedBy);

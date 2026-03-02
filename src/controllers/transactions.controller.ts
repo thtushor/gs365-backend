@@ -225,6 +225,7 @@ export const createDeposit = async (req: Request, res: Response) => {
       promotionId: promotionId ? Number(promotionId) : null,
       bonusAmount: Number(convertedBonusAmount?.toFixed(2)),
       status: "pending",
+      gatewayStatus: "pending",
       customTransactionId,
       paymentGatewayProviderAccountId: paymentGatewayProviderAccountId
         ? Number(paymentGatewayProviderAccountId)
@@ -797,6 +798,7 @@ export const createAffiliateWithdraw = async (req: Request, res: Response) => {
         amount: Number(amount),
         currencyId: Number(currencyId),
         status: "pending" as any,
+        gatewayStatus: "pending" as any,
         customTransactionId,
         notes: notes ?? null,
         attachment: attachment ?? null,
@@ -1131,6 +1133,7 @@ export const createWithdraw = async (req: Request, res: Response) => {
         currencyId: currencyData?.id || Number(currencyId),
         paymentGatewayId: Number(paymentGatewayId),
         status: "pending" as any,
+        gatewayStatus: "pending" as any,
         customTransactionId,
         notes: notes ?? null,
         conversionRate: currentConversionRate.rate ?? null,
@@ -1331,6 +1334,7 @@ export const getTransactions = async (req: Request, res: Response) => {
         bonusAmount: transactions.bonusAmount,
         gameId: transactions.gameId,
         status: transactions.status,
+        gatewayStatus: transactions.gatewayStatus,
         customTransactionId: transactions.customTransactionId,
         givenTransactionId: transactions.givenTransactionId,
         attachment: transactions.attachment,
@@ -1514,6 +1518,7 @@ export const updateAffiliateWithdrawStatus = async (
       // 1. Update Transaction status
       const updatePayload: any = {
         status: status as any,
+        gatewayStatus: status as any,
         processedAt: new Date(),
       };
       if (processedBy) updatePayload.processedBy = Number(processedBy);
