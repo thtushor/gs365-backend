@@ -70,7 +70,7 @@ export const transactions = mysqlTable("transactions", {
     length: 100,
   }).unique(),
   givenTransactionId: varchar("given_transaction_id", { length: 100 }),
-  tradeNo: varchar("trade_no", { length: 100 }),
+
   platFormTradeNo: varchar("platform_trade_no", { length: 100 }),
   attachment: text("attachment"),
   notes: text("notes"),

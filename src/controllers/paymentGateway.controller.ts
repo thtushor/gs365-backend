@@ -5,6 +5,7 @@ import { paymentGateway } from "../db/schema/paymentGateway";
 import { eq, and, sql, like } from "drizzle-orm";
 import { db } from "../db/connection";
 import { AutomatedPaymentService } from "../services/payment/AutomatedPaymentService";
+import { generateUniqueTransactionId } from "../utils/refCode";
 
 // Helper to build where conditions for search/filter
 function buildWhereCondition(query: any) {
@@ -137,16 +138,20 @@ export const initializeAutomatedPayment = async (
     }
 
     if (provider.isAutomated && provider.tag) {
+      const customTransactionId = req.body.tradeNo || await generateUniqueTransactionId();
       // Defer to the AutomatedPaymentService 
       const initResult = await AutomatedPaymentService.initializeDeposit({
         gateway,
         provider,
         amount,
-        tradeNo: req.body.tradeNo,
+        tradeNo: customTransactionId,
         username: (req as any).user?.username || "", // Optional, inject user context if available
       });
 
-      return res.json(initResult);
+      return res.json({
+        ...initResult,
+        customTransactionId,
+      });
     }
 
     // Default fallback for manual or unsupported automated payment tags

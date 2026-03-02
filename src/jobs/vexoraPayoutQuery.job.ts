@@ -1,6 +1,7 @@
 import { eq, and, isNotNull, like, notLike } from "drizzle-orm";
 import { db } from "../db/connection";
 import { transactions } from "../db/schema/transactions";
+import { paymentProvider } from "../db/schema/paymentProvider";
 import { TransactionService } from "../services/transaction.service";
 import { vexoraSandboxClient } from "../services/vexora/vexoraSandbox.service";
 import { generateVexoraSign } from "../services/vexora/sign.service";
@@ -15,14 +16,19 @@ export const vexoraPayoutQueryJob: ICronJob = {
 
         // Find withdrawals that are approved but not yet finalized by Vexora
         const pendingPayouts = await db
-            .select()
+            .select({
+                id: transactions.id,
+                tradeNo: transactions.customTransactionId,
+                notes: transactions.notes,
+            })
             .from(transactions)
+            .innerJoin(paymentProvider, eq(transactions.providerId, paymentProvider.id))
             .where(
                 and(
                     eq(transactions.type, "withdraw"),
                     eq(transactions.status, "approved"),
-                    isNotNull(transactions.tradeNo),
-                    like(transactions.tradeNo, "VEX_%"),
+                    eq(paymentProvider.tag, "VEXORA"),
+                    isNotNull(transactions.customTransactionId),
                     notLike(transactions.notes, "%[Vexora: Completed]%") // Don't check finished ones
                 )
             );

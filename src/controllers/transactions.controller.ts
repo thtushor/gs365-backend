@@ -104,7 +104,7 @@ export const createDeposit = async (req: Request, res: Response) => {
       });
     }
 
-    const customTransactionId = await generateUniqueTransactionId();
+    const customTransactionId = req.body.tradeNo || await generateUniqueTransactionId();
 
     const [promotionData] = promotionId
       ? await db
@@ -235,7 +235,6 @@ export const createDeposit = async (req: Request, res: Response) => {
         ? `${notes || ""}\n[Vexora PlatFormTradeNo: ${automatedData.platFormTradeNo}]`.trim()
         : notes ?? null,
       givenTransactionId: givenTransactionId ?? null,
-      tradeNo: tradeNo ?? null,
       platFormTradeNo: platFormTradeNo ?? null,
       attachment: attachment ?? null,
       processedBy: user?.userType === "admin" ? user?.id : null,

@@ -1,6 +1,7 @@
 import { eq, and, isNotNull } from "drizzle-orm";
 import { db } from "../db/connection";
 import { transactions } from "../db/schema/transactions";
+import { paymentProvider } from "../db/schema/paymentProvider";
 import { TransactionService } from "../services/transaction.service";
 import { vexoraSandboxClient } from "../services/vexora/vexoraSandbox.service";
 import { generateVexoraSign } from "../services/vexora/sign.service";
@@ -13,16 +14,23 @@ export const vexoraPayinQueryJob: ICronJob = {
     execute: async () => {
         console.log("[Vexora Cron] Fetching pending transactions...");
         const pendingTransactions = await db
-            .select()
+            .select({
+                id: transactions.id,
+                tradeNo: transactions.customTransactionId,
+                status: transactions.status,
+            })
             .from(transactions)
+            .innerJoin(paymentProvider, eq(transactions.providerId, paymentProvider.id))
             .where(
                 and(
                     eq(transactions.status, "pending"),
-                    isNotNull(transactions.tradeNo)
+                    eq(paymentProvider.tag, "VEXORA"),
+                    eq(paymentProvider.isAutomated, true),
+                    isNotNull(transactions.customTransactionId)
                 )
             );
 
-        console.log(`[Vexora Cron] Found ${pendingTransactions.length} pending transactions with tradeNo.`);
+        console.log(`[Vexora Cron] Found ${pendingTransactions.length} pending transactions with customTransactionId.`);
 
         if (pendingTransactions.length === 0) {
             console.log("[Vexora Cron] No pending transactions to process.");
