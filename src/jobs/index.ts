@@ -2,10 +2,12 @@ import cron from "node-cron";
 import { ICronJob } from "./types";
 import { vexoraPayinQueryJob } from "./vexoraPayinQuery.job";
 import { vexoraPayoutQueryJob } from "./vexoraPayoutQuery.job";
+import { autoCancelWithdrawalJob } from "./autoCancelWithdrawal.job";
 
 const jobs: ICronJob[] = [
     vexoraPayinQueryJob,
     vexoraPayoutQueryJob,
+    autoCancelWithdrawalJob,
     // Add additional jobs here over time
 ];
 
