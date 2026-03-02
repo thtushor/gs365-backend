@@ -38,7 +38,6 @@ export class TransactionService {
 
         const updatePayload: any = {
             status: status as any,
-            gatewayStatus: status as any,
             processedAt: new Date(),
         };
         if (processedBy) updatePayload.processedBy = Number(processedBy);
@@ -56,6 +55,19 @@ export class TransactionService {
             }
             targetProvider = providerExists;
             updatePayload.providerId = providerId;
+        } else if (existing.providerId) {
+            const [providerExists] = await db
+                .select()
+                .from(paymentProvider)
+                .where(eq(paymentProvider.id, existing.providerId))
+                .limit(1);
+            targetProvider = providerExists;
+        }
+
+        // Logic: Automatically update gateway status if it's a manual provider. 
+        // If it's automated, we keep them isolated.
+        if (!targetProvider || !targetProvider.isAutomated) {
+            updatePayload.gatewayStatus = status as any;
         }
 
         await db
