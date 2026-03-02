@@ -81,6 +81,29 @@ export const createDeposit = async (req: Request, res: Response) => {
       });
     }
 
+    // Check for any pending deposit or withdrawal
+    const [pendingTxn] = await db
+      .select({
+        id: transactions.id,
+        type: transactions.type,
+      })
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.userId, Number(userId)),
+          eq(transactions.status, "pending"),
+          inArray(transactions.type, ["deposit", "withdraw"]),
+        ),
+      )
+      .limit(1);
+
+    if (pendingTxn) {
+      return res.status(400).json({
+        status: false,
+        message: `You have a pending ${pendingTxn.type} request. Please wait until it is processed.`,
+      });
+    }
+
     const customTransactionId = await generateUniqueTransactionId();
 
     const [promotionData] = promotionId
@@ -972,6 +995,22 @@ export const createWithdraw = async (req: Request, res: Response) => {
       .from(turnover)
       .where(and(eq(turnover.userId, userId), eq(turnover.status, "active")));
 
+    // Check for any pending deposit or withdrawal
+    const [pendingTxn] = await db
+      .select({
+        id: transactions.id,
+        type: transactions.type,
+      })
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.userId, Number(userId)),
+          eq(transactions.status, "pending"),
+          inArray(transactions.type, ["deposit", "withdraw"]),
+        ),
+      )
+      .limit(1);
+
     // Calculate user's current balance using BalanceModel
     const playerBalance = await BalanceModel.calculatePlayerBalance(userId);
     const currentBalance = playerBalance.currentBalance || 0;
@@ -982,10 +1021,14 @@ export const createWithdraw = async (req: Request, res: Response) => {
     // Check if there are any pending turnovers
     const hasPendingTurnover = pendingTurnover.length > 0;
 
-    // User can withdraw if: sufficient balance AND no pending turnover
+    // Check if there are any pending transactions
+    const hasPendingTransaction = !!pendingTxn;
+
+    // User can withdraw if: sufficient balance AND no pending turnover AND no pending transactions
     const canWithdraw =
       hasSufficientBalance &&
       !hasPendingTurnover &&
+      !hasPendingTransaction &&
       userExists.kyc_status !== "required";
 
     if (!canWithdraw) {
@@ -1006,6 +1049,8 @@ export const createWithdraw = async (req: Request, res: Response) => {
           )
           .join(", ");
         withdrawReason = `Pending turnover requirements: ${turnoverDetails}`;
+      } else if (hasPendingTransaction) {
+        withdrawReason = `You have a pending ${pendingTxn.type} request. Please wait until it is processed.`;
       }
 
       return res.status(400).json({
@@ -1017,6 +1062,7 @@ export const createWithdraw = async (req: Request, res: Response) => {
           minWithdrawableBalance,
           hasSufficientBalance,
           hasPendingTurnover,
+          hasPendingTransaction,
           withdrawReason,
           pendingTurnover: pendingTurnover.map((t) => ({
             id: t.id,
@@ -1594,6 +1640,22 @@ export const checkWithdrawCapability = async (req: Request, res: Response) => {
       .from(turnover)
       .where(and(eq(turnover.userId, userId), eq(turnover.status, "active")));
 
+    // Check for any pending deposit or withdrawal
+    const [pendingTxn] = await db
+      .select({
+        id: transactions.id,
+        type: transactions.type,
+      })
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.userId, Number(userId)),
+          eq(transactions.status, "pending"),
+          inArray(transactions.type, ["deposit", "withdraw"]),
+        ),
+      )
+      .limit(1);
+
     // Calculate user's current balance using BalanceModel
     const playerBalance = await BalanceModel.calculatePlayerBalance(userId);
     const currentBalance = playerBalance.currentBalance;
@@ -1604,10 +1666,14 @@ export const checkWithdrawCapability = async (req: Request, res: Response) => {
     // Check if there are any pending turnovers
     const hasPendingTurnover = pendingTurnover.length > 0;
 
-    // User can withdraw if: sufficient balance AND no pending turnover
+    // Check if there are any pending transactions
+    const hasPendingTransaction = !!pendingTxn;
+
+    // User can withdraw if: sufficient balance AND no pending turnover AND no pending transactions
     const canWithdraw =
       hasSufficientBalance &&
       !hasPendingTurnover &&
+      !hasPendingTransaction &&
       user.kyc_status !== "required" &&
       user.status === "active";
 
@@ -1624,6 +1690,8 @@ export const checkWithdrawCapability = async (req: Request, res: Response) => {
         )}, Minimum required: ${minWithdrawableBalance.toFixed(2)}`;
       } else if (hasPendingTurnover) {
         withdrawReason = `Turnover has not yet reached`;
+      } else if (hasPendingTransaction) {
+        withdrawReason = `You have a pending ${pendingTxn.type} request. Please wait until it is processed.`;
       }
     }
 
@@ -1636,6 +1704,7 @@ export const checkWithdrawCapability = async (req: Request, res: Response) => {
         minWithdrawableBalance,
         hasSufficientBalance,
         hasPendingTurnover,
+        hasPendingTransaction,
         withdrawReason,
         pendingTurnover: pendingTurnover.map((t) => ({
           id: t.id,
