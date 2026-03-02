@@ -319,6 +319,7 @@ export const BalanceModel = {
           totalSpinBonusUSD +
           totalWinsUSD -
           totalWithdrawalsUSD -
+          pendingWithdrawalsUSD -
           totalLossesUSD;
 
         return {
@@ -378,6 +379,11 @@ export const BalanceModel = {
             AND ${transactions.status} = 'approved' 
             THEN ${transactions.amount} ELSE 0 END), 0)
         `,
+          pendingWithdrawals: sql<number>`
+          COALESCE(SUM(CASE WHEN ${transactions.type} = 'withdraw' 
+            AND ${transactions.status} = 'pending' 
+            THEN ${transactions.amount} ELSE 0 END), 0)
+        `,
           totalWins: sql<number>`
           COALESCE(SUM(CASE WHEN ${transactions.type} = 'win' 
             AND ${transactions.status} = 'approved' 
@@ -402,6 +408,11 @@ export const BalanceModel = {
           totalWithdrawalsUSD: sql<number>`
           COALESCE(SUM(CASE WHEN ${transactions.type} = 'withdraw' 
             AND ${transactions.status} = 'approved' 
+            THEN ${transactions.amount} / COALESCE(${transactions.conversionRate}, 1) ELSE 0 END), 0)
+        `,
+          pendingWithdrawalsUSD: sql<number>`
+          COALESCE(SUM(CASE WHEN ${transactions.type} = 'withdraw' 
+            AND ${transactions.status} = 'pending' 
             THEN ${transactions.amount} / COALESCE(${transactions.conversionRate}, 1) ELSE 0 END), 0)
         `,
           totalWinsUSD: sql<number>`
@@ -433,6 +444,8 @@ export const BalanceModel = {
       const totalWithdrawalsUSD = Number(row.totalWithdrawalsUSD);
       const totalWinsUSD = Number(row.totalWinsUSD);
       const totalLossesUSD = Number(row.totalLossesUSD);
+      const pendingWithdrawals = Number(row.pendingWithdrawals);
+      const pendingWithdrawalsUSD = Number(row.pendingWithdrawalsUSD);
 
       // Calculate total balance of all players
       const totalCurrentBalance =
@@ -440,12 +453,14 @@ export const BalanceModel = {
         totalSpinBonus +
         totalWins -
         totalWithdrawals -
+        pendingWithdrawals -
         totalLosses;
       const totalCurrentBalanceUSD =
         totalDepositsUSD +
         totalSpinBonusUSD +
         totalWinsUSD -
         totalWithdrawalsUSD -
+        pendingWithdrawalsUSD -
         totalLossesUSD;
 
       return { totalCurrentBalance, totalCurrentBalanceUSD };
