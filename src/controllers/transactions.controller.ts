@@ -1340,6 +1340,7 @@ export const getTransactions = async (req: Request, res: Response) => {
         status: transactions.status,
         gatewayStatus: transactions.gatewayStatus,
         providerId: transactions.providerId,
+        isAutomated: paymentProvider.isAutomated,
         customTransactionId: transactions.customTransactionId,
         givenTransactionId: transactions.givenTransactionId,
         attachment: transactions.attachment,
@@ -1409,6 +1410,7 @@ END
         paymentGateway,
         eq(paymentGateway.id, transactions.paymentGatewayId),
       )
+      .leftJoin(paymentProvider, eq(transactions.providerId, paymentProvider.id))
       .leftJoin(paymentMethods, eq(paymentGateway.methodId, paymentMethods.id))
       .leftJoin(promotions, eq(transactions.promotionId, promotions.id))
       .leftJoin(users, eq(transactions.userId, users.id))
