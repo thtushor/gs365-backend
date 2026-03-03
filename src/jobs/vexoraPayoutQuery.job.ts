@@ -85,6 +85,7 @@ export const vexoraPayoutQueryJob: ICronJob = {
                                 title: `Withdrawal Completed`,
                                 description: `Your withdrawal request of <strong>${tx.amount}</strong> has been successfully completed. (ID: ${tx.tradeNo})`,
                                 playerIds: String(tx.userId),
+                                link: `/players/${tx.userId}/profile/transactions`,
                                 startDate: new Date(),
                                 endDate: new Date(new Date().setDate(new Date().getDate() + 7)),
                                 status: "active",

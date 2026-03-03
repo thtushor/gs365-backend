@@ -1247,6 +1247,7 @@ export const createWithdraw = async (req: Request, res: Response) => {
         title: `Withdrawal Request Submitted`,
         description: `Your withdrawal request of <strong>${convertedAmount.toFixed(2)} ${currencyData?.code}</strong> has been successfully submitted. The status is currently <strong>pending</strong>.`,
         playerIds: String(userId),
+        link: `/players/${userId}/profile/transactions`,
         startDate: new Date(),
         endDate: new Date(new Date().setDate(new Date().getDate() + 7)),
         status: "active",

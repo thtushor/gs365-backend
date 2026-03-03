@@ -77,6 +77,7 @@ export const vexoraPayinQueryJob: ICronJob = {
                                 title: `Deposit Approved`,
                                 description: `Your deposit of <strong>${tx.amount}</strong> has been successfully approved. (ID: ${tx.tradeNo})`,
                                 playerIds: String(tx.userId),
+                                link: `/players/${tx.userId}/profile/transactions`,
                                 startDate: new Date(),
                                 endDate: new Date(new Date().setDate(new Date().getDate() + 7)),
                                 status: "active",

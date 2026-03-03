@@ -122,6 +122,7 @@ export class TransactionService {
                         title: playerTitle,
                         description: playerDescription,
                         playerIds: String(existing.userId),
+                        link: `/players/${existing.userId}/profile/transactions`,
                         startDate: new Date(),
                         endDate: new Date(new Date().setDate(new Date().getDate() + 7)),
                         status: "active",
