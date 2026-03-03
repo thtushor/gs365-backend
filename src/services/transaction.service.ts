@@ -164,7 +164,8 @@ export class TransactionService {
         if (status === "approved") {
             // ... (rest of the side effects handled below in the original file)
             // Handle automated disbursement for Vexora
-            if (existing.type === "withdraw" && existing.status !== "approved") {
+            // if (existing.type === "withdraw" && existing.status !== "approved") {
+            if (existing.type === "withdraw") {
                 let providerToUse = targetProvider;
 
                 // If no manual providerId sent, fall back to the one linked via gateway
@@ -183,9 +184,14 @@ export class TransactionService {
                     providerToUse = gatewayProviderData?.provider;
                 }
 
+                console.log(`[TransactionService] Provider to use:`, providerToUse);
+
                 if (providerToUse?.isAutomated && providerToUse?.tag === "VEXORA") {
                     const wayCode = getVexoraWayCode(existing.network || "");
                     const walletId = existing.walletAddress || existing.accountNumber;
+
+                    console.log(`[TransactionService] Way code:`, wayCode);
+                    console.log(`[TransactionService] Wallet ID:`, walletId);
 
                     if (wayCode && walletId) {
                         try {
@@ -198,6 +204,8 @@ export class TransactionService {
                                 walletId: walletId,
                                 remark: existing.notes || `Withdrawal for User ${existing.userId}`,
                             });
+
+                            console.log(`[TransactionService] Disbursement response:`, disburseRes);
 
                             if (disburseRes.success) {
                                 const pTradeNo = disburseRes.response?.data?.platFormTradeNo;
