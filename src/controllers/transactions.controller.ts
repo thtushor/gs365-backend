@@ -1566,7 +1566,7 @@ export const updateTransactionStatus = async (req: Request, res: Response) => {
       "Payment provider not found"
     ];
 
-    if (knownErrors.includes(err.message) || err.message.startsWith("Vexora Disbursement Failed:")) {
+    if (knownErrors.includes(err.message) || err.message.startsWith("Vexora ")) {
       return res.status(400).json({ status: false, message: err.message });
     }
     console.error("updateTransactionStatus error", err);
