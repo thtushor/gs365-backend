@@ -4,7 +4,7 @@ import { transactions } from "../db/schema/transactions";
 import { settings } from "../db/schema/settings";
 import { turnover } from "../db/schema/turnover";
 import { promotions } from "../db/schema/promotions";
-import { adminMainBalance, paymentProvider, paymentGatewayProvider, paymentGatewayProviderAccount, notifications } from "../db/schema";
+import { adminMainBalance, paymentProvider, paymentGatewayProvider, paymentGatewayProviderAccount, notifications, paymentGateway } from "../db/schema";
 import { AdminMainBalanceModel } from "../models/adminMainBalance.model";
 import { AutomatedPaymentService } from "./payment/AutomatedPaymentService";
 import { getVexoraWayCode } from "../utils/vexoraMapping";
@@ -168,26 +168,35 @@ export class TransactionService {
             if (existing.type === "withdraw") {
                 let providerToUse = targetProvider;
 
+                let gatewayToUse: any = null;
                 // If no manual providerId sent, fall back to the one linked via gateway
-                if (!providerToUse && existing.paymentGatewayId) {
+                if (existing.paymentGatewayId) {
                     const [gatewayProviderData] = await db
                         .select({
                             provider: paymentProvider,
+                            gateway: paymentGateway,
                         })
                         .from(paymentGatewayProvider)
-                        .innerJoin(
+                        .leftJoin(
                             paymentProvider,
                             eq(paymentGatewayProvider.providerId, paymentProvider.id)
                         )
+                        .leftJoin(
+                            paymentGateway,
+                            eq(paymentGateway.id, paymentGatewayProvider.gatewayId)
+                        )
                         .where(eq(paymentGatewayProvider.gatewayId, existing.paymentGatewayId))
                         .limit(1);
-                    providerToUse = gatewayProviderData?.provider;
+
+                    if (!providerToUse) providerToUse = gatewayProviderData?.provider;
+                    gatewayToUse = gatewayProviderData?.gateway;
                 }
 
                 console.log(`[TransactionService] Provider to use:`, providerToUse);
+                console.log(`[TransactionService] Gateway to use:`, gatewayToUse);
 
                 if (providerToUse?.isAutomated && providerToUse?.tag === "VEXORA") {
-                    const wayCode = getVexoraWayCode(existing.network || "");
+                    const wayCode = getVexoraWayCode(gatewayToUse?.name || "");
                     const walletId = existing.walletAddress || existing.accountNumber;
 
                     console.log(`[TransactionService] Way code:`, wayCode);
