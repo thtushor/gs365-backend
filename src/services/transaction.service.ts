@@ -1,13 +1,14 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { db } from "../db/connection";
 import { transactions } from "../db/schema/transactions";
 import { settings } from "../db/schema/settings";
 import { turnover } from "../db/schema/turnover";
 import { promotions } from "../db/schema/promotions";
-import { adminMainBalance, paymentProvider, paymentGatewayProvider, paymentGatewayProviderAccount } from "../db/schema";
+import { adminMainBalance, paymentProvider, paymentGatewayProvider, paymentGatewayProviderAccount, notifications } from "../db/schema";
 import { AdminMainBalanceModel } from "../models/adminMainBalance.model";
 import { AutomatedPaymentService } from "./payment/AutomatedPaymentService";
 import { getVexoraWayCode } from "../utils/vexoraMapping";
+import { io } from "..";
 
 export class TransactionService {
     /**
@@ -79,8 +80,88 @@ export class TransactionService {
             .set(updatePayload)
             .where(eq(transactions.id, id));
 
-        // --- APPROVED FLOW ---
+        // --- NOTIFICATIONS SYSTEM ---
+        // Rule 10: skip if partially successful (which the user says should be shown as pending)
+        if (["approved", "rejected"].includes(status) && existing.status !== status) {
+            try {
+                const isDeposit = existing.type === "deposit";
+                const isWithdraw = existing.type === "withdraw";
+                const isAdminProcessed = !!processedBy;
+                const isSystemProcessed = !processedBy;
+
+                // --- PLAYER NOTIFICATIONS ---
+                let playerTitle = "";
+                let playerDescription = "";
+                let shouldNotifyPlayer = false;
+
+                if (isWithdraw) {
+                    // Rule 1 & Rule 2
+                    shouldNotifyPlayer = true;
+                    playerTitle = `Withdrawal ${status.charAt(0).toUpperCase() + status.slice(1)}`;
+                    if (status === "approved") {
+                        playerDescription = `Your withdrawal request of <strong>${existing.amount}</strong> has been <strong>approved</strong>.`;
+                    } else {
+                        // Include Rejection Reason + Refund Notice
+                        const reason = rejectReason || notes || "No specific reason provided.";
+                        playerDescription = `Your withdrawal request of <strong>${existing.amount}</strong> has been <strong>rejected</strong>.<br/>Reason: ${reason}<br/>Your amount has been refunded.`;
+                    }
+                } else if (isDeposit) {
+                    // Rule 8 & Rule 9
+                    shouldNotifyPlayer = true;
+                    playerTitle = `Deposit ${status.charAt(0).toUpperCase() + status.slice(1)}`;
+                    if (status === "approved") {
+                        playerDescription = `Your deposit request of <strong>${existing.amount}</strong> has been <strong>approved</strong>. Funds have been credited to your account.`;
+                    } else {
+                        playerDescription = `Your deposit request of <strong>${existing.amount}</strong> has been <strong>${status}</strong>.`;
+                    }
+                }
+
+                if (shouldNotifyPlayer) {
+                    const [notifResult] = await db.insert(notifications).values({
+                        notificationType: "admin_others", // players listen for these
+                        title: playerTitle,
+                        description: playerDescription,
+                        playerIds: String(existing.userId),
+                        startDate: new Date(),
+                        endDate: new Date(new Date().setDate(new Date().getDate() + 7)),
+                        status: "active",
+                        createdBy: Number(processedBy || 0),
+                    } as any);
+
+                    const notificationId = (notifResult as any).insertId || (notifResult as any).id;
+                    io.emit(`user-notifications-${existing.userId}`, {
+                        userId: Number(existing.userId),
+                        event: "transaction_update",
+                        notificationId,
+                        refresh: true,
+                    });
+                }
+
+                // --- ADMIN NOTIFICATIONS ---
+                // Rule 5 & Rule 6
+                if (isWithdraw && (status === "approved" || status === "rejected")) {
+                    const isAutoCancel = status === "rejected" && notes?.toLowerCase().includes("auto-cancelled");
+                    const adminTitle = isAutoCancel
+                        ? `Withdrawal Auto-Cancelled: #${existing.customTransactionId}`
+                        : `Withdrawal ${status.charAt(0).toUpperCase() + status.slice(1)}: #${existing.customTransactionId}`;
+
+                    const adminDescription = `Withdrawal request for user #${existing.userId} has been ${status}.<br/>Amount: ${existing.amount}<br/>Method: ${isAutoCancel ? "System Timeout" : (isSystemProcessed ? "Gateway Response" : "Manual Admin Action")}`;
+
+                    io.emit("admin-notifications", {
+                        notificationType: "admin_player_transaction",
+                        title: adminTitle,
+                        description: adminDescription,
+                    });
+                }
+
+            } catch (notifErr) {
+                console.error("[TransactionService] Notification failed:", notifErr);
+            }
+        }
+
+        // Handle Side Effects for Approved
         if (status === "approved") {
+            // ... (rest of the side effects handled below in the original file)
             // Handle automated disbursement for Vexora
             if (existing.type === "withdraw" && existing.status !== "approved") {
                 let providerToUse = targetProvider;

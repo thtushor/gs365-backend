@@ -1241,6 +1241,24 @@ export const createWithdraw = async (req: Request, res: Response) => {
         `,
       });
 
+      // --- PLAYER NOTIFICATION (Rule 3) ---
+      await tx.insert(notifications).values({
+        notificationType: "admin_others" as const,
+        title: `Withdrawal Request Submitted`,
+        description: `Your withdrawal request of <strong>${convertedAmount.toFixed(2)} ${currencyData?.code}</strong> has been successfully submitted. The status is currently <strong>pending</strong>.`,
+        playerIds: String(userId),
+        startDate: new Date(),
+        endDate: new Date(new Date().setDate(new Date().getDate() + 7)),
+        status: "active",
+        createdBy: 0,
+      });
+
+      io.emit(`user-notifications-${userId}`, {
+        userId: Number(userId),
+        event: "withdrawal_submitted",
+        refresh: true,
+      });
+
       const transactionId =
         (createdTxn as any).insertId ?? (createdTxn as any)?.id;
 
