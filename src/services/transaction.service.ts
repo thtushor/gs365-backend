@@ -218,11 +218,13 @@ export class TransactionService {
                                 console.log(`[TransactionService] Disbursement response:`, disburseRes);
 
                                 const vData = disburseRes.response;
-                                if (vData?.success === false) {
-                                    if (vData.code === "5000") {
-                                        throw new Error(`Vexora System Exception (5000): ${vData.msg || "Internal Platform Error"}. Status remains pending. Do NOT mark as failed manually.`);
+                                // Vexora docs: 0000 is successful. Anything else is an error.
+                                if (vData?.code !== "0000") {
+                                    const msg = vData?.msg || "Unknown Vexora error";
+                                    if (vData?.code === "5000") {
+                                        throw new Error(`Vexora System Exception (5000): ${msg}. Status remains pending. Do NOT mark as failed manually.`);
                                     }
-                                    throw new Error(`Vexora Disbursement Failed: ${vData.msg || "Unknown error"}`);
+                                    throw new Error(`Vexora Error (${vData?.code || '8000'}): ${msg}`);
                                 }
 
                                 if (disburseRes.success) {
@@ -239,7 +241,10 @@ export class TransactionService {
                                 }
                             } catch (error: any) {
                                 console.error(`[DISBURSE] Automated disbursement failed for TXN ${existing.customTransactionId}:`, error.message);
-                                throw error; // Re-throw to trigger rollback
+                                // If it already has the Vexora prefix (from our manual throws above), re-throw
+                                if (error.message.startsWith("Vexora ")) throw error;
+                                // Otherwise, wrap connection/network errors to ensure they are visible in UI
+                                throw new Error(`Vexora Request Failed: ${error.message}`);
                             }
                         } else {
                             console.warn(`[DISBURSE] Skipping automated disbursement for TXN ${existing.customTransactionId}: Missing wayCode (${wayCode}) or walletId (${walletId})`);
