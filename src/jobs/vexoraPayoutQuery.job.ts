@@ -67,16 +67,24 @@ export const vexoraPayoutQueryJob: ICronJob = {
                             .set({
                                 notes: `${tx.notes || ''}\n[Vexora: Completed]`.trim(),
                                 status: "approved",
+                                gatewayStatus: "approved",
                             })
                             .where(eq(transactions.id, tx.id));
+
+                        // Notify via status update (this will trigger notifications)
+                        await TransactionService.updateStatus(tx.id, "approved", `${tx.notes || ''}\n[Vexora: Completed]`.trim(), null);
                     } else if (status === "00029") {
                         console.log(`[Vexora Payout Cron] Payout ${tx.tradeNo} failed (00029). Reverting transaction.`);
+                        await db.update(transactions).set({ gatewayStatus: "rejected" }).where(eq(transactions.id, tx.id));
                         await TransactionService.updateStatus(tx.id, "rejected", "Auto-rejected: Vexora Payout Failed (Status 00029)", null);
                     } else if (status === "0015") {
                         console.log(`[Vexora Payout Cron] Payout ${tx.tradeNo} still in progress (0015).`);
+                        // UPDATE ONLY GATEWAY STATUS
+                        await db.update(transactions).set({ gatewayStatus: "pending" }).where(eq(transactions.id, tx.id));
                     }
                 } else if (data?.code === "8000") {
                     console.log(`[Vexora Payout Cron] Payout ${tx.tradeNo} failed (8000). Reverting transaction.`);
+                    await db.update(transactions).set({ gatewayStatus: "rejected" }).where(eq(transactions.id, tx.id));
                     await TransactionService.updateStatus(tx.id, "rejected", `Auto-rejected: Vexora Payout Failed (${data.msg})`, null);
                 } else if (data?.code === "5000") {
                     console.warn(`[Vexora Payout Cron] System Exception (5000) for ${tx.tradeNo}. Retrying later.`);
