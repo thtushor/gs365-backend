@@ -119,9 +119,11 @@ export class TransactionService {
 
                             if (disburseRes.success) {
                                 const pTradeNo = disburseRes.response?.data?.platFormTradeNo;
+                                const tradeNo = disburseRes.response?.data?.tradeNo;
                                 await db.update(transactions)
                                     .set({
                                         platFormTradeNo: pTradeNo,
+                                        customTransactionId: tradeNo,
                                         notes: `${existing.notes || ''}\n[Vexora Disburse: ${pTradeNo}]`.trim()
                                     })
                                     .where(eq(transactions.id, id));

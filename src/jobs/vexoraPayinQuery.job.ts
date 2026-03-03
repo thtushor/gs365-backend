@@ -1,12 +1,14 @@
 import { eq, and, isNotNull } from "drizzle-orm";
 import { db } from "../db/connection";
 import { transactions } from "../db/schema/transactions";
+import { notifications } from "../db/schema/notifications";
 import { paymentProvider } from "../db/schema/paymentProvider";
 import { TransactionService } from "../services/transaction.service";
 import { vexoraSandboxClient } from "../services/vexora/vexoraSandbox.service";
 import { generateVexoraSign } from "../services/vexora/sign.service";
 import { getTimestamp } from "../utils/timestamp";
 import { ICronJob } from "./types";
+import { io } from "..";
 
 export const vexoraPayinQueryJob: ICronJob = {
     name: "Vexora PayIn Query",
@@ -18,6 +20,8 @@ export const vexoraPayinQueryJob: ICronJob = {
                 id: transactions.id,
                 tradeNo: transactions.customTransactionId,
                 status: transactions.status,
+                userId: transactions.userId,
+                amount: transactions.amount,
             })
             .from(transactions)
             .innerJoin(paymentProvider, eq(transactions.providerId, paymentProvider.id))
@@ -65,6 +69,30 @@ export const vexoraPayinQueryJob: ICronJob = {
                         console.log(`[CRON] Auto-approving transaction ${tx.id} (tradeNo: ${tx.tradeNo})`);
                         await db.update(transactions).set({ gatewayStatus: "approved" }).where(eq(transactions.id, tx.id));
                         await TransactionService.updateStatus(tx.id, "approved", "Auto-approved by Vexora Cron", null);
+
+                        // --- Automatic Notification to Player ---
+                        try {
+                            const [newNotif] = await db.insert(notifications).values({
+                                notificationType: "admin_others",
+                                title: `Deposit Approved`,
+                                description: `Your deposit of <strong>${tx.amount}</strong> has been successfully approved. (ID: ${tx.tradeNo})`,
+                                playerIds: String(tx.userId),
+                                startDate: new Date(),
+                                endDate: new Date(new Date().setDate(new Date().getDate() + 7)),
+                                status: "active",
+                                createdBy: 0,
+                            } as any);
+
+                            const nId = (newNotif as any).insertId || (newNotif as any).id;
+                            io.emit(`user-notifications-${tx.userId}`, {
+                                userId: Number(tx.userId),
+                                event: "notification_created",
+                                notificationId: nId,
+                                refresh: true,
+                            });
+                        } catch (notifErr) {
+                            console.error(`[CRON] Failed to send notification for TXN ${tx.id}:`, notifErr);
+                        }
                     } else if (status === "00029") {
                         console.log(`[CRON] Auto-failing transaction ${tx.id} (tradeNo: ${tx.tradeNo}) - Status 00029`);
                         await db.update(transactions).set({ gatewayStatus: "rejected" }).where(eq(transactions.id, tx.id));
