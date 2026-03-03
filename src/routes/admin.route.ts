@@ -77,6 +77,12 @@ import {
   getCustomNotifications,
   updateCustomNotification,
 } from "../controllers/admin.controller";
+import {
+  getAllRejectReasons,
+  createRejectReason,
+  updateRejectReason,
+  deleteRejectReason,
+} from "../controllers/rejectReason.controller";
 import { getUserDetailsController } from "../controllers/user.controller";
 
 import {
@@ -316,7 +322,7 @@ router.post(
   asyncHandler(createOrUpdateConversion)
 );
 router.get("/currency-rate", verifyToken, asyncHandler(getConversionList));
-export default router;
+
 router.post(
   "/delete-currency/:id",
   verifyToken,
@@ -333,3 +339,19 @@ router.post(
   verifyToken,
   asyncHandler(updateCustomNotification)
 );
+
+// Reject Reasons
+router.get("/reject-reasons", verifyToken, asyncHandler(getAllRejectReasons));
+router.post("/reject-reasons", verifyToken, asyncHandler(createRejectReason));
+router.post(
+  "/reject-reasons/:id",
+  verifyToken,
+  asyncHandler(updateRejectReason)
+);
+router.post(
+  "/reject-reasons/delete/:id",
+  verifyToken,
+  asyncHandler(deleteRejectReason)
+);
+
+export default router;

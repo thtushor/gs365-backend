@@ -19,7 +19,9 @@ export class TransactionService {
         status: "approved" | "pending" | "rejected",
         notes?: string | null,
         processedBy?: number | null,
-        providerId?: number | null
+        providerId?: number | null,
+        rejectReasonId?: number | null,
+        rejectReason?: string | null
     ) {
         const validStatuses = ["approved", "pending", "rejected"] as const;
         if (!status || !(validStatuses as readonly string[]).includes(status)) {
@@ -42,6 +44,8 @@ export class TransactionService {
         };
         if (processedBy) updatePayload.processedBy = Number(processedBy);
         if (typeof notes === "string") updatePayload.notes = notes;
+        if (rejectReasonId) updatePayload.rejectReasonId = Number(rejectReasonId);
+        if (rejectReason) updatePayload.rejectReason = rejectReason;
 
         let targetProvider: any = null;
         if (providerId) {

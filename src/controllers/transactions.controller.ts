@@ -1505,7 +1505,14 @@ END
 export const updateTransactionStatus = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
-    const { status, notes, providerId } = req.body as { status?: string; notes?: string; providerId?: number };
+    const { status, notes, providerId, rejectReasonId, rejectReason } =
+      req.body as {
+        status?: string;
+        notes?: string;
+        providerId?: number;
+        rejectReasonId?: number;
+        rejectReason?: string;
+      };
 
     if (Number.isNaN(id)) {
       return res
@@ -1515,7 +1522,15 @@ export const updateTransactionStatus = async (req: Request, res: Response) => {
 
     const processedBy = (req as any)?.user?.id ?? null;
 
-    const updated = await TransactionService.updateStatus(id, status as any, notes, processedBy, providerId);
+    const updated = await TransactionService.updateStatus(
+      id,
+      status as any,
+      notes,
+      processedBy,
+      providerId,
+      rejectReasonId,
+      rejectReason,
+    );
 
     return res.status(200).json({
       status: true,

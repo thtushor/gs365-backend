@@ -74,6 +74,8 @@ export const transactions = mysqlTable("transactions", {
   platFormTradeNo: varchar("platform_trade_no", { length: 100 }),
   attachment: text("attachment"),
   notes: text("notes"),
+  rejectReasonId: int("reject_reason_id"),
+  rejectReason: varchar("reject_reason", { length: 255 }),
   // currencyConversionRate: decimal("currency_conversion_rate"),
   paymentGatewayProviderAccountId: int("provider_account_id").references(
     () => paymentGatewayProviderAccount.id,
