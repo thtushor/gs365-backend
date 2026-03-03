@@ -45,7 +45,7 @@ export const vexoraNotifyController = async (req: Request, res: Response) => {
 
         if (!tx) {
             console.warn(`[VEXORA Webhook] Transaction ${tradeNo} not found.`);
-            return res.send("success"); // Return success to stop retries
+            return res.send("OK"); // Return OK to stop retries if tx not found
         }
 
         // 4. Update status based on Vexora status codes
@@ -64,7 +64,7 @@ export const vexoraNotifyController = async (req: Request, res: Response) => {
             }
         }
 
-        return res.send("success");
+        return res.send("OK");
     } catch (error: any) {
         console.error("[VEXORA Webhook] Error processing notification:", error.message);
         return res.status(500).send("error");
@@ -96,9 +96,9 @@ export const vexoraReturnController = async (req: Request, res: Response) => {
         }
 
         // Redirect user to the frontend success page
-        return res.redirect("https://gamestar365.com/success");
+        return res.redirect("https://api.gamestar365.com/success");
     } catch (error: any) {
         console.error("[VEXORA Return] Error:", error.message);
-        return res.redirect("https://gamestar365.com/failed");
+        return res.redirect("https://api.gamestar365.com/failed");
     }
 };

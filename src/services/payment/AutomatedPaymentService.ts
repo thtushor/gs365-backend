@@ -285,7 +285,7 @@ export const AutomatedPaymentService = {
 
         const payload: Record<string, any> = {
             amount: String(amount),
-            notifyUrl: "https://gamestar365.com/api/demo/vexora/notify-payout",
+            notifyUrl: "https://api.gamestar365.com/api/demo/vexora/notify-payout",
             remark: remark || "Withdrawal",
             timestamp,
             tradeNo,

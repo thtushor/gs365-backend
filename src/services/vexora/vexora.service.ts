@@ -24,8 +24,8 @@ export const VexoraService = {
             tradeNo: params.tradeNo,
             amount: params.amount,
             wayCode: params.wayCode,
-            notifyUrl: params.notifyUrl || "https://gamestar365.com/api/demo/vexora/notify",
-            returnUrl: params.returnUrl || "https://gamestar365.com/success",
+            notifyUrl: params.notifyUrl || "https://api.gamestar365.com/api/demo/vexora/notify",
+            returnUrl: params.returnUrl || "https://api.gamestar365.com/api/demo/vexora/success",
             remark: params.remark || "deposit",
         };
 
@@ -62,6 +62,20 @@ export const VexoraService = {
         const requestBody = { ...payload, sign };
 
         const { data } = await vexoraSandboxClient.post("/v1/vexora/queryPayInResult", requestBody);
+        return data;
+    },
+
+    async queryPayoutStatus(tradeNo: string) {
+        const timestamp = getTimestamp();
+        const payload: Record<string, any> = {
+            tradeNo,
+            timestamp,
+        };
+
+        const sign = generateVexoraSign(payload);
+        const requestBody = { ...payload, sign };
+
+        const { data } = await vexoraSandboxClient.post("/v1/vexora/queryPayOutResult", requestBody);
         return data;
     }
 };
