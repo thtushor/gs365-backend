@@ -1560,10 +1560,13 @@ export const updateTransactionStatus = async (req: Request, res: Response) => {
       data: updated,
     });
   } catch (err: any) {
-    if (
-      err.message === "Invalid or missing status. Allowed: approved, pending, rejected" ||
-      err.message === "Transaction not found"
-    ) {
+    const knownErrors = [
+      "Invalid or missing status. Allowed: approved, pending, rejected",
+      "Transaction not found",
+      "Payment provider not found"
+    ];
+
+    if (knownErrors.includes(err.message) || err.message.startsWith("Vexora Disbursement Failed:")) {
       return res.status(400).json({ status: false, message: err.message });
     }
     console.error("updateTransactionStatus error", err);

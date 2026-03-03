@@ -159,6 +159,7 @@ export const AdminMainBalanceModel = {
   async update(
     id: number,
     data: Partial<AdminMainBalanceData>,
+    tx?: any,
   ): Promise<boolean> {
     try {
       const updateData: any = {};
@@ -180,7 +181,7 @@ export const AdminMainBalanceModel = {
         updateData.createdByAdmin = data.createdByAdmin;
       if (data.notes !== undefined) updateData.notes = data.notes;
 
-      await db
+      await (tx ?? db)
         .update(adminMainBalance)
         .set(updateData)
         .where(eq(adminMainBalance.id, id));
