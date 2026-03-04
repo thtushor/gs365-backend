@@ -29,6 +29,7 @@ import {
   paymentGatewayProviderAccount,
   paymentMethods,
   paymentProvider,
+  rejectReasons,
 } from "../db/schema";
 import { BalanceModel } from "../models/balance.model";
 import { AdminMainBalanceModel } from "../models/adminMainBalance.model";
@@ -1413,6 +1414,8 @@ export const getTransactions = async (req: Request, res: Response) => {
         isAutomated: paymentProvider.isAutomated,
         rejectReasonId: transactions.rejectReasonId,
         rejectReason: transactions.rejectReason,
+        rejectReasonTitle: rejectReasons.reason,
+        rejectReasonDescription: rejectReasons.description,
         customTransactionId: transactions.customTransactionId,
         givenTransactionId: transactions.givenTransactionId,
         attachment: transactions.attachment,
@@ -1501,6 +1504,7 @@ END
       .leftJoin(adminUsers, eq(transactions.affiliateId, adminUsers.id))
       .leftJoin(games, eq(transactions.gameId, games.id))
       .leftJoin(currencies, eq(transactions.currencyId, currencies.id))
+      .leftJoin(rejectReasons, eq(transactions.rejectReasonId, rejectReasons.id))
       .where(whereExpr as any)
       .orderBy(orderExpr)
       .limit(perPage)

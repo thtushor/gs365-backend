@@ -4,7 +4,7 @@ import { transactions } from "../db/schema/transactions";
 import { settings } from "../db/schema/settings";
 import { turnover } from "../db/schema/turnover";
 import { promotions } from "../db/schema/promotions";
-import { adminMainBalance, paymentProvider, paymentGatewayProvider, paymentGatewayProviderAccount, notifications, paymentGateway } from "../db/schema";
+import { adminMainBalance, paymentProvider, paymentGatewayProvider, paymentGatewayProviderAccount, notifications, paymentGateway, rejectReasons } from "../db/schema";
 import { AdminMainBalanceModel } from "../models/adminMainBalance.model";
 import { AutomatedPaymentService } from "./payment/AutomatedPaymentService";
 import { getVexoraWayCode } from "../utils/vexoraMapping";
@@ -48,6 +48,15 @@ export class TransactionService {
             if (typeof notes === "string") updatePayload.notes = notes;
             if (rejectReasonId) updatePayload.rejectReasonId = Number(rejectReasonId);
             if (rejectReason) updatePayload.rejectReason = rejectReason;
+
+            let finalizedRejectReason = rejectReason;
+            if (rejectReasonId && !finalizedRejectReason) {
+                const [reasonData] = await tx.select().from(rejectReasons).where(eq(rejectReasons.id, Number(rejectReasonId))).limit(1);
+                if (reasonData) {
+                    finalizedRejectReason = reasonData.reason;
+                    updatePayload.rejectReason = reasonData.reason;
+                }
+            }
 
             let targetProvider: any = null;
             if (providerId) {
@@ -103,7 +112,7 @@ export class TransactionService {
                             playerDescription = `Your withdrawal request of <strong>${existing.amount}</strong> has been <strong>approved</strong>.`;
                         } else {
                             // Include Rejection Reason + Refund Notice
-                            const reason = rejectReason || notes || "No specific reason provided.";
+                            const reason = finalizedRejectReason || notes || "No specific reason provided.";
                             playerDescription = `Your withdrawal request of <strong>${existing.amount}</strong> has been <strong>rejected</strong>.<br/>Reason: ${reason}<br/>Your amount has been refunded.`;
                         }
                     } else if (isDeposit) {
