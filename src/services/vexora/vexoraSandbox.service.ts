@@ -16,8 +16,8 @@ vexoraSandboxClient.interceptors.request.use(
     // Safeguard to ensure config.headers exists
     if (!config.headers) config.headers = {} as any;
 
-    // Log request details for Sandbox debugging
-    console.log(`[Vexora Request] ${config.method?.toUpperCase()} ${config.url}`, config.data);
+    // Log request details for Sandbox debugging - including baseURL
+    console.log(`[Vexora Request] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`, config.data);
 
     return config;
   },
@@ -29,13 +29,13 @@ vexoraSandboxClient.interceptors.request.use(
 // Response Interceptor
 vexoraSandboxClient.interceptors.response.use(
   (response) => {
-    // Log response data for visibility in sandbox environment
-    console.log(`[Vexora Response] ${response.status} ${response.config.url}`, response.data);
+    // Log response data for visibility in sandbox environment - including baseURL
+    console.log(`[Vexora Response] ${response.status} ${response.config.baseURL}${response.config.url}`, response.data);
     return response;
   },
   (error) => {
-    // Centrally log error details
-    console.error(`[Vexora Error] ${error.config?.url || "Request"}:`, error.response?.data || error.message);
+    // Centrally log error details - including baseURL
+    console.error(`[Vexora Error] ${error.config?.baseURL}${error.config?.url || "Request"}:`, error.response?.data || error.message);
     return Promise.reject(error);
   }
 );
